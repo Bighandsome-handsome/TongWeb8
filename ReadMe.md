@@ -1,4 +1,4 @@
-Author: 林子宸(Emol)
+Author: Emol
 Date:   2026.1.19 ~ 2026.2.13
 
 # 1. 文件结构（不含脚本）
@@ -124,10 +124,10 @@ TONGWEB8知识库
 【Dify智能体搭建】
 4. 在 Dify 上搭建了一个智能体，可以实现TongWeb常见运营问题解答，复杂情景的故障排除等，并且通过插件工具生成`word`或者`markdown`文档的报告，且返还一个`URL`下载地址，用户可以直接点击链接完成报告的下载，具体的Dify配置流程可以参加`总结文档`->`第二次总结2.pdf`。
 ### 相关配置文件说明：
-（1）dify_main.py ：这是通过`本机8000端口`接收LLM的数据，并且生成`word文档`和`URL下载地址`；
-（2）dify_main2.py：这是通过`本机8001端口`接收LLM的数据，并且生成`markdown文档`和`URL下载地址`；
-（3）wordgenerator.jsonc: 这是在 Dify 上配置`word文档下载`工具的json代码；
-（4）markdownGenerator.jsonc 这是在 Dify 上配置`markdown文档下载`工具的json代码；
+1. dify_main.py ：这是通过`本机8000端口`接收LLM的数据，并且生成`word文档`和`URL下载地址`；
+2. dify_main2.py：这是通过`本机8001端口`接收LLM的数据，并且生成`markdown文档`和`URL下载地址`；
+3. wordgenerator.jsonc: 这是在 Dify 上配置`word文档下载`工具的json代码；
+4. markdownGenerator.jsonc 这是在 Dify 上配置`markdown文档下载`工具的json代码；
 
 # 2.2 针对TongWeb8平台的智能体搭建（补充）
 因为Tongweb8平台的智能体背后的LLM没有上下文记忆功能，因此我们很难通过知识库文件直接让他生成一个很好的答案，所以我们在原有知识库的基础上`设计了若干个复杂情景的问答对`，这样在知识库检索时，若检索到相关的分片并且返还给LLM，就可以使得LLM有`参考案例`和`思路借鉴`，从而提升答案的质量。
@@ -342,6 +342,7 @@ with open(OUTPUT_CSV, 'w', encoding='utf-8-sig', newline='') as f:
     writer.writerows(rows)
 
 print(f"转化完成！共 {len(rows)} 条记录。")
+
 
 
 
