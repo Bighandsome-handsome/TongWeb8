@@ -1,0 +1,199 @@
+# 1. 背景与目标
+随着容器化技术的广泛且深入应用，其凭借资源高效利用、灵活的弹性扩缩容能力以及确保环境一致性等显著优势，为应用部署领域带来了具有里程碑意义的革新。TongWeb 作为关键的应用服务器，在容器化场景中亦实现了深度应用与充分的价值发挥。
+为了进一步增强容器化环境下 TongWeb 应用的稳定性，提升其可观测性，并优化运维效率。本手册结合当下成熟的容器化部署实践（如端口延迟启动、优雅停机等），内容覆盖启动配置、监控告警、日志管理、兼容性适配等关键环节，旨在为生产环境下的容器化部署提供一套严谨、统一且具备高度可操作性的标准化操作指南。
+
+# 2. 容器化部署 TongWeb
+通过 Dockerfile 制作 TongWeb 的 Docker 镜像。
+
+# 2.1 准备工作
+• 建议在非容器环境提前启动并配置好 TongWeb 的数据源、通道、应用等资源，以最终在容器内直接使用。
+• 若计划访问容器内 TongWeb 的控制台，可选择提前解除 “信任IP” 的限制，通过管理控制台页面操作或者修改 console.xml 文件设置 trustedIP 为 “*” 来达到目的。
+• 为减小制作镜像的体积，可在制作镜像之前将 $\$ 1$ {tongweb.home} 下不需要的版本目录（只保留需要的一个 version* 目录）和所有版本的 version*.zip 移除，同时清空 temp 和 logs 目录。
+• 若需要制作 TongWeb 轻量版本的镜像，需先通过控制台 “版本生成” 模块生成一份轻量版本，再按照上述和后续步骤进行操作。
+
+# 2.2 操作步骤
+1. 在 $\$ 1$ {tongweb.home} 同级目录（注：不是在内部）建立 Dockerfile 文件。
+如下以 x.x.x.x 版本为例（注：请根据实际版本修改），内容如下所示。
+```dockerfile
+#注：需更改为合法的基础镜像  
+FROM openjdk:8u212-jdk-alpine  
+#注：按需填写JVM启动参数，可选，默认值从tongweb.xml中读取  
+ENV JAVA_OPTIONS=" "-Xms512M -Xmx1024M"  
+#注：需更改为实际的TongWeb文件路径  
+COPY ./TongWeb /opt/TongWeb  
+RUN chmod +x /opt/TongWeb/bin/*.sh  
+CMD ["/bin/sh", "-c", "/opt/TongWeb/bin/standalone.sh"]
+```
+2. 在 $\$ 1$ {tongweb.home} 同级目录，执行 Docker 镜像构建命令。
+```batch
+docker build -t tongweb:x.x.x.x ./ 
+```
+3. 执行命令，检查构建的镜像。
+```txt
+docker images 
+```
+4. 执行如下命令，运行 TongWeb 容器。
+```txt
+docker run -p 8088:8088 tongweb:x.x.x.x 
+```
+注意：
+◦ 此为基础命令，请按需添加 -d --name -it -v -e 等容器支持的参数。
+◦ 若需要访问 TongWeb 的控制台，需添加 -p 9060:9060。
+其它事项
+• 一般建议是将容器内的 $\$ 1$ {tongweb.home}/domains/domain1 目录挂载出来方便维护。
+• 若挂载了 domain1 目录，为方便手动修改配置文件，您可选择在慎重考虑后关闭 TongWeb 的 “服务器主配置文件防篡改” 功能。
+• 注意：本方法构建的容器启动 TongWeb 用的是 standalone.sh 脚本，即会启用 TongWeb 的 “单进程启动模式”。
+如需修改 JVM 启动参数，可在构建(修改 Dockerfile 中的 ENV )或启动(docker run -e)镜像时，设置JAVA_OPTS 环境变量。
+
+# 3. 最佳实践项
+
+# 3.1. 基础配置优化
+
+# 3.1.1. 端口延迟启动（含普罗端口）
+目的：
+开启 “延迟启动通道” 后，TongWeb 在启动时会优先启动应用，应用启动完成后，再启动端口。开启该功能可保证当有请求进入系统后所有的应用都是就绪的。
+操作：
+1. 定位配置节点
+在 tongweb.xml 中找到 server 节点（位于 tongweb $>$ server 路径下）。
+2. 设置关键参数
+delayStartConnector="true"：开启 “延迟启动通道”。
+TongWeb 配置（tongweb.xml）：
+```asp
+<server delayStartConnector="true"> 
+```
+
+# 3.1.2. 优雅停机（Graceful Shutdown）
+目的：
+在 TongWeb 服务器停止时，等待正在进行中的客户端请求处理完毕。
+操作：
+1. 定位配置节点
+在 tongweb.xml 中找到 server 节点（位于 tongweb $>$ server 路径下）。
+2. 设置关键参数
+gracefulStopAwaitMillis $\mathrel { \mathop : } \stackrel { \mathfrak { \tiny \ " } } { \scriptscriptstyle = } 1 0 0 0 ^ { \mathfrak { \tiny " } }$ ：打开 “优雅停机”，单位：毫秒。设置为 0，表示禁用优雅停机。
+TongWeb 配置（tongweb.xml）：
+```txt
+<server gracefulStopAwaitMillis="1000"> 
+```
+
+# 3.1.3. 普罗米修斯监控数据上报
+目的：通过总控平台集中监控 TongWeb 运行状态（如 QPS、响应时间、JVM 指标）。
+操作：
+1. 定位配置节点
+在 tongweb.xml 中找到 prometheus 节点（位于 tongweb $>$ server $>$ prometheus 路径下）。
+2. 设置关键参数
+启用 TongWeb 的普罗米修斯监控端点，暴露 /metrics 接口（默认 9090 端口）。
+3. TongWeb 配置（tongweb.xml）：
+```txt
+<prometheus address="127.0.0.1" authType="none" context="/metrics" enabled="true" interval="5" monitor="" monitorRegisteredInstances="false" password="" port="30188" pushGatewayAddress="127.0.0.1:9090" reportMode="pull"/> 
+```
+配置数据上报至总控告警系统（如通过 Prometheus Exporter 或直接对接）。
+4. 验证方式：容器启动后，访问 http:// 容器IP:9090/ metrics ，确认指标正常输出。
+
+# 3.1.4. 系统日志与应用日志分离
+目的：将系统打印（System.out、System.err）的日志仅在控制台输出，不写入文件。并将使用java.util.logging.Logger 打印的应用日志转入到 TongWeb 日志模块统一处理，如存入 TongWeb 的server.log 日志文件等，从而实现系统日志与应用日志的分离。
+操作：
+1. 定位配置节点
+在 tongweb.xml 中找到 server 节点（位于 tongweb $>$ server $>$ loggers $>$ server 路径下）。
+2. 设置关键参数
+◦ takeoverSystemPrin $\varXi ^ { \prime }$ "true"：接管系统打印（System.out/System.err）。
+◦ printToConsoleOnly="true"：应用日志仅输出到控制台，不写入文件。
+◦ takeoverJUL="true"（默认值）：接管 Java Logger（java.util.logging.Logger），日志存入server.log。
+3. TongWeb 配置（tongweb.xml）：
+```asp
+<server takeoverSystemPrint="true" printToConsoleOnly="true" takeoverJUL="true"> 
+```
+
+# 3.1.5. 启动模式选择：“启动时部署” 替代 “自动部署”
+目的：避免运行时自动扫描部署目录（如 autodeploy ）导致的资源竞争或配置漂移。
+操作：
+1. 定位配置节点在 tongweb.xml 中找到 server 节点（位于 tongweb $>$ server 路径下）。
+2. 设置关键参数
+◦ autoDeploy="false"：关闭自动部署。
+◦ autoDeployDir="autodeploy"：自动部署目录。
+◦ startupDeploy="true"：启动时一次性部署。
+TongWeb 配置（tongweb.xml）：
+```twig
+<server autoDeploy="false" autoDeployDir="autodeploy" startupDeploy="true"> 
+```
+
+# 3.1.6. 打开 “镜像模式”
+目的：为提升系统安全性，可选用 “镜像模式” 来运行 TongWeb。当 TongWeb 以镜像模式运行时，会处于 “只读” 状态，这意味着在此状态下，无法对任何配置参数实施修改操作。
+使用说明：以镜像模式运行 TongWeb 会尝试从应用（需要在镜像模式下部署的应用，可选在 TongWeb 启动之前，将其放置到 “${tongweb.base}/imagedeploy” 目录下，也可选使用 “应用仓库” 来获取远程应用包）中查找TongWeb 所需要的配置文件。查找位置为：应用根目录/META-INF/tongweb.查找到的文件将会合并入 “${tongweb.base}” 目录（“/META-INF/tongweb” 目录下的文件目录结构要与“${tongweb.base}” 目录结构对应），原 “${tongweb.base}” 目录将会整体备份。
+操作：
+1. 定位配置节点
+在 tongweb.xml 中找到 server 节点（位于 tongweb $>$ server 路径下）。
+2. 设置关键参数
+imageMode="true"：打开 “镜像模式” 开关。
+TongWeb 配置（tongweb.xml）
+```txt
+<server imageMode="true"> 
+```
+
+# 3.2. 配置挂载模式：tongweb.xml 只读挂载
+目的：为增强系统安全性，防止容器在运行过程中对核心配置出现误修改情况，确保运行环境的一致性与稳定性，
+可采取只读挂载 tongweb.xml 文件的策略。
+操作：将 tongweb.xml 从宿主机或配置中心挂载至容器，设置为只读权限（ro）。
+Docker 挂载示例：
+```batch
+docker run -v /host/path/tongweb.xml:/opt/tongweb/conf/tongweb.xml:ro 
+```
+
+# 3.3. 单进程模式启动 TongWeb
+目的：在容器中仅保留 TongWeb 主进程（ standalone.sh 启动的进程），避免残留 Shell 守护进程或其他无关进程，同时支持通过启动参数动态配置内存大小。
+操作：
+以如下 Dockerfile 文件为例：
+1 # 注：需更改为合法的基础镜像
+2 FROM openjdk:8u212-jdk-alpine 
+3 # 注：按需填写 JVM 启动参数，可选，默认值从 tongweb.xml 中读取
+4 ENV JAVA_OPTS $\cdot = "$ -Xms512M -Xmx1024M" 
+5 # 注：需更改为实际的 TongWeb 文件路径
+6 COPY ./TongWeb /opt/TongWeb 
+7 RUN chmod $+ \mathsf { x }$ /opt/TongWeb/bin/*.sh 
+8 CMD ["/bin/sh", "-c", "/opt/TongWeb/bin/standalone.sh"] 
+通过 JAVA_OPTS 环境变量定制启动后参数：
+```batch
+docker run -d -e "JAVA_OPTS=-Xms512m -Xmx1024m -XX: +UseG1GC" tongweb-image:latest 
+```
+
+# 4. 特性适配
+
+# 4.1. JDK17 自动支持
+优势：
+无需显式配置 --add-opens 参数，简化容器镜像构建。
+操作：
+确保 TongWeb 镜像基于 JDK17 构建（如基础镜像使用 openjdk:17-jdk）。
+验证：
+启动容器后执行 java -version ，确认版本为 $^ { 1 7 + }$ ，且无 --add-opens 相关警告。
+
+# 4.2. Jakarta 空间自动切换
+场景：
+适配 Java EE 到 Jakarta EE 的规范迁移（如 Servlet $5 . 0 +$ ）。
+操作：
+TongWeb 支持自动切换命名空间。
+开启后，TongWeb 会在启动之初切换运行时的 Java EE 命名空间，如果当前是 javax，则会自动切换为jakarta，反之亦然。
+打开 “${tongweb.base}/conf/tongweb.xml” 文件，添加 “reversePkg="true” 后重启即可切换命名空间。
+```xml
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<! -- 注意事项 */
+<TongWeb 的配置文件 tongweb.xml、console.xml 等，默认开启了防篡改功能 -->
+<TongWeb 运行期间，您可能无法对其进行手动编辑（相关操作可能会自动回退） -->
+<TongWeb 若您确实需要手动编辑这些文件，请先停止 TongWeb，之后再进行相关操作即可 -->
+<TongWeb reversePkg="true">
+<java-config workDir="/${tongweb.base}"/>
+<environments>
+```
+
+# 4.3. 集中化配置与环境变量扩展
+目标：
+通过环境变量动态调整启动参数，避免修改配置文件。
+操作：
+• 可以在 tongweb.xml 中，设置数据源和默认 JVM 参数（如堆内存、GC 策略）。
+例如：在 tongweb.xml 配置文件的 "tongweb $>$ java-config $>$ start-args" 中，配置 JVM 参数。
+```xml
+<arg name="-Xms2048m" desc="初始分配的堆内存"/> <arg name="-Xmx2048m" desc="最大允许分配的堆内存"/>
+```
+• 可以通过 JAVA_OPTS 环境变量定制启动后参数（如容器启动时）。
+```batch
+docker run -e JAVA_OPTIONS=" "-Xms512M -Xmx1024M" 
+```
+![image](https://cdn-mineru.openxlab.org.cn/result/2026-02-12/8335fc62-f2dd-45bc-b389-acc941a7aca3/f794fc3f9a67cdd28e1452e10e70c402ae7c72ff21385712ae78666dc2ea8d07.jpg)

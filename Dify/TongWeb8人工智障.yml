@@ -1,0 +1,205 @@
+app:
+  description: 您好，我是一个致力于解决TongWeb8的人工智障，有什么倒忙可以帮您？
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  mode: agent-chat
+  name: TongWeb8人工智障
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.9@8cc65e3d2ce11b03d377ee008dc699c7016601c2646a09c983fcf7c1fd7827ee
+    version: null
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: bowenliang123/md_exporter:3.4.0@a5ce3ac3114f3dd6ab4fe49f0bb931a31af49ff555e479ec45e8aaa5d44157ee
+    version: null
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: stvlynn/doc:0.0.1@900d82963e63c505136dfc77f3e06329326e714ca66bed668224e811f73efc7b
+    version: null
+kind: app
+model_config:
+  agent_mode:
+    enabled: true
+    max_iteration: 10
+    prompt: null
+    strategy: function_call
+    tools:
+    - enabled: true
+      isDeleted: false
+      notAuthor: false
+      provider_id: webscraper
+      provider_name: webscraper
+      provider_type: builtin
+      tool_label: 网页爬虫
+      tool_name: webscraper
+      tool_parameters:
+        generate_summary: 'false'
+        url: null
+        user_agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML,
+          like Gecko) Chrome/100.0.1000.0 Safari/537.36
+    - enabled: true
+      isDeleted: false
+      notAuthor: false
+      provider_id: code
+      provider_name: code
+      provider_type: builtin
+      tool_label: 代码解释器
+      tool_name: simple_code
+      tool_parameters:
+        code: null
+        language: null
+    - enabled: false
+      isDeleted: false
+      notAuthor: false
+      provider_id: bowenliang123/md_exporter/md_exporter
+      provider_name: bowenliang123/md_exporter/md_exporter
+      provider_type: builtin
+      tool_label: Markdown ⮕ PDF
+      tool_name: md_to_pdf
+      tool_parameters:
+        md_text: null
+        output_filename: null
+    - enabled: true
+      isDeleted: false
+      notAuthor: false
+      provider_id: bowenliang123/md_exporter/md_exporter
+      provider_name: bowenliang123/md_exporter/md_exporter
+      provider_type: builtin
+      tool_label: Markdown 表格 ⮕ JSON
+      tool_name: md_to_json
+      tool_parameters:
+        md_text: null
+        output_filename: null
+        output_style: jsonl
+    - enabled: false
+      isDeleted: false
+      notAuthor: false
+      provider_id: stvlynn/doc/doc
+      provider_name: stvlynn/doc/doc
+      provider_type: builtin
+      tool_label: Markdown转DOCX转换器
+      tool_name: markdown_to_docx_converter
+      tool_parameters:
+        markdown_content: null
+        title: null
+    - enabled: true
+      isDeleted: true
+      notAuthor: false
+      provider_id: c5120959-6948-4299-921b-0ffee553e41a
+      provider_name: WordFileGenerator
+      provider_type: api
+      tool_label: generateWordDocument
+      tool_name: generateWordDocument
+      tool_parameters:
+        content: null
+    - enabled: true
+      isDeleted: true
+      notAuthor: false
+      provider_id: 83626efb-e823-4e3b-a2ed-8676233bb2d0
+      provider_name: MarkdownGenerater
+      provider_type: api
+      tool_label: generateMarkdown
+      tool_name: generateMarkdown
+      tool_parameters:
+        content: null
+  annotation_reply:
+    enabled: false
+  chat_prompt_config:
+    prompt:
+    - role: system
+      text: ''
+  completion_prompt_config:
+    conversation_histories_role:
+      assistant_prefix: ''
+      user_prefix: ''
+    prompt:
+      text: ''
+  dataset_configs:
+    datasets:
+      datasets:
+      - dataset:
+          enabled: true
+          id: ace2d1dc-463a-4b4a-8413-f5b8ae7aae98
+    reranking_mode: reranking_model
+    reranking_model:
+      reranking_model_name: gte-rerank
+      reranking_provider_name: langgenius/tongyi/tongyi
+    retrieval_model: multiple
+    top_k: 4
+  dataset_query_variable: ''
+  external_data_tools: []
+  file_upload:
+    allowed_file_extensions:
+    - .JPG
+    - .JPEG
+    - .PNG
+    - .GIF
+    - .WEBP
+    - .SVG
+    allowed_file_types:
+    - image
+    allowed_file_upload_methods:
+    - remote_url
+    - local_file
+    enabled: false
+    image:
+      detail: high
+      enabled: false
+      number_limits: 3
+      transfer_methods:
+      - remote_url
+      - local_file
+    number_limits: 3
+  model:
+    completion_params:
+      max_tokens: 2301
+      response_format: text
+      stop: []
+      temperature: 0.1
+      top_p: 0.1
+    mode: chat
+    name: deepseek-chat
+    provider: langgenius/deepseek/deepseek
+  more_like_this:
+    enabled: false
+  opening_statement: ''
+  pre_prompt: "## Role: TongWeb 8生产环境首席专家\n## Profile\n你作为 TongWeb 8的核心技术专家，拥有整合多源知识（Markdown格式的用户手册、QA问答对、配置表）解决复杂生产故障的能力。你的核心任务是提供高确定性、可直接执行的技术方案，并确保所有输出均经过内部文档的严格溯源比对。\n\
+    ## Thinking & Retrieval Logic\n1. nternal Verification\n在生成任何技术动作或结论前，必须在后台完成以下溯源步骤：\n\
+    （1）精准定位：针对用户提及的模块或报错，检索全库。如果是手册内容，定位至具体章节（如 # 9.11）；如果是QA库，定位至对应案例编号。\n（2）交叉验证：若方案涉及参数修改（如\
+    \ -D 参数），必须对比手册中的“取值范围”与 QA 案例中的“实战效果”。\n（3）静默执行：除非用户明确要求显示出处，否则无需在最终回答中列出具体的章节号和文档名。\
+    \ 但你的所有建议必须严格基于检索到的内容，严禁产生文档外的幻觉。\n2. 多源知识调度策略\n（1）故障排查场景：优先调取[QA问答对(csv格式)]锁定高频解决方案，再调取[用户Markdown手册]补全完整的参数定义。\n\
+    （2）标准操作场景：优先调取[Markdown结构化手册]，提取标准指令和对应的 jdbcUrlTemplate 等属性说明。\n环境准入场景：检索[QA问答对(csv格式)]和[用户Markdown手册]，核对规范（Servlet、Jakarta\
+    \ EE）与JDK兼容性矩阵。\n## Operational Strategy\n1. 深度诊断流程\n提取输入中的硬指标：错误码（如 0404）、参数（如\
+    \ --user）、文件名（如 commandstool.sh）。解释底层逻辑：依据手册原理说明故障触发机制，例如“0404 报错表示系统处于运行状态，互斥操作被拦截”。\n\
+    2. 方案构建准则\n指令完整性：给出的 shell 或命令必须包含必要的登录凭证参数占位符。\n参数闭环：不仅给出改什么，还要给出该参数的 默认值 和 取值范围，防止二次误操作。\n\
+    风险前置：在方案前必须说明该操作是否需要重启服务或是否具有破坏性。\n## Output Constraints \n语言风格：严谨、干练，采用标准技术文档语调。\n\
+    确定性要求：禁止使用“可能”、“大概”、“试一下”等词汇。基于文档有结论则给判定，无记载则如实说明。\n结构化输出：必须采用标准的Markdown标题层级，方便用户快速阅读。\n\
+    ## Output Template \n1. 诊断报告\n（1）核心问题：[基于用户描述锁定的故障本质]\n（2）触发原因：[结合文档逻辑解释为什么会报错]\n\
+    2. 解决方案\n（1）前置检查：[执行前必须确认的环境变量、权限或服务状态]\n（2）执行动作：```bash # 完整的命令或配置代码块 ```\n（3）关键参数说明：参数名，[从手册中提取的定义与取值要求]\n\
+    3. 结果验证\n（1）成功标识：[说明看到什么日志或输出代表操作已生效]\n（2）异常应对：[若未出现预期结果，应检查的fallback路径]\n注意：\n\
+    1. 当你需要为用户生成文件下载时，严禁自行构造任何包含 chat.openai.com 或其他外部域名的链接。当用户要求生成报告或文档时，请你先直接在聊天框中以\
+    \ Markdown 格式完整地输出文档的内容。\n2. 当你需要导出 Markdown 时，你必须直接调用TestWord工具进行导出。你不需要向工具传递报告内容，只需要确保报告已经完整显示在对话框中即可。\n\
+    4. 获取到工具返回的download_url后，请按照以下固定格式结尾：`你可以从这里下载文档：download_url链接（不要修改）`"
+  prompt_type: simple
+  retriever_resource:
+    enabled: true
+  sensitive_word_avoidance:
+    configs: []
+    enabled: false
+    type: ''
+  speech_to_text:
+    enabled: false
+  suggested_questions: []
+  suggested_questions_after_answer:
+    enabled: true
+  text_to_speech:
+    enabled: false
+    language: ''
+    voice: ''
+  user_input_form: []
+version: 0.5.0

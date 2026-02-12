@@ -1,0 +1,190 @@
+# 1. 产品概述
+TongWeb 是东方通推出的遵循 Java EE 规范的企业级应用服务器软件，提供了负载均衡、集群、WebService、数据库连接池、事务处理服务、安全管理等功能。 它为企业应用提供了可靠、可伸缩、可管理和高安全的基础平台，同时具有功能完善、支持开放标准和基于组件开发、多层架构、轻量等特点，为开发和部署企业应用提供了必需的底层核心功能。
+TongWeb V8.0 是应用服务器 TongWeb 产品线的最新版本，以二十多年的行业经验为基础，充分考虑企业客户的核心商业需求，提供与时俱进、轻量易于使用、性能强大而又具有极高可靠性安全性的开发、运行、维护平台，从而提高开发、维护效率，尽可能的为企业客户减少投入成本的同时保证应用稳定高效的运行。
+TongWeb V8.0 全面支持 Java EE/Jakarta EE 8 规范，作为基础架构软件，位于操作系统与应用之间，帮助企业将业务应用集成在一个基础平台上，为应用高效、稳定、安全运行提供关键支撑，包括便捷的开发、随需应变的灵活部署、丰富的运行时监视、高效的管理等。
+TongWeb V8.0 坚持自主研发，与芯片、操作系统、数据库等产业生态伙伴开展广泛兼容性适配，为党政、金融、运营商等核心业务应用搭建高性能、高可用系统提供有力支持。
+
+# 2. 体系结构
+应用服务器 TongWeb 采用微内核架构，在 JVM 之上，由类加载服务、配置服务和生命周期服务构成应用服务器的最小内核。
+在此微内核基础上，围绕着 Web、EJB 两大核心容器，构建 JavaEE 基础服务层和扩展服务层。
+![image](https://cdn-mineru.openxlab.org.cn/result/2026-02-02/7f5d3f83-587b-48a1-8778-3c5ce9b6145a/f8a1a768d0f5958c04df5bdc320c72473f787bd7cb8dca8d26d77e70fe3fd626.jpg)
+体系结构说明，如下表所示。
+<table><tr><td>模块</td><td>说明</td></tr><tr><td>基础服务层</td><td>基础服务层包括JNDI、JDBC、JTA、JMS、JCA、JPA、JavaMail等服务，用于处理JavaEE核心基础资源对象的创建和生命周期管理，并对上层容器和扩展服务提供基础服务接口。</td></tr><tr><td>核心容器层</td><td>Web容器和EJB容器提供Web应用和企业级应用部署运行所需的底层核心组件，如&lt;servlet、jsp、SessionBean组件等。同时，还负责接收处理来自各种客户端的请求，如浏览器、终端以及各种语言写的客户端。核心容器通过内部的连接通道和协议处理器，可以处理各种协议的客户端请求，如http、https、soap、ajp协议等。</td></tr><tr><td>资源服务层</td><td>为了便于用户更好的管理应用服务器内部资源以及部署运行在应用服务器上的企业应用，应用服务器TongWeb还提供了覆盖所有核心容器和服务的管理服务，用户可以通过管理服务对应用服务器内所有服务、资源和应用进行管理。同时管理服务还提供UI界面和命令行工具来进一步简化用户的操作，提供更加良好的易用性。</td></tr><tr><td>扩展服务层</td><td>扩展服务层基于微内核和基础服务之上，采用松散耦合的模式接入应用服务器框架，为上层服务和两大核心容器提供企业级扩展服务，并提供容器组件和上层服务的聚合能力。其中资源适配服务作为连接应用服务器和外部资源的关键服务，为应用服务器和第三方企业资源系统的对接和通信，提供了通用模型，从而极大的提高了应用服务器和其他外部系统的互操作能力。</td></tr></table>
+
+# 3. 功能特性
+如下列举了 TongWeb 支持的相关功能特性。
+• 管理控制台
+通过管理控制台用户可以方便进行各类型应用的管理，以及各种资源与服务的使用和调优。
+• Web 容器
+提供Web应用的运行环境，如支持 HTTP 协议，支持 SSL 协议上的 HTTP 协议(HTTPS)等。
+• EJB 容器
+提供JPA和EJB应用的运行环境。
+• OSGi 容器
+启动 OSGi 服务后，TongWeb 将运行一个 OSGi 容器，用以部署 OSGi Bundle。
+同时，还支持启动、停止、删除 OSGi 应用。
+• 部署服务
+提供应用部署功能的核心服务，可以部署各种类型应用，包括 Web 应用、EJB 应用、企业应用等。
+支持部署符合 Java EE/Jakarta EE 技术规范的标准格式的程序包，如
+“.war”、“.jar(ejb)”、“.ear”、“.rar”等文件。
+• 数据源
+提供 JDBC 数据源，用于管理数据库连接。
+• 配置管理
+可以管理各个容器和服务的配置信息，并支持实时配置变更。
+• 安全服务
+提供基于 Java EE 标准的安全服务。
+• 日志服务
+提供日志服务，用户可以对不同的模块设置不同的日志获取粒度，以达到根据需要选择性的获取不同粒度的日志信息或关闭日志信息。
+• 监视服务
+提供监视服务，用户可以控制监视量的采集，并能够获取服务器提供的监控量的值。
+• 扩展支持
+汇总 TongWeb 支持的服务，包含 Eclipse、IntelliJIDEA、Prometheus、SkyWalking、SNMP 等。同时还支持 TongWeb 版本生成、进阶使用、示例应用等。
+
+# 4. 版本功能对比
+TongWeb 提供了轻量版、标准版、企业版、教学版及容器云版。各版本功能不同，不同版本通过 license控制。
+若使用标准版/企业版/教学版，且对体积有要求，可切换为 “轻量模式”，或者生成“轻量版”来使用。若对体积没有要求，不建议切换。
+
+## 轻量版说明：
+• 轻量版分为 license 控制的轻量版、通过其它版本生成的轻量版。
+生成的轻量版分为 “带控制台的轻量版”、“不带控制台的轻量版”。
+不带控制台的轻量版，不支持命令行工具（ commandstool.[sh|bat] / cli.[sh|bat] ）。
+• 通过其它版本生成的轻量版，存在安装包与 license 不对应的情况。
+当安装包与 license 不对应时，系统仅展示最低版本的功能。另外，“集中管理” $>$ “服务管理” 页面展示的功能有略微差异，如下表所示。
+<table><tr><td>license类别</td><td>差异说明</td></tr><tr><td>·轻量版安装包+轻量版license
+·轻量版安装包+标准版license</td><td>“集中管理”&gt;“服务管理”中，无管理节点页，只能管理本机实例。
+仅包含“实例”、“集中配置”、“注册实例”和“注册实例集群”。</td></tr><tr><td>·轻量版安装包+企业版license
+·轻量版安装包+教学版license</td><td>“集中管理”&gt;“服务管理”中，保留有管理节点页。
+包含“实例”、“集群”、“节点”、“负载均衡器”、“集中配置”、“注册实例”和“注册实例到集群”。</td></tr></table>
+• TongWeb 还提供了 “轻量模式”，用户可以通过切换该模式的方式关闭 EJB、JCA 等服务，并尝试从应用自身加载 JSF、JavaMail、WebSocket、WebService、Xml 等技术实现。
+
+## 容器云版说明：
+在使用容器云授权或环境变量有 TW_IS_IN_CLOUD=true 的环境下，控制台首页运行模式可显示为 “容器云版” 字样。
+
+##  版本推荐：
+面向大规模应用环境和对可靠性要求高的应用场景时，推荐使用企业版。
+比如：大型企业系统、移动、电信、金融、交通、能源、大型电子政务系统等类型。
+
+## 版本功能差异说明
+注：如下呈现的是基于 license 控制的不同版本的功能对比；需要特别说明的是，对于未在此列举的其他功能，各版本均具备相应能力。
+<table><tr><td>一级菜单</td><td>二级菜单</td><td>轻量版</td><td>标准版</td><td>企业版</td><td>教学版</td><td>容器云版</td></tr><tr><td>应用管理</td><td>应用迁移</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✕</td></tr><tr><td rowspan="5">EJB 容器</td><td>无状态 EJB有状态 EJB单例 EJB消息驱动 BeanJTA 事务EJB http 协议</td><td>✕</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td>EJB w3 协议</td><td>✕</td><td>✓</td><td>✓</td><td>✓</td><td>✕</td></tr><tr><td>JCA 连接池JCA 托管对象</td><td>✕</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td>JavaMail 资源</td><td>✕</td><td>✓</td><td>✓</td><td>✓</td><td>✕</td></tr><tr><td>工作管理器</td><td>✕</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td rowspan="2">其它容器</td><td>OSGi 服务OSGi 应用</td><td>✕</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td>WebFlux 应用</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td>监视管理</td><td>SNMP 服务</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✕</td></tr><tr><td>安全管理</td><td>可信文件密码安全</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✕</td></tr><tr><td>基础配置</td><td>启动策略</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✕</td></tr><tr><td rowspan="3">服务管理</td><td>实例</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✕</td></tr><tr><td>集群节点负载均衡器</td><td>✕</td><td>✕</td><td>✓</td><td>✓</td><td>✕</td></tr><tr><td>集中配置注册实例注册实例到集群</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td rowspan="2">资源配置</td><td>实例模板</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✕</td></tr><tr><td>TongDataGrid消息服务器</td><td>✕</td><td>✕</td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td rowspan="3">系统管理</td><td>产品升级</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>×</td></tr><tr><td>产品授权</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>远程 JMX</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td rowspan="4">扩展支持</td><td>版本生成</td><td>×</td><td>✓</td><td>✓</td><td>✓</td><td>×</td></tr><tr><td>支持列表</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>×</td></tr><tr><td>进阶使用</td><td></td><td></td><td></td><td></td><td></td></tr><tr><td>示例应用</td><td>×</td><td>✓</td><td>✓</td><td>✓</td><td>×</td></tr><tr><td colspan="7">其它功能</td></tr><tr><td colspan="2">命令行</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td colspan="2">REST 接口</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr><tr><td colspan="2">无限制并发</td><td>✓</td><td>✓</td><td>✓</td><td>×(最多5个并发)</td><td>✓</td></tr><tr><td colspan="2">多维度安全加固</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td></tr></table>
+
+# 5. 产品优势
+
+##  便捷统一的版本管理
+已经上线的企业应用在版本更新时，通常需要在流量相对较小的时段中断请求、停机维护、重新部署新版本应用等，再恢复上线。在这个过程中，很容易损失替换应用这个时间段的流量收入。
+应用服务器 TongWeb 提供了 24 小时不中断请求的应用更新系统和完善的应用版本控制，解决了传统企业应用更新版本时的烦恼。
+应用服务器 TongWeb 提供的应用更新和版本控制系统具备如下特点：
+◦ 不中断请求的无缝应用更新
+TongWeb 的应用更新功能可以在不中断客户端请求的情况下做到应用版本的升级，升级过程平滑透明，最大程度上提高了用户体验。
+◦ 支持多种类型应用的版本更新
+TongWeb 支持 Web 应用、企业应用和 JNDI 系统的版本更新，并且支持跨线程的版本控制，以应对各种特殊场景。
+◦ 多版本灵活切换
+在使用应用更新功能后，可以在现存的多个应用版本之间进行灵活切换，该切换过程同样是不中断客户端请求的平滑切换过程。
+
+##  强大的应用容错能力
+应用服务器 TongWeb 提供对各种中文编码问题的容错性。
+以 Tomcat 为代表的开源产品、商业产品都需要修改应用程序才能解决中文编码问题，应用服务器TongWeb 在不用修改程序的基础上解决了各类中文乱码、重定向失败的问题。
+提供对 Cookie 的中文字符支持，对于有下载文件功能的应用，不再需要对应答头 Content-Disposition中的中文文件名进行编码转换，极大地提高了易用性。
+
+## 广泛兼容的开源框架
+◦ 兼容多种开发框架
+应用服务器 TongWeb 支持当前流行的开发框架。
+例如：Struts2、Spring、Hibernate、Springboot、JFinal等。
+对于使用大型框架（例如：liferay）的应用，同样可以在应用服务器上安全稳定的运行，不需要修改任何应用的代码。
+◦ 支持多个 JSF 的实现版本
+JSF 的实现版本众多，应用可能会选择不同版本的 JSF 的实现，应用服务器 TongWeb 提供了对此的解决方案，即通过配置来自动支持不同的版本，支持自定义设置。
+◦ 可配置的类加载策略
+应用服务器 TongWeb 为 Web 应用提供了可配置的类加载策略，当开源框架与应用服务器使用了同一个类的不同版本时，可以灵活的配置应用使用所需要的类。
+
+##  多运维工具支持
+TongWeb 提供了命令行工具、类加载冲突检测工具，极大地提高了产品安装、应用部署和移植的易用性。
+◦ 同一主机安装多个 TongWeb
+可通过控制台或者命令行实现在同一台机器上安装多个 TongWeb 实例。安装过程中，会自动修改端口号，避免端口冲突。
+◦ 类加载冲突检测
+可以检测出应用部署和运行过程中哪些类存在类加载冲突问题，并给出检测报告，方便快速定位和解决应用类加载问题。
+◦ 管理控制台页面可配置 JVM 参数
+实现了页面上可视化的增加和修改 JVM 参数（比如：JVM 堆内存大小），无需手工修改脚本，使参数配置更加方便快捷。
+
+##  高稳定、高可靠的集群能力
+Web 应用集群为企业应用提供了高可靠性，应用服务器 TongWeb 的 Web 应用集群具备如下特点：
+◦ 高可靠性不存在单点问题
+应用服务器 TongWeb 用来保存会话数据的内存缓存服务器可以配置多台组成缓存集群，缓存集群之间可以自动复制数据，不存在单点问题，提供了极高的可靠性。
+◦ 缓存服务器支持运行时动态扩展
+应用服务器 TongWeb 用来保存会话数据的内存缓存服务器在运行时支持动态扩展，新加入的缓存服务器可以立刻分担负载，从而降低整个集群的压力，并且有效地避免了内存空间不足的问题。
+◦ 支持会话中保存非序列化对象
+增强的 Web 应用集群可以支持在会话中保存非序列化数据，使其具备更好的兼容性和容错性。
+
+## 多维度可视化监控维护
+应用服务器 TongWeb 提供了完善的监控诊断和快照分析系统，在出现问题或者潜在隐患时会自动生成内容详细的快照，可以分析出之前发生问题的原因，极大地提高了运维效率，降低企业的维护成本。
+
+## 丰富广泛的软硬件适配
+应用服务器 TongWeb 已完成全面的软硬件环境适配，支持多种平台，包括但不限于：
+◦ CPU 架构：支持所有流行的 X86 和 ARM 架构，适配龙芯、飞腾、华为鲲鹏、海光、兆芯、申威等。
+◦ 操作系统：如 RedHat 系列、Suse Linux 系列、麒麟、统信 UOS、中科方德、欧拉等。
+◦ 数据库：如 Oracle、MySQL、达梦、电科金仓、南大通用、神舟通用、华为 GaussDB、MicrosoftSQL Server 等。
+
+# 6. 权限管理
+TongWeb 管理控制台权限管理支持 “三员分立，一员监视”。
+• 三员分立是指 “系统管理员”、“安全保密管理员”、“安全审计员” 分立。
+• 一员监视是指 “系统资源监视管理员” 监视。
+为了加强涉密信息系统的管理，减少泄密风险，“三员分立” 要求系统管理员、安全保密管理员、安全审计员间相互独立、相互制约。“一员监视”要求系统资源监视管理员，可查看系统所有资源，但无法写入。
+通过系统管理员，您可以创建系统用户，系统用户可以登录 TongWeb 管理控制台、REST 接口等。
+TongWeb 用户权限说明，如下表所示。
+<table><tr><td>用户名称</td><td>权限说明</td><td>默认用户名及密码</td><td>依赖关系</td></tr><tr><td>系统管理员</td><td>维护、部署、监控及配置操作，创建并管理系统用户。</td><td>thanos/thanos123.com</td><td>无</td></tr><tr><td>安全保密管理员</td><td>对TongWeb的系统角色、操作权限（控制台）、数据权限（实例、集群、节点）进行管理。包括：系统用户角色的创建、查看、编辑、删除以及为系统用户权限分配等。
+安全相关的用户、角色、权限等数据均加密存储，保障用户信息不泄漏。</td><td>security/security123.com</td><td>无</td></tr><tr><td>安全审计员</td><td>查询已经生成的审计日志。
+系统管理员及安全保密管理员进行的日常操作都会记录在审计日志。</td><td>auditor/auditor123.com</td><td>无</td></tr><tr><td>系统资源监视管理员</td><td>可查看系统所有资源，但无法写入。</td><td>monitor/monitor123.com</td><td>无</td></tr><tr><td>系统用户</td><td>由系统管理员创建，拥有安全保密管理员分配的角色对应的权限。安全保密管理员可指定系统用户可以访问的 URI资源。</td><td>用户名和密码均由系统管理员自定义，这些用户没有预设的默认密码。</td><td>·系统管理员
+   系统管理员创建系统用户。
+·安全保密管理员
+   安全保密管理员负责在系统中创建角色，并将这些角色分配给相应的用户，同时为用户配置数据权限（实例、集群、节点）。</td></tr></table>
+
+# 7. 安全审计
+审计日志是信息安全审计功能的核心必备组件，是企事业单位信息系统安全风险管控的重要组成部分。
+TongWeb 服务器的审计日志，可用于追踪记录用户对服务器的操作。
+用户可通过配置查询条件，精确查找问题发生时的操作及详情，降低发现、定位、解决问题的时间和人力成本。
+TongWeb 服务器的审计日志可查找包含管理员、操作对象、操作类型、操作结果、请求地址、客户端IP等信息，帮助用户快速、有效的定位并解决问题。
+审计日志存放在 “${tongweb.base}/logs/audit” 目录，并以加密方式存储，保障审计日志的安全性。
+注: $\$ 1$ {tongweb.base}：TongWeb 实例运行路径。
+
+# 8. 约定说明
+为了方便后续描述，对相关产品的安装路径和实例运行路径做如下约定。
+<table><tr><td>路径</td><td>约定说明</td></tr><tr><td>${tongweb.home}</td><td>TongWeb 安装路径。</td></tr><tr><td>${tongweb.base}</td><td>TongWeb 实例运行路径。
+例如，默认实例运行路径为“${tongweb.home}/domains/domain1”。</td></tr><tr><td>${ths.home}</td><td>TongHttpServer 安装路径。</td></tr><tr><td>${tdg.home}</td><td>TongDataGrid 安装路径。</td></tr><tr><td>${mq.home}</td><td>TongWeb-MQ 安装路径。</td></tr></table>
+
+# 9. Spring Boot 版本支持
+<table><tr><td>分类</td><td>版本信息</td></tr><tr><td>Spring Boot</td><td>• Spring Boot 2.x
+• Spring Boot 3.x</td></tr></table>
+
+# 10. JavaEE/JakartaEE 规范支持
+TongWeb V8.0 应用服务器支持 JavaEE 8、JakartaEE 8、Jakarta EE 9.1 以及 Jakarta EE 10 技术规范。新版规范提供了许多新的特性用来简化开发人员的工作，提高开发效率。
+例如：用注解替代硬编码和 xml 配置文件，异步开发模型等，使得开发人员可以更加专注于业务功能的开发，不需要浪费太多时间在 JavaEE 程序的基础设施上。
+JakartaEE 8 技术标准的列表包括：
+• Jakarta Enterprise Beans 3.2
+• Jakarta Servlet 6.0
+• Jakarta Server Pages 2.3
+• Jakarta Expression Language 3.0
+• Jakarta Messaging 2.0
+• Jakarta Transactions 1.3
+• Jakarta Mail 1.6
+• Jakarta Connectors 1.7
+• Jakarta Enterprise Web Services 1.4
+• Jakarta RESTful Web Services 2.1
+• Jakarta WebSocket 1.1
+• Jakarta JSON Processing 1.1
+• Jakarta JSON Binding 1.0
+• Jakarta Concurrency 1.0
+• Jakarta Batch 1.0
+• Jakarta Management 1.1
+• Jakarta Authorization 1.5
+• Jakarta Authentication 1.1
+• Jakarta Security 1.0
+• Jakarta Debugging Support for Other Languages 1.0
+• Jakarta Standard Tag Library 1.2
+• Jakarta Web Services Metadata 2.1
+• Jakarta Server Faces 2.3
+• Jakarta Annotations 1.3
+• Jakarta Persistence 2.2
+• Jakarta Bean Validation 2.0
+• Jakarta Managed Beans 1.0
+• Jakarta Interceptors 1.2
+• Jakarta Contexts and Dependency Injection 2.0
+• Jakarta Dependency Injection 1.0
+![image](https://cdn-mineru.openxlab.org.cn/result/2026-02-02/7f5d3f83-587b-48a1-8778-3c5ce9b6145a/8e2cf1cf00d8d6917aebc8efdb66dce03d5285416d570f729258a6a15bd15144.jpg)

@@ -1,0 +1,10414 @@
+# 1. 概述
+REST 接口是基于 HTTP 协议的 REST 风格的管理接口，返回的数据为 json 格式，可便于外部模块或系统调用，适用于系统集成等方面。
+关于生成 REST 代码示例，请参见 “${tongweb.home}\version*\examples\examples.war” 的“JMX & RESTExamples”示例。
+![image](https://cdn-mineru.openxlab.org.cn/result/2026-02-10/be5c3b76-0d97-4118-8a06-edfc977b815a/323b36e82a3f127037ac665d8c0651272a82ab575c88cb1c71986f63d8e10ecb.jpg)
+在使用 REST API 接口时，各版本所支持的功能请以提供的《TongWeb_V8.0控制台使用手册》中明确展示的功能作为依据。
+
+# 2. 如何使用
+# 2.1.1 接口规范
+REST 接口的 URL 请求格式：
+https://localhost:9060/console/rest/json/{模块名}/{操作名}/{可选ID}
+参数说明，如下所示。
+• localhost:9060 
+根据需要修改为实际使用的 TongWeb 的 IP 和端口。
+• {模块名}/{操作名}
+针对具体模块执行的操作，模块和操作的列表详见支持的 model、action。
+• {可选ID}
+可选，模块（model）支持的参数 name 对应的值。
+例如：查看应用备份，name 值为应用备份的名称，以 “examples.BackupFlag20221208122655” 为例说明。
+https://localhost:9060/console/rest/json/appbackup/show/examples.BackupFlag20221208122655 
+$\times$ 标头 负载 预览 响应 发起程序 计时 Cookie  
+常规请求URL：https://localhost:9060/console/rest/html/appbackup/show/examples.BackupFlag20221208122655?crsf_token=B6B34D826423FD590A0CE1084586A750请求方法：POST状态代码： $\text{念}$ 200远程地址：[::1]：9060引用者策略：strict-origin-when-cross-origin
+
+# 2.1.2 注意：
+◦ 如果 {可选ID} 中包含了特殊字符，例如 “启动参数模块支持的参数 name 的值” 和 “应用模块支持的参数 name 的值（带版本号）” 的 ID，那么需要 TongWebUtils.encodeId({可选ID}) 编码后再发送到服务器。
+◦ TongWeb 提供的编码接口在 “${tongweb.home}/lib/sysapp/console/WEB-INF/lib/tongweb-web-console-framework.jar” 内，为 TongWebUtils 的 decodeId 方法。
+
+# 2.2. 认证方式
+REST 接口是被安全机制保护的，需使用系统用户名和密码认证，认证方式有两种，分别是 ”登录认证“ 和 ”免登录认证“。
+若 console 开启了 CSRF 防护功能（默认是开启的），则需要同时基于 CSRF 令牌来使用。
+
+# 2.2.1. 登录认证
+
+# 2.2.1.1. 登录认证说明
+访问 https://localhost:9060/console/j_login 接口，附带参数 j_username、j_password 以及acceptAgreement=true（GET 或 POST 请求参数的形式均可）。
+
+# 2.2.1.1.1. 参数说明
+• j_username：登录 TongWeb 的用户名。
+• j_password：登录 TongWeb 的密码。
+• acceptAgreement：许可证协议。
+密码说明
+• 当仅需要获取监控信息时，建议使用系统资源监视管理员账户（如 monitor/monitor123.com）；
+• 当需要执行相关操作时，才建议使用系统管理员账户（如 thanos/thanos123.com）；
+为了确保系统安全，每个账户只允许登录一个会话。如果您已使用 thanos 账户登录了控制台，那么再次使用该账户访问 REST 接口时，系统将自动中断您在控制台上的登录会话。
+• 为保证密码的安全性，建议使用加密后的密码，请参见工具类方法加密 TongWeb 密码。
+
+# 2.2.1.1.2. 使用 REST 接口
+认证通过（响应头为 Location=/console/rest/html/home/index）后，服务器以 Cookie 返回 JSESSIONID，随后的请求携带此 Cookie 即可正常使用 REST 接口。
+
+# 2.2.1.1.3. 使用 REST 接口（console 开启了 CSRF 防护功能）
+若 console 开启了 CSRF 防护功能（默认是开启的），在认证成功后，可从响应头 “csrf.token” 中获取令牌。
+如下是一个例子：
+https://localhost:9060/console/j_login?j_username=monitor&j_password=password& acceptAgreement=true 
+• 获取令牌
+csrf.token $=$ DE08346846E11935B6B9F7F84117BA26 
+• 客户端请求其它资源
+客户端请求其它资源时，需要通过请求头附带获取的令牌。
+https://localhost:9060/console/rest/json/server/monitor? 
+csrf.token=DE08346846E11935B6B9F7F84117BA26 
+说明：
+• 若响应头中没有 “csrf.token”，可修改 $\$ 1$ {tongweb.base}/conf/tongweb.xml，将 console 应用（在 app
+节点上）的 httpHeaderToken 参数设置为 true 后重试。
+• 出于安全方面的考虑，各管理方式都默认开启了验证码功能。验证码功能在输入密码验证失败之后自动出现。
+若需要关闭，可以通过修改 ${tongweb.base}/conf/console.xml 文件，将 “verCodeEnabled” 参数设置为 “false”。
+
+# 2.2.1.2. 使用完成注销说明
+使用完成后，需要及时注销会话。访问 https://localhost:9060/console/login.jsp?invalidate 接口（注意：仍需携带上述的 Cookie 和 令牌），即可注销。
+
+# 2.2.2. 免登录认证
+每次访问具体的 REST 接口时，将参数 j_username 和 j_password 以 GET 请求参数的形式放置在 url 中，即可通过验证并正常使用接口。
+REST 接口的 URL 请求格式：
+https://localhost:9060/console/rest/json/{模块名}/{操作名}/{可选ID}?j_username=user&
+j_password=password&acceptAgreement=true 
+1. 参数说明
+• j_username：登录 TongWeb 的用户名。
+• j_password：登录 TongWeb 的密码。
+• acceptAgreement：许可证协议。
+2. 用户名/密码说明
+• 当仅需要获取监控信息时，建议使用系统资源监视管理员账户（如 monitor/monitor123.com）；
+• 当需要执行相关操作时，才建议使用系统管理员账户（如 thanos/thanos123.com）；
+为了确保系统安全，每个账户只允许登录一个会话。如果您已使用 thanos 账户登录了控制台，那么再次使用该账户访问 REST 接口时，系统将自动中断您在控制台上的登录会话。
+• 为保证密码的安全性，建议使用加密后的密码，请参见工具类方法加密 TongWeb 密码。
+3. 注意事项
+此方式使用完毕后会自动注销，不必再显示地发送请求注销。
+
+# 2.2.3. 加密 TongWeb 密码
+通过 REST 接口，进行登录认证时，为了保证密码的安全性，建议使用加密后的密码。
+TongWeb 提供了加密工具。
+1. 工具路径`${tongweb.home}/version*/sysapp/console/WEB-INF/lib/tongweb-web-console-framework.jar` 
+2. 类方法`encryptWithPubKey` 
+3. 示例说明：
+如 com.tongweb.sdk.util.TongWebUtils.encryptWithPubKey(password, transferKey)
+• password：登录 TongWeb 控制台的密码，如默认账号 monitor 的密码 “monitor123.com”。
+• transferKey：进入 “集中管理” $>$ “服务管理” $>$ “集中配置”，在 “加密公钥” 文本框中，获取加密公钥。
+
+# 2.3. 操作集群
+在使用 REST 接口过程中，可通过指定 targetType 和 targetName 参数来实现对集群下的相应操作。
+• 使用 csrf.token 认证
+```txt
+https://localhost:9060 console/rest/json/{模块名}/{操作名}/{可选ID}?targetType=cluster&targetName=cluster  
+Name&csrft_token=\{token值\}
+```
+• 免登录认证
+```javascript
+https://localhost:9060 console/rest/json/{模块名}/{操作名}/{可选ID}?j_username=user& j_password=password&acceptAgreement=true&targetType=cluster&targetName=clusterName
+```
+1. 参数说明
+• targetType：对应节点、集群、实例、注册实例的模块名，分别为node、cluster、instance、servicediscovery。
+• targetName：对应节点、集群、实例、注册实例的名称。
+2. 示例说明
+如下示例以 csrf.token 认证为例说明。
+• 查看集群（如 cluster0）下的应用。
+```txt
+https://localhost:9060 console/rest/json/app/list?targetType=cluster&targetName=cluster0&csrftoken=70A128045CF72E2BC88018D1D5510CAC 
+```
+• 查看某个节点下的应用列表。
+https://localhost:9060/console/rest/json/app/list?targetType $\equiv$ node&targetName $\equiv$ [要查看的节点名称]&csrft.token=70A128045CF72E2BC88018D1D5510CAC
+• 查看某个实例下的应用列表。
+```txt
+https://localhost:9060 console/rest/json/app/list?targetType=instance&targetName=[要查看的实例名称]&csr  
+f_token=70A128045CF72E2BC88018D1D5510CAC
+```
+• 查看服务发现的某个实例下的应用列表。
+https://localhost:9060/console/rest/json/app/list?targetType $\mathbf { \equiv }$ servicediscovery&targetName=[要查看的服务发现的名称]&csrf.token=70A128045CF72E2BC88018D1D5510CAC
+
+# 3. 支持的 model、action 列表
+支持的 model、action 列表如下表所示，更多详细说明请参见模块参数章节。
+<table><tr><td>模块</td><td>model</td><td>action</td></tr><tr><td>访问日志配置</td><td>accesslog</td><td>downloadfile, downloadlist, show, update, weblog</td></tr><tr><td>访问令牌</td><td>accessstoken</td><td>add, delete, list, show, update</td></tr><tr><td>进阶使用</td><td>advanced</td><td>list, show</td></tr><tr><td>应用</td><td>app</td><td>access, add, delete, list, monitor, show, start, stop, update</td></tr><tr><td>应用备份</td><td>appbackup</td><td>add, delete, downloadfile, downloadlist, list, recover, show, update</td></tr><tr><td>应用数据源</td><td>appdatasource</td><td>list, monitor, show</td></tr><tr><td>示例应用</td><td>applicationexamples</td><td>list, show</td></tr><tr><td>应用迁移</td><td>appmigration</td><td>show, update</td></tr><tr><td>应用回收</td><td>apprecycle</td><td>cleanup, delete, downloadfile, downloadlist, list, recover, show</td></tr><tr><td>应用模板</td><td>apptemplate</td><td>add, delete, list, show, update</td></tr><tr><td>应用增量</td><td>appupdate</td><td>add, delete, list, show</td></tr><tr><td>审计配置</td><td>auditconfig</td><td>show, update</td></tr><tr><td>审计列表</td><td>auditlist</td><td>add, delete, list, update</td></tr><tr><td>审计日志</td><td>auditlog</td><td>audit, list</td></tr><tr><td>阻塞线程</td><td>blockedthread</td><td>forcestop, list, show</td></tr><tr><td>忙碌线程</td><td>busythread</td><td>list, show</td></tr><tr><td>集中配置</td><td>centralizedconfig</td><td>custom, monitor, show, update</td></tr><tr><td>类冲突检测</td><td>classconflict</td><td>add, delete, downloadfile, downloadlist, list, previewfile, show</td></tr><tr><td>类资源分析</td><td>classloaded</td><td>find, show, update</td></tr><tr><td>类加载结构</td><td>classloaderstruct</td><td>tree</td></tr><tr><td>注册实例集群</td><td>cloudcluster</td><td>list, show</td></tr><tr><td>集群</td><td>cluster</td><td>access, add, delete, forcestop, gc, list, restartupgrade, show, start, stop, update</td></tr><tr><td>组合监视</td><td>combinedmonitor</td><td>add, delete, list, monitor, show, update</td></tr><tr><td>通道</td><td>connector</td><td>add, delete, list, monitor, show, start, stop, update</td></tr><tr><td>控制台安全</td><td>consecurity</td><td>show, update</td></tr><tr><td>守护监视</td><td>daemonmonitor</td><td>add, delete, downloadfile, downloadlist, list, monitor, show, update</td></tr><tr><td>数据源</td><td>datasource</td><td>add, delete, list, monitor, show, start, stop, update, validate</td></tr><tr><td>数据源模板</td><td>datasourcetemplate</td><td>add, delete, list, show, update</td></tr><tr><td>数据库连接</td><td>dbconnection</td><td>cleanup, list, show</td></tr><tr><td>死锁线程</td><td>deadlockedthread</td><td>forcestop, list, show</td></tr><tr><td>EJB w3协议</td><td>ejbconnection</td><td>downloadfile, downloadlist, monitor, show, update</td></tr><tr><td>EJB http协议</td><td>ejbhttp</td><td>downloadfile, downloadlist, show, update</td></tr><tr><td>加密工具</td><td>encryptor</td><td>update</td></tr><tr><td>数据源集群</td><td>failoverdatasource</td><td>add, delete, list, show, update, validate</td></tr><tr><td>我的收藏</td><td>favorites</td><td>addfavorite, cancel favorites, list, show</td></tr><tr><td>页面定制</td><td>feature</td><td>show, update</td></tr><tr><td>证书导入</td><td>gmlimportCert</td><td>add, delete, list</td></tr><tr><td>证书请求</td><td>gmcertrequest</td><td>add, delete, downloadfile, downloadlist, list, show</td></tr><tr><td>安全自检</td><td>gmselfinspect</td><td>add, delete, list, show</td></tr><tr><td>可信CA</td><td>gmtrustedca</td><td>add, delete, list, show</td></tr><tr><td>首页</td><td>home</td><td>home, monitor</td></tr><tr><td>虚拟主机</td><td>host</td><td>add, delete, list, show, update</td></tr><tr><td>一键巡检</td><td>inspect</td><td>add, delete, downloadfile, downloadlist, list, previewfile, show</td></tr><tr><td>巡检基线</td><td>inspectionbaseline</td><td>show, update</td></tr><tr><td>实例</td><td>instance</td><td>add, delete, downloadfile, downloadlist, forcestop, gc, list, remove, restartupgrade, show, start, stop, update</td></tr><tr><td>实例模板</td><td>instancetemplate</td><td>add, delete, downloadfile, downloadlist, list, show</td></tr><tr><td>JavaMail 资源</td><td>javamail</td><td>add, delete, list, show, update</td></tr><tr><td>JCA 托管对象</td><td>jcaadminobject</td><td>add, delete, list, show, update</td></tr><tr><td>JCA 连接池</td><td>jcaconNECTIONpool</td><td>add, delete, list, monitor, show, update</td></tr><tr><td>Jdbc 模板</td><td>jdbcurltemplate</td><td>add, delete, list, show, update</td></tr><tr><td>远程 JMX</td><td>jmx</td><td>show, update</td></tr><tr><td>JNDI 树</td><td>jndi</td><td>tree</td></tr><tr><td>JNDI 资源</td><td>jndiresource</td><td>add, delete, list, show, update</td></tr><tr><td>JTA 事务</td><td>jta</td><td>monitor, show, update</td></tr><tr><td>JVM</td><td>jvm</td><td>gc, monitor</td></tr><tr><td>JVM 配置</td><td>jvmconfig</td><td>show, update</td></tr><tr><td>密码安全</td><td>key</td><td>show, update</td></tr><tr><td>证书管理</td><td>keystore</td><td>add, delete, downloadfile, downloadlist, list, show, update</td></tr><tr><td>公共类库</td><td>lib</td><td>add, delete, list, show, update</td></tr><tr><td>产品授权</td><td>license</td><td>show, update</td></tr><tr><td>负载均衡器</td><td>loadbalanceserver</td><td>access, add, delete, downloadfile, downloadlist, forcestop, list, remove, restartupgrade, show, start, startconsole, stop, update</td></tr><tr><td>ES 推送</td><td>logpush</td><td>show, update</td></tr><tr><td>消息驱动 Bean</td><td>mdb</td><td>show, update</td></tr><tr><td>迁移配置</td><td>migrationconfigur ation</td><td>show, update</td></tr><tr><td>模式切换</td><td>modeswitch</td><td>show, update</td></tr><tr><td>消息服务器</td><td>mqserver</td><td>add, delete, forcestop, list, remove, show, start, stop, update</td></tr><tr><td>节点</td><td>node</td><td>add, delete, downloadfile, downloadlist, forcestop, list, restartupgrade, show, start, stop, update, updateLic</td></tr><tr><td>系统通知</td><td>notice</td><td>list, show</td></tr><tr><td>操作系统</td><td>operatingsystem</td><td>monitor</td></tr><tr><td>脚本录制</td><td>operationrecordin</td><td>add, delete, downloadfile, downloadlist, finish, list, show</td></tr><tr><td>OSGi 应用</td><td>osgibundle</td><td>add, delete, list, show, start, stop</td></tr><tr><td>OSGi 服务</td><td>osgiservice</td><td>show, update</td></tr><tr><td>OTLP 支持</td><td>otlp</td><td>show, update</td></tr><tr><td>概览</td><td>overview</td><td>os, server</td></tr><tr><td>修改密码</td><td>password</td><td>key, update, validate</td></tr><tr><td>进程安全</td><td>processsecurity</td><td>add, delete, list, show, update</td></tr><tr><td>Prometheus 服务</td><td>prometheus</td><td>show, update</td></tr><tr><td>安全域</td><td>realm</td><td>add, delete, list, show, update</td></tr><tr><td>安全域用户</td><td>realmuser</td><td>add, delete, list, show, update</td></tr><tr><td>注册中心</td><td>registry</td><td>add, delete, list, show, update</td></tr><tr><td>远程 JMX</td><td>remotejmx</td><td>show, update</td></tr><tr><td>访问日志明细</td><td>requestlog</td><td>list, show, weblog</td></tr><tr><td>角色</td><td>role</td><td>add, delete, list, show, update</td></tr><tr><td>安全策略</td><td>security</td><td>show, update</td></tr><tr><td>全局配置</td><td>server</td><td>downloadfile, downloadlist, show, update</td></tr><tr><td>系统日志</td><td>serverlog</td><td>downloadfile, downloadlist, monitor, show, update, weblog</td></tr><tr><td>注册实例</td><td>servicediscovery</td><td>list, show</td></tr><tr><td>会话服务器</td><td>sessionha</td><td>add, delete, list, show, update, validate</td></tr><tr><td>TongDataGrid</td><td>sessionserver</td><td>add, delete, forcestop, list, remove, show, start, stop, update</td></tr><tr><td>单例 EJB</td><td>singleton</td><td>show, update</td></tr><tr><td>短信服务</td><td>sms</td><td>add, delete, list, show, update</td></tr><tr><td>快照文件</td><td>snapshotfile</td><td>add, delete, downloadfile, downloadlist, list, show</td></tr><tr><td>采集模板</td><td>snapshottemplate</td><td>add, delete, list, show, update</td></tr><tr><td>SNMP 服务</td><td>snmp</td><td>show, update</td></tr><tr><td>启动策略</td><td>startpolicy</td><td>show, update</td></tr><tr><td>启动参数</td><td>startupargs</td><td>add, delete, list, show, update</td></tr><tr><td>有状态 EJB</td><td>stateful</td><td>show, update</td></tr><tr><td>无状态 EJB</td><td>stateless</td><td>show, update</td></tr><tr><td>静态度量</td><td>staticmetrics</td><td>add, delete, list, show</td></tr><tr><td>支持列表</td><td>support</td><td>downloadfile, downloadlist, list, show</td></tr><tr><td>Syslog 推送</td><td>syslog</td><td>show, update</td></tr><tr><td>线程池</td><td>threadpool</td><td>add, delete, list, monitor, show, update</td></tr><tr><td>预警策略</td><td>thresholdstrategy</td><td>add, delete, list, show, update</td></tr><tr><td>可信授权</td><td>trustedauthority</td><td>downloadfile, downloadlist, show, update</td></tr><tr><td>可信行为详情</td><td>trustedbehaviorde tails</td><td>add, delete, list, show, start</td></tr><tr><td>可信行为模型</td><td>trustedbehaviorsmodel</td><td>add, delete, forcestop, list, show, start, stop</td></tr><tr><td>可信文件</td><td>trustedfiles</td><td>list, show</td></tr><tr><td>可信策略</td><td>trustedpolicy</td><td>add, delete, list, show</td></tr><tr><td>可信进程</td><td>trustedprocess</td><td>add, delete, list, show</td></tr><tr><td>产品升级</td><td>upgrade</td><td>add, delete, downloadfile, downloadlist, list, show</td></tr><tr><td>管理员</td><td>user</td><td>add, delete, list, show, update</td></tr><tr><td>权限分配</td><td>userrole</td><td>list, show, update</td></tr><tr><td>版本生成</td><td>version</td><td>add, delete, downloadfile, downloadlist, list, show</td></tr><tr><td>WebFlux 应用</td><td>webflux</td><td>add, delete, list, show, start</td></tr><tr><td>工作管理器</td><td>workmanager</td><td>add, delete, list, show, update</td></tr></table>
+
+# 4. 支持的 model、action 参数
+模块参数列举了 TongWeb 支持的模块、模块名（model）、支持的操作（action）、支持的参数、支持的监视项等。
+
+# 4.1. 访问日志配置
+TongWeb 服务器的访问日志配置。
+
+# 4.1.1. 模块名
+accesslog 
+
+# 4.1.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>weblog</td><td>通过浏览器页面实时查看日志的输出信息，并可根据关键字在线搜索最近的日志。</td></tr></table>
+
+# 4.1.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>loggers>access
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>accessLogEnabled</td><td>启用访问日志</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>hosts</td><td>作用到虚拟主机</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>customMode</td><td>使用自定义格式</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>customPattern</td><td>自定义格式</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>presetPattern</td><td>日志内容</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>6</td><td>requestHeader</td><td>记录请求头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>responseHeader</td><td>记录响应头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>cookie</td><td>记录Cookie</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>session</td><td>记录Session</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>baseFile</td><td>文件目录</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>11</td><td>appendTypeDir</td><td>追加类型目录</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>rollingFile</td><td>日志文件轮转</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>append</td><td>日志追加</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>rotationDay</td><td>按天轮转</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>rotationBySize</td><td>按大小轮转</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>keepMaxFiles</td><td>保留文件个数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>compression</td><td>日志文件压缩</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>18</td><td>charset</td><td>文件编码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>19</td><td>buffered</td><td>缓冲写入</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>20</td><td>bufferedSize</td><td>缓冲大小</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>initialShowLogLines</td><td>初始加载行数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>22</td><td>pullLogLines</td><td>日志刷新大小</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>23</td><td>maxShowLines</td><td>最大显示行数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.1.4. 参数补充说明
+
+# 4.1.4.1. accessLogEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：启用访问日志后，HTTP 请求的时间、URI、响应码等信息可以被记录到日志文件里。
+
+# 4.1.4.2. hosts
+◦ 取值范围：“虚拟主机”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 生效条件：accessLogEnabled=true
+◦ 说明：在指定的虚拟主机上开启访问日志。
+
+# 4.1.4.3. customMode
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：accessLogEnabled=true
+◦ 说明：使用自定义格式定义访问日志的内容记录格式，可方便从其它服务器移植。
+
+# 4.1.4.4. customPattern
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：%t,%a,%m,%H,%s,%U
+◦ 生效条件：accessLogEnabled=true&customMode=true
+◦ 说明：自定义访问日志的内容记录格式： %a - 远程IP地址； %A - 本地IP地址； %B - 发送的字节数，不包括HTTP头； %D - 处理请求的时间（以毫秒为单位）； %T - 处理请求的时间（以秒为单位）； %h - 远程主机名； %H - 请求协议； %m - 请求方法； %p - 本地端口； %q - 查询字符串； %r -请求的首行内容； %s - 响应的HTTP状态代码； %S - 用户会话ID； %t - 日期和时间； %u - 远程用户身份验证； %U - 请求的URL路径； %v - 本地服务器名； %I - 处理请求的线程名称； %X - 连接的状态； %N - 应用的名称； %{XXX}i xxx代表传入的头(HTTP Request)； %{XXX}o xxx代表传出的响应头(Http Response)； %{XXX}c xxx代表特定的Cookie名； %{XXX}r xxx代表ServletRequest属性名； %{XXX}s xxx代表HttpSession中的属性名。
+
+# 4.1.4.5. presetPattern
+◦ 取值范围：%t（释义：/时间）, %a（释义：/客户端 IP）, %m（释义：/请求方法）, %H（释义：/协议）, %s（释义：/Http 状态码）, %U（释义：/请求地址）, %B（释义：/发送字节数）, %S（释义：/会话 ID）, %I（释义：/线程名）, %h（释义：/客户端域名）, $\% p$ （释义：/本地端口）, %N（释义：/应用名）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：%t,%a,%m,%H,%s,%U
+◦ 生效条件：accessLogEnabled=true&customMode=false
+◦ 说明：访问日志内容的组成部分。
+
+# 4.1.4.6. requestHeader
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：accessLogEnabled=true&customMode=false
+◦ 说明：在访问日志中记录指定的请求头的值。在这里设置请求头的名称，多个名称以英文逗号分隔。
+
+# 4.1.4.7. responseHeader
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：accessLogEnabled=true&customMode=false
+◦ 说明：在访问日志中记录指定的响应头的值。在这里设置响应头的名称，多个名称以英文逗号分隔。
+
+# 4.1.4.8. cookie
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：accessLogEnabled=true&customMode=false
+◦ 说明：在访问日志中记录指定的 Cookie 的值。在这里设置 Cookie 的名称，多个名称以英文逗号分隔。
+
+# 4.1.4.9. session
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：accessLogEnabled=true&customMode false
+◦ 说明：在访问日志中记录指定的 Session 的值。在这里设置 Session 的名称，多个名称以英文逗号分隔。
+
+# 4.1.4.10. baseFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：logs
+◦ 生效条件：accessLogEnabled=true
+◦ 说明：将日志文件存放到指定的目录下。
+
+# 4.1.4.11. appendTypeDir
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：accessLogEnabled=true
+◦ 说明：启用后，将在指定的文件目录下增加一个 access 目录以存放日志文件。
+
+# 4.1.4.12. rollingFile
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：accessLogEnabled=true
+◦ 说明：将日志信息按文件大小或时间进行轮转，确保日志文件不会过大。
+
+# 4.1.4.13. append
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：accessLogEnabled=true&rollingFile=false
+◦ 说明：启用日志追加模式，日志信息将追加到现有日志文件中而不是覆盖。
+
+# 4.1.4.14. rotationByDay
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：accessLogEnabled=true&rollingFile=true
+◦ 说明：将每日未达到大小阈值的日志在零点切割到一个新文件中。
+
+# 4.1.4.15. rotationBySize
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：50
+◦ 生效条件：accessLogEnabled=true&rollingFile=true
+◦ 说明：当日志文件大小（单位：MB）达到该阈值时，将切割出一个新的日志文件。注：设置为 0 表示不启用此功能。
+
+# 4.1.4.16. keepMaxFiles
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：100
+◦ 生效条件：accessLogEnabled=true&rollingFile=true
+◦ 说明：指定在清理日志文件时，须保留文件的个数。
+
+# 4.1.4.17. compression
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：accessLogEnabled=true&rollingFile=true
+◦ 说明：是否开启日志文件压缩功能。开启后，对轮转后的日志文件进行压缩。
+
+# 4.1.4.18. charset
+◦ 取值范围：UTF-8（释义：/UTF-8）, GBK（释义：/GBK）, ISO-8859-1（释义：/ISO-8859-1）,
+GB18030（释义：/GB18030）, GB2312（释义：/GB2312）, UTF-16（释义：/UTF-16）, US-ASCII（释义：/US-ASCII）
+◦ 默认值：UTF-8
+◦ 生效条件：accessLogEnabled=true
+◦ 说明：指定日志文件的编码格式。
+
+# 4.1.4.19. buffered
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：accessLogEnabled=true
+◦ 说明：是否开启文件缓冲写入功能。开启后，当持续记录的日志内容大小（单位：字节）之和达到缓冲大小时才一次性写入文件，而不是每条日志都立即写入文件（在服务器停止时会全部写入），这通常可以提高日志记录性能。关闭后，每条日志都立即写入文件。
+
+# 4.1.4.20. bufferedSize
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：65536
+◦ 生效条件：accessLogEnabled=true&buffered=true
+◦ 说明：缓冲写入的阈值，当持续记录的日志内容大小（单位：字节）之和达到此值时，一次性写入进文件。
+
+# 4.1.4.21. initialShowLogLines
+◦ 取值范围：大小限制0到10000
+◦ 默认值：100
+◦ 说明：设置首次打开 Web 日志页面时加载的最新日志行数。
+
+# 4.1.4.22. pullLogLines
+◦ 取值范围：大小限制1到1000
+◦ 默认值：20
+◦ 说明：设置浏览器每次从服务器拉取日志的最大行数。拉取太多日志可能造成网络和服务器压力，请根据实际情况设置。
+
+# 4.1.4.23. maxShowLines
+◦ 取值范围：大小限制1到100000
+◦ 默认值：10000
+◦ 说明：当 Web 日志页面累积输出的日志过多时，可能会引起浏览器压力过大而无响应，设置最大显示行数可丢弃超出行数的部分以减轻浏览器压力，因此建议根据实际情况设置最大显示行数。
+
+# 4.1.5. 支持的监视项
+无。
+
+# 4.2. 访问令牌
+访问令牌是用于身份验证和授权的凭证，通常是一串加密字符串，用于访问受保护的API、服务或资源。通过访问令牌，TongWeb 可以被外部系统以免用户名登陆的方式进行管理。
+
+# 4.2.1. 模块名
+accesstoken 
+
+# 4.2.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.2.3. 支持的参数
+持久化位置：conf/console.xml:console>access-tokens>access-token
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>roles</td><td>角色</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>instances</td><td>实例</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>clusters</td><td>集群</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>nodes</td><td>节点</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>active</td><td>激活</td><td>布尔类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>7</td><td>accessToken</td><td>访问令牌</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>8</td><td>remarks</td><td>备注</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.2.4. 参数补充说明
+
+# 4.2.4.1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：唯一标识。
+
+# 4.2.4.2. roles
+◦ 取值范围：“角色”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：设置该访问令牌的角色，以控制其访问资源的权限。
+
+# 4.2.4.3. instances
+◦ 取值范围：
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：分配可管理的实例列表。
+
+# 4.2.4.4. clusters
+◦ 取值范围：
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：分配可管理的集群列表。
+
+# 4.2.4.5. nodes
+◦ 取值范围：default（释义：/default）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：分配可管理的节点列表。
+
+# 4.2.4.6. active
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：若未激活，则无法登录服务器。
+
+# 4.2.4.7. accessToken
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：外部系统需要携带该参数以完成认证和授权，参数名须是 tw_access_token，格式如：tw_access_token $\mid =$ 访问令牌。
+
+# 4.2.4.8. remarks
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：添加必要的说明信息。
+
+# 4.2.5. 支持的监视项
+无。
+
+# 4.3. 进阶使用
+尝试产品的一些高阶用法，获得更高效的工作体验，以及更多的可能性和灵活性。
+
+# 4.3.1. 模块名
+advanced 
+
+# 4.3.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr></table>
+
+# 4.3.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>功能</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>summary</td><td>概要</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>usage</td><td>使用说明</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.3.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：TongWeb 隐藏功能。
+2. summary 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此功能的简单介绍。
+3. usage 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：该功能的使用说明。
+
+# 4.3.5. 支持的监视项
+无。
+
+# 4.4. 应用
+TongWeb 可以部署符合 Java EE / Jakarta EE 技术规范的标准格式的程序包，如 *.war *.jar(ejb) *.ear *.rar等文件，并指定应用的加载、卸载、访问等方面的配置。
+
+# 4.4.1. 模块名
+app 
+
+# 4.4.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>monitor</td><td>监视这个应用的运行状况，如阻塞或中断的线程数、当前会话数等。</td></tr><tr><td>access</td><td>查看通过 HTTP 协议访问该应用的 URL。注：URL 里的 IP 地址为此 TongWeb 实例所在服务器的网卡配置的 IP 地址。</td></tr><tr><td>start</td><td>启动这个应用，使其可以对外提供服务。注：该操作仅对Web类型的应用有效。</td></tr><tr><td>stop</td><td>停止这个应用，停止后该应用不再对外提供服务，继续访问该应用将得到404响应码。注：该操作仅对Web类型的应用有效。</td></tr><tr><td>delete</td><td>停止应用的服务，将其从内存中卸载，应用在卸载后会备份到${tongweb.base}/data/app/recycle 目录。注：应用卸载后会同步删除其增量包。</td></tr></table>
+
+# 4.4.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>applications>app
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>应用名</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>2</td><td>autoDeploy</td><td>自动部署</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>appFrom</td><td>应用来源</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>filename</td><td>部署路径</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>unpackDir</td><td>解压目录</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>fromUpload</td><td>上传应用</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>7</td><td>appTemplate</td><td>应用模板</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>springBootCompatible</td><td>SpringBoot兼容</td><td>布尔类型</td><td>否</td><td>是</td><td>否</td></tr><tr><td>9</td><td>contextRoot</td><td>访问前缀</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>host</td><td>虚拟主机</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>11</td><td>startupPriority</td><td>启动优先级</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>12</td><td>refRealm</td><td>安全域</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>dependentApp</td><td>依赖应用</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>delegateFirst</td><td>父优先</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>useEjbStandaloneLoader</td><td>使用EJB独立类加载器</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>forcedLoad</td><td>强制从应用加载的类</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>forcedSkip</td><td>强制从TongWeb加载的类</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>18</td><td>webSocketEnabled</td><td>使用TongWebWebSocket</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>19</td><td>webModuleOnly</td><td>Web兼容模式</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>20</td><td>applplModules</td><td>加载应用实现</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>refLib</td><td>添加类库</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>22</td><td>priorityJars</td><td>加载顺序</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>23</td><td>reloadable</td><td>热加载</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>24</td><td>addWebinfClassesResources</td><td>加载WEB-INF资源</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>25</td><td>loadManifestClassPath</td><td>加载Class-Path资源</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>26</td><td>manifestClassPathBase</td><td>Class-Path相对目录</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>27</td><td>absoluteOrdering</td><td>web-fragment绝对路径</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>28</td><td>showLoadedClasses</td><td>跟踪已加载类</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>29</td><td>customClassLoader</td><td>自定义类加载器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>30</td><td>customClass</td><td>Class自定义解析</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>31</td><td>docBases</td><td>虚拟目录</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>32</td><td>archiveIndexStrategy</td><td>资源加载策略</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>33</td><td>sessionCookieName</td><td>会话的Cookie名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>34</td><td>useLegacyCookieProcessor</td><td>使用老版Cookie处理器</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>35</td><td>allowEqualsInValue</td><td>Cookie Equal Signs</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>36</td><td>allowHttpSepsInV0</td><td>HTTP分隔符</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>37</td><td>useHttpOnly</td><td>Cookie HttpOnly</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>38</td><td>sameSiteCookies</td><td>Cookie SameSite</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>39</td><td>maxActiveSessions</td><td>最大会话数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>40</td><td>sessionTimeout</td><td>会话超时时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>41</td><td>localPersistence</td><td>本地持久化</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>42</td><td>refSessionHa</td><td>会话服务器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>43</td><td>disableSessionInvalidate</td><td>禁用会话注销</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>44</td><td>jspDevelopment</td><td>开启 JSP 开发模式</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>45</td><td>mappedFile</td><td>Mapped File</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>46</td><td>quoteAttributeEL</td><td>Quote Attribute EL</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>47</td><td>strictQuoteEscaping</td><td>Strict Quote Escaping</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>48</td><td>strictWhiteSpace</td><td>Strict White Space</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>49</td><td>enablePooling</td><td>使用标签池</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>50</td><td>jspPrecompile</td><td>JSP 预编译</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>51</td><td>jspPrecompileThreadCount</td><td>预编译线程数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>52</td><td>requestCharacterEncoding</td><td>应用请求编码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>53</td><td>responseCharacterEncoding</td><td>应用响应编码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>54</td><td>javaEncoding</td><td>JSP文件编码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>55</td><td>fileEncoding</td><td>静态文件编码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>56</td><td>slowThreadEnabled</td><td>慢线程检测</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>57</td><td>threshold</td><td>阻塞阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>58</td><td>interruptThreadThreshold</td><td>中断阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>59</td><td>cachingAllowed</td><td>开启资源缓存</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>60</td><td>cacheMaxSize</td><td>最大缓存大小</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>61</td><td>cacheObjectMaxSize</td><td>可缓存的单文件大小上限</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>62</td><td>cacheTtl</td><td>缓存时长</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>63</td><td>forceCache</td><td>强制缓存</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>64</td><td>ExpiresFilterEnabled</td><td>客户端资源缓存</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>65</td><td>ExpiresFilterInitParam</td><td>缓存时间规则</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>66</td><td>ExpiresFilterUrlPatterns</td><td>资源匹配规则</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>67</td><td>preloadResource</td><td>资源预加载</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>68</td><td>preCompress</td><td>资源预压缩</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>69</td><td>forcedContainerHandling</td><td>强制从TongWeb加载的静态资源</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>70</td><td>staticUrlPatterns</td><td>URL 模式</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>71</td><td>enableCORSAccess</td><td>允许跨域访问</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>72</td><td>corsAllowedOrigins</td><td>允许的源</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>73</td><td>corsAllowedMethods</td><td>允许的方法</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>74</td><td>corsAllowedHeaders</td><td>允许的 HTTP 头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>75</td><td>corsExposedHeaders</td><td>暴露 HTTP 头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>76</td><td>corsSupportCredentials</td><td>支持凭证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>77</td><td>corsPreflightMaxAge</td><td>预检请求的有效期</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>78</td><td>requestParametersLostValidation</td><td>参数防丢失</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>79</td><td>XSSFilterEnabled</td><td>XSS 攻击拦截</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>80</td><td>csrFPrevention</td><td>CSRF 防护</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>81</td><td>csrFCacheSize</td><td>CSRF 令牌缓存数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>82</td><td>tokenValidTimes</td><td>CSRF 令牌有效次</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>83</td><td>csrFEntryPoints</td><td>CSRF 免防入口</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>84</td><td>httpHeaderToken</td><td>REST 支持</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>85</td><td>secretLevel</td><td>应用密级</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>86</td><td>threadPoolPolicy</td><td>业务安全规则</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>87</td><td>threadPool</td><td>线程池</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>88</td><td>threadPoolTimeout</td><td>线程超时阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>89</td><td>taskRule</td><td>匹配规则</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>90</td><td>exclusionRule</td><td>排除规则</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>91</td><td>otherThreadPool</td><td>其它线程池</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>92</td><td>otherThreadPoolTimeout</td><td>其它线程超时阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>93</td><td>semaphoreEnabled</td><td>并发安全控制</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>94</td><td>concurrency</td><td>限制最大并发</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>95</td><td>block</td><td>阻塞等待</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>96</td><td>interruptible</td><td>允许中断阻塞</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>97</td><td>restrictedPorts</td><td>限定访问端口</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>98</td><td>crossContext</td><td>允许跨应用访问</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>99</td><td>unloadDelay</td><td>卸载等待</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>100</td><td>allowLinking</td><td>允许链接文件</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>101</td><td>clearReferences</td><td>内存泄漏检测</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>102</td><td>enableRecycling</td><td>应用回收</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>103</td><td>shtmlEnabled</td><td>支持 shtm1</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>104</td><td>virtualWebappRelative</td><td>相对应用目录</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>105</td><td>allowExec</td><td>允许执行命令</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>106</td><td>expires</td><td>过期时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>107</td><td>urlPatterns</td><td>URL类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>108</td><td>webAppVersion</td><td>应用版本</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>109</td><td>useRelativeRedirects</td><td>使用相对地址重定向</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>110</td><td>forceUseRelativeRedirects</td><td>强制使用相对地址重定向</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>111</td><td>allowCasualMultipartParsing</td><td>强制解析 Multipart请求</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>112</td><td>allowOverrideContentType</td><td>允许覆写ContentType</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>113</td><td>enableStatelessPoolMonitor</td><td>监视无状态会话Bean</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>114</td><td>type</td><td>应用类型</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>115</td><td>state</td><td>应用状态</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>116</td><td>jarScannerImpl</td><td>自定义 jar 扫描器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>117</td><td>useDirectionalScanning</td><td>使用定向扫描</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>118</td><td>&lt;servletAnnotationDeclaratio nFile</td><td>Servlet 注解声明文件</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>119</td><td>applicationPropertiesFile</td><td>SpringBoot 主资源文件</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>120</td><td>raPros</td><td>Connector 应用属性</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>121</td><td>pkgCompatible</td><td>命名空间兼容</td><td>布尔类型</td><td>否</td><td>是</td><td>否</td></tr><tr><td>122</td><td>addResponseHeader</td><td>附加响应头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.4.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：应用的名称。为空时，使用应用文件的名称。
+2. autoDeploy 
+◦ 取值范围：true 或 false
+◦ 默认值：false
+◦ 说明：表示该应用是否是自动部署的。
+3. appFrom 
+◦ 取值范围：fromUpload（释义：/上传文件）, fromServer（释义：/服务器文件）
+◦ 默认值：fromServer
+◦ 生效条件：autoDeploy=false
+◦ 说明：部署的应用可以从客户端上传，也可以从服务器端指定的位置读取。注：出于安全考虑，TongWeb 出厂设置禁用了文件上传功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。
+4. filename 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：autoDeploy=false&appFrom=fromServer
+◦ 说明：服务器上应用程序的位置，通常是应用的程序包，如 *.war *.ear 等 Java EE 标准类型的文件。注意：在集群环境中，请确保每个实例所在的服务器上都需放置所需的文件。
+5. unpackDir 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：deployment
+◦ 生效条件：autoDeploy=false&appFrom=fromServer
+◦ 说明：在部署位于服务器上的 *.war 或 *.ear 文件时，指定该文件的解压目录。若配置为空，则解压到文件所在目录。
+
+# 4.4.4. 参数补充说明
+6. fromUpload 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：autoDeploy=false&appFrom=fromUpload
+◦ 说明：上传一个应用文件到服务器，文件须是 *.war *.ear 等 Java EE 标准类型的文件，否则可能会导致部署失败。
+7. appTemplate 
+◦ 取值范围：“应用模板”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：指定应用模板后，将会使用应用模板里的参数来部署应用，部署应用时指定的其他参数将会被忽略。注：若没有指定应用模板，则会尝试使用“全局配置”里的“全局应用模板”；若应用同时配置了自定义描述文件 tongweb-web.xml，则会优先使用 tongweb-web.xml 里面的配置参数。
+8. springBootCompatible 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：兼容基于 Tomcat、 Jetty、 Undertow 嵌入式版本开发的 SpringBoot 应用 jar。
+9. contextRoot 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定访问此应用 Web 资源的根路径；若未设置，则使用应用文件的名称。注：该功能仅支持Web 类型（如 *.war）的应用。
+10. host 
+◦ 取值范围：“虚拟主机”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：localhost
+◦ 说明：应用所部署到的虚拟主机，应用可共用虚拟主机提供的资源和管理控制。
+
+# 4.4.4. 参数补充说明
+11. startupPriority 
+◦ 取值范围：大小限制0到99
+◦ 默认值：99
+◦ 说明：用以约束应用的启动顺序，在服务器启动时，该值越小越优先启动。
+12. refRealm 
+◦ 取值范围：“安全域”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：应用安全域，应用指定的安全域优先级高于虚拟主机指定的安全域；但若虚拟主机同时开启了“单点登录（SSO）”，则优先级低于虚拟主机的安全域。
+13. dependentApp 
+◦ 取值范围：“应用”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：指定当前应用依赖的应用，在加载时，依赖的应用的类加载器将作为本应用类加载器的父级类
+加载器。
+14. delegateFirst 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：应用的类加载顺序，父优先表示优先从服务器类路径中加载，否则优先从应用类路径中加载。
+15. useEjbStandaloneLoader 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：对于 *.ear 类型的应用，当其根目录存在多个 ejb 的 jar 文件时，是否为每个 jar 文件使用独立的类加载器进行加载。注：使用 EJB 独立类加载器，通常可解决不同 ejb jar 文件中存在相同的资源而引发的资源冲突等问题。
+
+# 4.4.4. 参数补充说明
+16. forcedLoad 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：javax.ws.rs.
+◦ 生效条件：delegateFirst=false
+◦ 说明：一些JEE规范的实现即使在关闭了父优先的情况下，仍然会从服务器类路径中加载。为了规避这个问题，在此处可指定需要强制从应用的类路径下加载的类的前缀，如 javax.ws.rs.。配置多个前缀以英文逗号分隔。注：其优先级低于“强制从 TongWeb 加载的类”。
+17. forcedSkip 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：delegateFirst=false
+◦ 说明：关闭了父优先时，也可指定需要强制从TongWeb服务器的类路径下加载的类的前缀。配置多个前缀以英文逗号分隔。
+18. webSocketEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：设置是否使用 TongWeb 服务器提供的 WebSocket 功能，WebSocket 是 Java/Jakarta EE 规范定义的技术，但并不是所有的应用都需要，若应用自带了 WebSocket 的功能实现或 TongWeb 提供的 WebSocket 实现对应用的运行环境造成了干扰，可尝试关闭此功能。
+19. webModuleOnly 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：以 Web 兼容模式加载该应用，若该应用是基于 Tomcat 等 Web 容器开发，则可以尝试打开此开关以获得更好的兼容性。开启此模式后，EJB 等企业级技术实现将不再支持，同时尝试从应用自
+身加载 JSF、JavaMail、WebService、Xml 等企业级技术实现。
+20. appImplModules
+◦ 取值范围：JSF（释义：/JSF）, JavaMail（释义：/JavaMail）, WebService（释义：/WebService）, Xml（释义：/Xml）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 生效条件：webModuleOnly=false
+◦ 说明：若应用自带 JavaEE 规范的实现，可指定从应用中加载这些实现，而不使用 TongWeb 服务器的实现。
+
+# 4.4.4. 参数补充说明
+21. refLib
+◦ 取值范围：“公共类库”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：给应用附加依赖库，附加的依赖库会和应用自身的类库（WEB-INF/lib、WEB-INF/classes）合并到一起由应用类加载器加载。注：若不同应用选择相同类库，类库中的类在各个应用内是彼此隔离的，应用之间不会共享类对象，如果多个应用需要在内存中共享类对象，可考虑使用“全局配置”中的“应用共享类加载器”。
+22. priorityJars
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：指定需要优先加载的 jar 的文件名，指定的文件名可以是 jar 的全名称或部分名称。注：jar 的搜索范围包括应用内的“WEB-INF/lib”目录和给应用添加的所有类库。
+23. reloadable
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，服务器会周期性（由服务器“基础配置”>“全局配置”的定时任务周期指定）检测应用的 class 等文件；若发生变化，则自动全量重新加载。注：若在“性能”页签下开启资源缓存，则该功能无效。
+24. addWebinfClassesResources
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，服务器将“/WEB-INF/classes”视为一个解压的 JAR 资源，并会加载应用的“/WEB-INF/classes/META-INF/resources”目录下的资源。
+25. loadManifestClassPath
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，将会根据应用根目录下的 META-INF/MANIFEST.MF 文件（Class-Path 参数）来加载更多的 jar 等文件到应用中。
+
+# 4.4.4. 参数补充说明
+26. manifestClassPathBase 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：loadManifestClassPath $| =$ true
+◦ 说明：指定加载 Class-Path 资源时的相对目录，将会在此目录下查找和加载 Class-Path 中指定的jar 等文件。
+27. absoluteOrdering 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启该功能后，TongWeb 会将解析到的 web-fragment 片段以绝对路径排序，以避免 web-fragment 因名称重复引起的冲突问题。
+28. showLoadedClasses 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启该功能后，您可以在类加载结构中查看应用已经加载过的类资源，以利于排查相关问题等。注：仅支持Web应用。
+29. customClassLoader 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：自定义类加载器全类名，通过继承 com.tongweb.ee.server.TongWebWebappClassLoader（所在 jar：${tongweb.home}/version*/modules/ejb/tongweb-ejb.jar） 用户可以自定义类加载行为。自定义类需要提供一个无参和一个 java.lang.ClassLoader 参数的构造方法。注：需要在TongWeb 启动前将包含自定义类加载器的 jar 放到 $\$ 1$ {tongweb.base}/lib 目录下。
+30. customClass 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定一个自定义解析类的全类名，以在解析应用的类文件时执行自定义解析操作。该类需实现com.tongweb.ext.classfile.ClassCustom 接口（所在 jar：${tongweb.home}/version*/tongweb-web.jar）。注：需在 TongWeb 启动之前，将包含 Class 自定义解析类所在的 jar 文件放置到${tongweb.base}/lib 下。
+
+# 4.4.4. 参数补充说明
+31. docBases 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置应用的虚拟目录，可以将应用文件夹之外的 jsp、html 等资源文件加载到应用内部，作为应用的一部分。虚拟目录中的资源加载优先级高于应用文件夹本身。配置内容格式为 key=value，多个目录以英文逗号分隔。key 为资源请求路径的前缀，必须以 / 开头，value 为绝对路径的真实存在的目录。示例：/page=/opt，/opt 目录中存在 jsp/a.jsp，此时资源的访问路径为：http://ip:port/app/page/jsp/a.jsp。
+32. archiveIndexStrategy 
+◦ 取值范围：SIMPLE（释义：/SIMPLE）, BLOOM（释义：/BLOOM）, PURGED（释义：/PURGED）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：SIMPLE
+◦ 说明：设置加载应用的类库等资源所使用的索引策略。SIMPLE：在应用启动时，为资源文件创建索引。BLOOM：使用布隆过滤器来优化索引。PURGED：使用布隆过滤器来加速归档文件的查找，并在运行时可以进行清除操作。
+33. sessionCookieName 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定应用会话的 Cookie 名称。注：若应用的 web.xml 中同样设置了该属性，则优先使用web.xml 中的值。若以上两处都没有设置，则使用默认的 JSESSIONID 作为名称。
+34. useLegacyCookieProcessor 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：使用老版 Cookie 处理器，是基于 RFC6265、RFC2109、RFC2616的，开启后可兼容基于Tomcat 8 以前版本开发的应用。
+35. allowEqualsInValue 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：useLegacyCookieProcessor=true
+◦ 说明：如果是 true ，则在解析未加引号的 Cookie 值时允许使用等号字符。如果是 false ，当遇到等号时，包含等号的 Cookie 值将被终止，并且剩余的 Cookie 值将被删除。
+
+# 4.4.4. 参数补充说明
+36. allowHttpSepsInV0 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：useLegacyCookieProcessor=true
+◦ 说明：如果是 true ，则允许在 Cookie 名称和值中使用 HTTP 分隔符。
+37. useHttpOnly 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：会话 Cookie 是否使用 HttpOnly 标志。
+38. sameSiteCookies 
+◦ 取值范围：Unset（释义：/Unset）, None（释义：/None）, Lax（释义：/Lax）, Strict（释义：/Strict）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：Unset
+◦ 说明：设置 Cookie 的 SameSite 属性。Unset：不要设置 SameSite Cookie 属性；None：Cookie 始终在跨站点请求中发送；Lax：Cookie 仅在同站点请求和跨站点顶级导航 GET 请求上发送；Strict：防止浏览器在所有跨站点请求中发送 cookie。
+39. maxActiveSessions 
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：100000
+◦ 说明：限制该应用同时在线的最大会话数，以防止会话过大导致系统瘫痪。设置为“-1”表示不限制。
+40. sessionTimeout 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：30
+◦ 说明：设置应用会话（Session）的超时时间（单位：分钟）。
+
+# 4.4.4. 参数补充说明
+41. localPersistence 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，应用在停止时会将当前内存中的会话持久化存储到本地，如文件系统，并在启动后重新载入内存。本地持久化为异步进行，受“全局配置”中“定时任务周期”影响，若 TongWeb 进程被强杀（如执行了 forcestop 脚本）则最多会丢失最近一个“定时任务周期”内写入的会话数据。
+42. refSessionHa 
+◦ 取值范围：“会话服务器”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：选择应用要连接的会话服务器，将应用的 Session 存储到会话服务器。其优先级高于虚拟主机设置的会话服务器；但若虚拟主机同时开启了“Session共享”则优先级低于虚拟主机的会话服务器。
+注：当由于网络等原因导致会话服务器不可用时，应用的 Session 仍会在本地内存中存取，不会中断应用的业务处理。
+43. disableSessionInvalidate 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：开启后，应用调用 session.invalidate 时会话不再销毁，后续依靠自动过期机制销毁会话。
+44. jspDevelopment 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启 JSP 开发模式后，当有 JSP 文件更新时，这些文件会在 5 秒左右的时间内重新加载以生效。注意：若开启了资源缓存，生效时间会在资源的缓存时长之后。
+45. mappedFile
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在 JSP 翻译成 Servlet 时，是否为 JSP 文件中的每个 HTML 文本行生成“out.print()”，若关闭，则将来自多行的 HTML 文本连接起来一起输出到一个“out.print()”中。此功能的主要用途是简化调试。
+
+# 4.4.4. 参数补充说明
+46. quoteAttributeEL
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：指定当在 JSP 属性值中使用 EL（Expression Language） 时，JSP.1.6 中描述的属性引用规则是否应适用于表达式。
+47. strictQuoteEscaping
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：JSP.1.6 是否严格适用于使用 scriptlet 表达式定义的属性。
+48. strictWhiteSpace
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：是否严格对属性名称前的空白进行校验，如果为 false ，则放宽要求，这样缺少空白就不会导致错误。
+49. enablePooling
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：是否使用标签池处理 JSP 标签。
+50. jspPrecompile
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，在应用部署成功时立即进行 JSP 编译，不开启则在 JSP 首次被访问时才进行编译。
+注：JSP 预编译是异步进行的，不会影响部署流程。
+
+# 4.4.4. 参数补充说明
+51. jspPrecompileThreadCount 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：4
+◦ 生效条件：jspPrecompile=true
+◦ 说明：指定预编译的线程数。为了提高 JSP 预编译的效率，预编译采用多线程模式，可以同时编译多个 JSP 文件。
+52. requestCharacterEncoding 
+◦ 取值范围：UTF-8（释义：/UTF-8）, GBK（释义：/GBK）, ISO-8859-1（释义：/ISO-8859-1）,GB18030（释义：/GB18030）, GB2312（释义：/GB2312）, UTF-16（释义：/UTF-16）, US-ASCII（释义：/US-ASCII）
+◦ 默认值：UTF-8
+◦ 说明：应用程序的默认 HTTP 请求编码。
+53. responseCharacterEncoding 
+◦ 取值范围：UTF-8（释义：/UTF-8）, GBK（释义：/GBK）, ISO-8859-1（释义：/ISO-8859-1）,GB18030（释义：/GB18030）, GB2312（释义：/GB2312）, UTF-16（释义：/UTF-16）, US-ASCII（释义：/US-ASCII）
+◦ 默认值：UTF-8
+◦ 说明：应用程序的默认 HTTP 响应体编码。
+54. javaEncoding 
+◦ 取值范围：UTF-8（释义：/UTF-8）, GBK（释义：/GBK）, ISO-8859-1（释义：/ISO-8859-1）,GB18030（释义：/GB18030）, GB2312（释义：/GB2312）, UTF-16（释义：/UTF-16）, US-ASCII（释义：/US-ASCII）
+◦ 默认值：UTF-8
+◦ 说明：指定 JSP 文件编码。
+55. fileEncoding 
+◦ 取值范围：UTF-8（释义：/UTF-8）, GBK（释义：/GBK）, ISO-8859-1（释义：/ISO-8859-1）,GB18030（释义：/GB18030）, GB2312（释义：/GB2312）, UTF-16（释义：/UTF-16）, US-ASCII（释义：/US-ASCII）
+◦ 默认值：UTF-8
+◦ 说明：使用指定的编码解析应用的文件资源，如 “*.html” 等静态资源，可用于解决文件编码和 Jvm默认编码不一致引起的乱码问题。
+
+# 4.4.4. 参数补充说明
+56. slowThreadEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：慢线程检测功能可探测执行超时的请求，并能够自动中断执行的线程，以提高资源的利用效率。
+57. threshold 
+◦ 取值范围：大小限制10到1000000000
+◦ 默认值：1000
+◦ 生效条件：slowThreadEnabled=true
+◦ 说明：线程处理应用业务的时间（从接收到客户端的请求开始计算）超过该阈值（单位：毫秒）后将会记录一条慢线程检测告警日志。注：此值建议不要小于“全局配置”模块里的“定时任务周期”参数值，否则发现慢线程会不及时。
+58. interruptThreadThreshold 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：slowThreadEnabled=true
+◦ 说明：线程处理应用业务的时间超过该阈值（单位：毫秒）后将被尝试中断，该时间从接收到客户端的请求开始计算，其值不支持小于阻塞阈值。0 表示不中断。
+59. cachingAllowed 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：缓存应用的资源文件，以提高应用服务的响应效率。注：“热加载”与“资源缓存”同时开启时，文件删除后会出现文件找不到异常，请合理开启两个选项！
+60. cacheMaxSize 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：102400
+◦ 生效条件：cachingAllowed=true
+◦ 说明：缓存的最大允许缓存大小（KB）。
+
+# 4.4.4. 参数补充说明
+61. cacheObjectMaxSize 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1024
+◦ 生效条件：cachingAllowed=true
+◦ 说明：缓存中允许单个文件的最大值（KB），超出该大小的文件不进行缓存。
+62. cacheTtl 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：60
+◦ 生效条件：cachingAllowed=true
+◦ 说明：缓存条目的过期时间（秒），0 表示在应用配置更新之前永不过期。
+63. forceCache 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：cachingAllowed=true
+◦ 说明：开启后，会将 .class、.jar 等二进制文件也进行缓存，否则只会缓存 .html、.js 等文本类资源。
+64. expiresFilterEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：为 HTTP 响应添加 Expires 和 Cache-Control 头信息，以此控制客户端对资源的缓存行为。
+65. expiresFilterInitParam 
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 生效条件：expiresFilterEnabled=true
+◦ 说明：配置资源的缓存时间规则，如 ExpiresDefault、ExpiresByType 等。
+
+# 4.4.4. 参数补充说明
+66. expiresFilterUrlPatterns 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：expiresFilterEnabled=true
+◦ 说明：设置对哪些资源进行客户端缓存控制。
+67. preloadResource 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，首次部署应用时会将需要加载的资源存储到${tongweb.base}/app_resource_cache_index 目录下，在下次启动或重新部署时会进行异步预先加载，以加快应用的部署速度。
+68. preCompress 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：对静态资源进行预先压缩（默认使用 Gzip 压缩），以获得最佳性能。注：此功能开启后将忽略通道的压缩配置。
+69. forcedContainerHandling 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：应用中的某些静态资源被应用内部的三方框架处理时，可能会有性能方面的影响，此时可以通过指定其强制从 TongWeb 加载以提升部分性能。
+70. staticUrlPatterns 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：forcedContainerHandling=true
+◦ 说明：指定哪些静态资源URL，强制由容器处理，具体写法参考应用web.xml中的写法，*号用-来替换，多个用英文逗号隔开。
+
+# 4.4.4. 参数补充说明
+71. enableCORSAccess 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：通过为资源实现 W3C 的 CORS（跨域资源共享）规范来启用客户端跨域请求。
+72. corsAllowedOrigins 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enableCORSAccess=true
+◦ 说明：设置允许跨域访问的源，配置多个源使用英文逗号分隔，例如 http://www.xxx.com,http://www.zzz.com。注：设置为 “*” 表示所有源都允许。
+73. corsAllowedMethods 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：GET,POST,HEAD,OPTIONS
+◦ 生效条件：enableCORSAccess=true
+◦ 说明：允许跨域访问的方法，默认支持 GET,POST,HEAD,OPTIONS。配置多个方法以英文逗号分隔，例如 GET,POST,HEAD,OPTIONS。
+74. corsAllowedHeaders 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Request-Headers
+◦ 生效条件：enableCORSAccess=true
+◦ 说明：允许的 HTTP 头，XMLHttpRequest 对象的 getResponseHeader() 方法拿到的基本字段，默认支持 Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Request-Headers，配置多个 HTTP 头以英文逗号分隔。
+75. corsExposedHeaders 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enableCORSAccess=true
+◦ 说明：通过 Access-Control-Expose-Headers 暴露指定的 HTTP 头，Access-Control-Expose-Headers 标头指示哪些标头可以安全地公开给 CORS API 规范的 API。注：配置多个 HTTP 头以英文逗号分隔。
+
+# 4.4.4. 参数补充说明
+76. corsSupportCredentials 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enableCORSAccess=true&corsAllowedOrigins!=*
+◦ 说明：CORS 请求默认不发送 Cookie 和 HTTP 认证信息。若需要把 Cookie 发到服务器，则设置为“true”，默认为 “false”。
+77. corsPreflightMaxAge 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：1800
+◦ 生效条件：enableCORSAccess=true
+◦ 说明：用来指定本次预检请求的有效期（单位：秒）。在此期间，不用发出另一条预检请求，默认值1800 秒。
+78. requestParametersLostValidation 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启该功能后，若请求参数解析期间出现故障（如请求参数个数超过了设置的阈值或 POST 数据的大小超过了设置的阈值等），系统将拒绝请求，以确保客户端提交的参数值不会丢失。
+79. XSSFilterEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：拦截可疑的 XSS 攻击请求，通常是含有 script、<、> 等特殊标记的请求，以 403 响应码返回到客户端。
+80. csrfPrevention 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：注意：请谨慎打开此功能，否则可能导致应用无法访问！！！为 Web 应用提供基本的 CSRF防护支持，该功能需要应用自身予以配合：调用 HttpServletResponse#encodeRedirectURL(String)和 HttpServletResponse#encodeURL(String) 方法（每执行一次则产生一个新的令牌，当 CSRF 令牌缓存数设置为 0 时，一个会话只产生一个令牌）编码 URL 后发送到客户端，其目的是要发送回服务器的URL都带有 csrf.token 参数以认证身份。编码后的 URL 示例：`/myservlet/myres?param $\mid =$ val&csrf.token=…`。TongWeb 的 CSRF 防护同时可以阻挡重放攻击，只要不将 CSRF 令牌缓存数设置为 0 即可。
+
+# 4.4.4. 参数补充说明
+81. csrfCacheSize 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：20
+◦ 生效条件：csrfPrevention=true
+◦ 说明：CSRF 令牌会随着客户端请求而更新，CSRF 令牌缓存数表示保留最新的令牌个数，这同时也表示允许的客户端并发数。0 表示不限制。
+82. tokenValidTimes 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1
+◦ 生效条件：csrfPrevention=true&csrfCacheSize! ${ \tt = } 0$ 
+◦ 说明：提供 CSRF 令牌循环使用支持，使用次数超出有效次后会自动失效，可用于资源需要重复访问而不支持及时更新 CSRF 令牌等场景。注意：1. CSRF 令牌允许循环使用时，将无法阻挡重放攻击；2. 该功能仅在“CSRF 令牌缓存数”不为 0 时有效。
+83. csrfEntryPoints
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：/login
+◦ 生效条件：csrfPrevention=true
+◦ 说明：开启 CSRF 防护后，可选设置一些免防入口（应用 URL），如登录资源，以跳过防护检查。设置多个入口时，使用英文逗号分隔。
+84. httpHeaderToken
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：csrfPrevention=true
+◦ 说明：开启了 CSRF 防护的应用，将无法使用 REST 接口，原因是 REST 接口无法通过 URL 传递令牌，开启“REST 支持”可解决该问题。开启“REST 支持”需要应用自身予以配合：1. 客户端须首先请求免防资源，服务器通过响应头返回令牌；2. 客户端请求其它资源须通过请求头（名为：csrf.token）回传服务器令牌，以通过服务器的安全认证。
+85. secretLevel
+◦ 取值范围：Ordinary（释义：/普通）, Secret（释义：/机密）, Absolute（释义：/绝密）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：设置本应用的保密等级，此保密等级将用于应用数据网络传输、主体数据存取、客体请求访问等过程的加密处理。
+
+# 4.4.4. 参数补充说明
+86. threadPoolPolicy
+◦ 取值范围：1（释义：/单线程池）, 2（释义：/双线程池）, 3（释义：/三线程池）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：1
+◦ 说明：1（单线程池）：使用通道内置的线程池处理所有业务；2（双线程池）：符合规则的业务由线程池处理，其它业务由通道内置的线程池处理；3（三线程池）：符合规则的业务由线程池处理，其它业务由其它线程池处理。线程池不会作用的范围：由服务器处理的静态资源、支持异步 Servlet 处理的业务。注意：对于使用了异步 Filter 的业务，请谨慎或不要使用线程池功能。注意：若业务处理时间过长（如超过 30 秒），则建议增大线程超时阈值，否则可能导致请求失败！
+87. threadPool
+◦ 取值范围：“线程池”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：threadPoolPolicy=2\|threadPoolPolicy=3
+◦ 说明：线程池功能可将指定的业务交给指定的线程池来处理，可支持应用根据业务的重要性、优先级等方面约束系统资源的使用。该功能一般适用于并且只建议应用于比较耗时的业务操作，例如长事务、远程服务调用等。
+88. threadPoolTimeout 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：30000
+◦ 生效条件：threadPoolPolicy $^ { - 2 }$ \|threadPoolPolicy=3
+◦ 说明：业务处理时长达到该阈值后，响应结果将即刻发送回客户端，而不再等待线程处理结束，这会提高整体的响应效率，但可能导致客户端没有获取到最终的处理结果。单位是毫秒，0 表示使用通道的异步请求的默认超时。
+89. taskRule 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：threadPoolPolicy $^ { - 2 }$ \|threadPoolPolicy $^ { \circ 3 }$ 
+◦ 说明：指定需要线程池执行的业务的匹配规则，其格式须是匹配 URL 的正则表达式。不指定则表示可接受所有业务。注：业务的匹配规则是基于请求的 Servlet 路径，而不包含应用的访问名。
+90. exclusionRule 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：threadPoolPolicy $^ { - 2 }$ \|threadPoolPolicy=3
+◦ 说明：指定需要线程池从匹配规则中要排除的业务规则，其格式须是匹配URL的正则表达式。不指定则表示不排除。注：业务的匹配规则是基于请求的 Servlet 路径，而不包含应用的访问名。
+
+# 4.4.4. 参数补充说明
+91. otherThreadPool 
+◦ 取值范围：“线程池”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：threadPoolPolicy $^ { \circ 3 }$ 
+◦ 说明：当使用三线程池策略时，符合规则的业务由线程池处理，其它业务由其它线程池处理。
+92. otherThreadPoolTimeout 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：30000
+◦ 生效条件：threadPoolPolicy $^ { \circ 3 }$ 
+◦ 说明：其它业务处理时长达到该阈值后，响应结果将即刻发送回客户端，而不再等待线程处理结束，这会提高整体的响应效率，但可能导致客户端没有获取到最终的处理结果。单位是毫秒，0 表示使用通道的异步请求的默认超时。
+93. semaphoreEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：出于安全等考虑，控制访问应用的并发量。
+94. concurrency 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：10
+◦ 生效条件：semaphoreEnabled=true
+◦ 说明：允许的最大并发访问量。
+95. block 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：semaphoreEnabled=true
+◦ 说明：当应用达到最大并发访问量时，是否阻塞等待访问应用。若不等待，请求会被终止，并记录一条日志。
+
+# 4.4.4. 参数补充说明
+96. interruptible 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：semaphoreEnabled=true&block=true
+◦ 说明：当请求线程在阻塞等待访问应用时，是否允许被中断，若被中断则请求会被终止，并记录一条日志。
+97. restrictedPorts 
+◦ 取值范围：“通道”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：限定访问端口后，只有指定的端口可以访问本应用，其它端口的访问会被拒绝，不指定则表示不限制。可用于支持系统应用、重要应用、普通应用的端口隔离式的安全访问，并可通过设置不同端口的资源大小来约束不同应用的业务处理效率。注意：该功能只适用于 Web 应用，对于远程访问的EJB 应用无效，如需限制远程 EJB 的访问，则可在"EJB http协议"模块进行相关设置。
+98. crossContext 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：指定是否允许调用 ServletContext.getContext("/appName") 方法访问此服务器中其他 Web应用程序的上下文。
+99. unloadDelay 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：20
+◦ 说明：卸载应用时，若存在请求未处理完毕，则等待一段时间（单位：秒），超时后会强制卸载，此时会给出线程泄漏的警告日志。
+100. allowLinking
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否允许使用软链接访问应用的资源文件。
+
+# 4.4.4. 参数补充说明
+101. clearReferences
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在应用停止时，检查并尝试回收与应用相关联的可能导致内存泄漏的JDBC驱动、线程、线程局部变量（ThreadLocal）、Java 序列化对象缓存、RMI 目标对象等资源。
+102. enableRecycling
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：启用后，应用卸载时将备份到回收站，可在应用回收列表查看。
+103. shtmlEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：shtml 是在 html 静态页面中使用指令以分块动态生成内容。
+104. virtualWebappRelative
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：shtmlEnabled=true
+◦ 说明：shtml 里的指令路径是否按相对于应用的根目录处理。
+105. allowExec
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：shtmlEnabled=true
+◦ 说明：是否允许在 shtml 里执行本地命令，取决于具体的应用。请谨开启，这可能会带来一定的风险。
+
+# 4.4.4. 参数补充说明
+106. expires
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：shtmlEnabled $\mid =$ true
+◦ 说明：设置 shtml 页面在 http 协议响应头里的过期时间（单位：秒），0表示不设置。
+107. urlPatterns
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：*.shtml
+◦ 生效条件：shtmlEnabled $\mid =$ true
+◦ 说明：指定对哪些类型的 URL 请求进行 shtml 处理，多种类型以英文逗号分隔，建议的配置为“.shtml,.html”。
+108. webAppVersion
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定应用的版本，访问前缀相同的应用以版本号区分形成多版本应用，当应用有多个版本时，访问时按版本号字典排序排在最后的应用对外提供服务。若存在会话在老版本的应用上尚未处理完毕，则继续使用老版本应用的服务。注：该功能仅支持 Web 类型（如*.war）的应用。
+109. useRelativeRedirects
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：打开此开关后，应用在重定向的时候会使用相对路径，否则使用绝对路径。注：该开关在HTTP/1.0 下无效，可搭配“强制使用相对地址重定向”来尝试解决问题。
+110. forceUseRelativeRedirects
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：useRelativeRedirects=true
+◦ 说明：打开此开关后，即使在 HTTP/1.0 协议中，也可以使用相对地址进行重定向。
+
+# 4.4.4. 参数补充说明
+111. allowCasualMultipartParsing
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：即使目标 Servlet 未指定 @MultipartConfig 注解或没有在 web.xml 中配置 <multipart-config> 元素，也允许解析 multipart/form-data 请求。
+112. allowOverrideContentType
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：当响应头的 ContentType 已设置时，是否允许对其进行重写修改。
+113. enableStatelessPoolMonitor
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，可监视到应用中包含到所有无状态会话 Bean 的实例池使用情况，当应用中包含的无状态会话 Bean 数量太多时不建议开启。
+114. type
+◦ 取值范围：war（释义：/war）, ear（释义：/ear）, jar（释义：/jar）, rar（释义：/rar）, car（释义：/car）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：war
+◦ 说明：应用的类型。
+115. state
+◦ 取值范围：STARTED（释义：/STARTED）, STOPPED（释义：/STOPPED）, STARTING（释义：/STARTING）, DEPLOYING（释义：/DEPLOYING）, FAILED（释义：/FAILED）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：应用当前的部署和运行状态。
+
+# 4.4.4. 参数补充说明
+116. jarScannerImpl
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：可以通过设置自定义 jar 扫描器，来自主决定 jar 包内 Class 文件的扫描操作，例如 LiferayPortal 应用通常需要进行这个设置。
+117. useDirectionalScanning
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：使用定向扫描时，TongWeb 会从指定的文件中获悉需要扫描的 jar 和 class 文件，而不再全局扫描应用，这通常可提升应用的加载效率。
+118. servletAnnotationDeclarationFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：useDirectionalScanning=true
+◦ 说明：指向应用中的一个 Properties 文件，以 / 开头，如“/WEB-INF/classes/annotation.properties”，在该文件中指定标注了 Servlet Web 注解（@WebServlet、@WebFilter、@WebListener）的类名及其所在的文件，格式：com/app/MyClass1.class=test1.jar；com/app/MyClass2.class=classes，若以“.jar”结尾，则可省略路径和jar文件名上的版本号部分。
+119. applicationPropertiesFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：useDirectionalScanning=true
+◦ 说明：指定 SpringBoot 主资源文件在应用中的位置，以 / 开头，如“/WEB-
+INF/classes/application.properties”，TongWeb 将从中获取 “spring.main.sources” 参数的类名，并尝试从 /WEB-INF/classes 目录扫描其上标注的 Servlet Web 注解。
+120. raPros
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：Connector 应用的属性列表。
+
+# 4.4.4. 参数补充说明
+121. pkgCompatible
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，可支持同时部署 javax 和 jakarta 命名空间的应用。特别注意：对于目录部署的应用，在应用的命名空间和当前 TongWeb 的命名空间不一致时，应用的相关文件可能会被修改，请谨慎使用。
+122. addResponseHeader
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：该功能允许服务器在HTTP响应中附加自定义头部信息。优先级：应用的优先级高于通道，通道优先级高于全局配置。
+
+# 4.4.5. 支持的监视项
+1. 监视项：baseName
+◦ 语义：应用名称
+◦ 说明：此应用在监视数据中的名称。
+◦ 是波动类型：否
+2. 监视项：stateName
+◦ 语义：应用状态
+◦ 说明：此应用在监视数据中的状态。
+◦ 是波动类型：否
+3. 监视项：StuckThreadCount
+◦ 语义：阻塞的线程数
+◦ 说明：此监视项仅在开启慢线程检测功能后有效。其值为 -1 时，表示未开启该项监视。注：仅统计阻塞的通道线程。
+◦ 是波动类型：是
+4. 监视项：StuckThreadNames
+◦ 语义：阻塞的线程名
+◦ 说明：列出阻塞的线程名，此监视项仅在开启慢线程检测功能后有效。其值为 -1 时，表示未开启该项监视。注：仅统计阻塞的通道线程。
+◦ 是波动类型：否
+5. 监视项：servlets
+◦ 语义：Servlet 明细
+◦ 说明：列出当前应用所包含的 Servlet。
+◦ 是波动类型：否
+
+# 4.4.5. 支持的监视项
+6. 监视项：filters
+◦ 语义：Filter 明细
+◦ 说明：列出当前应用所包含的 Filter。
+◦ 是波动类型：否
+7. 监视项：webServices
+◦ 语义：WebService 明细
+◦ 说明：列出当前应用所包含的 WebServices。
+◦ 是波动类型：否
+8. 监视项：rests
+◦ 语义：REST 明细
+◦ 说明：列出当前应用所包含的 REST。
+◦ 是波动类型：否
+9. 监视项：InterruptedThreadsCount
+◦ 语义：中断的线程数
+◦ 说明：此监视项仅在开启慢线程检测功能后有效。其值为 -1 时，表示未开启该项监视。
+◦ 是波动类型：否
+10. 监视项：statelessPoolSize
+◦ 语义：无状态实例总数
+◦ 说明：已建立的无状态会话 bean 的实例总数。
+◦ 是波动类型：是
+
+# 4.4.5. 支持的监视项
+11. 监视项：statelessActiveCount
+◦ 语义：无状态实例活跃数
+◦ 说明：正则使用的无状态会话 bean 的实例数。
+◦ 是波动类型：是
+12. 监视项：activeSessions
+◦ 语义：当前会话数
+◦ 说明：当前活动会话的数量。
+◦ 是波动类型：是
+13. 监视项：cachedSize
+◦ 语义：资源缓存量（KB）
+◦ 说明：当前静态资源缓存所消耗的内存大小，单位为 KB。其值为 -1 时，表示相应的功能未开启。
+◦ 是波动类型：否
+14. 监视项：requestCount
+◦ 语义：请求处理总数
+◦ 说明：应用中的累计请求计数。
+◦ 是波动类型：否
+15. 监视项：processingTime
+◦ 语义：请求处理总时间（毫秒）
+◦ 说明：应用中的请求累计处理时间，单位：毫秒。
+◦ 是波动类型：否
+
+# 4.4.5. 支持的监视项
+16. 监视项：processingQPS
+◦ 语义：每秒处理请求数（QPS）
+◦ 说明：应用中平均每秒处理的请求总数。
+◦ 是波动类型：否
+17. 监视项：averageProcessingTime
+◦ 语义：平均响应时间（毫秒）
+◦ 说明：所有请求的平均处理时间，单位：毫秒。
+◦ 是波动类型：否
+18. 监视项：errorCount
+◦ 语义：错误请求处理总数
+◦ 说明：应用中的累计错误请求计数。
+◦ 是波动类型：否
+19. 监视项：errorRate
+◦ 语义：错误率
+◦ 说明：错误请求处理总数在请求处理总数中的占比，单位：百分比。
+◦ 是波动类型：否
+20. 监视项：startTime
+◦ 语义：启动时间
+◦ 说明：此应用启动的时间。
+◦ 是波动类型：否
+21. 监视项：startupTime
+◦ 语义：启动耗时(毫秒)
+◦ 说明：启动此应用所需的时间（单位：毫秒）。
+◦ 是波动类型：否
+
+# 4.5. 应用备份
+管理应用的备份，应用的备份目录和备份数量可在全局配置中指定。
+
+# 4.5.1. 模块名
+appbackup 
+
+# 4.5.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>备份当前的应用文件。</td></tr><tr><td>show</td><td>查看该应用备份的详细信息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>recover</td><td>以该时间的应用备份对应用进行重新部署。注：如果已经有同名应用部署了，则该同名应用将被卸载，其正在处理的请求会话也会被丢弃。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.5.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>app-backups>app-backup
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>app</td><td>备份应用</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>2</td><td>name</td><td>名称</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>3</td><td>appFile</td><td>应用文件</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>4</td><td>config</td><td>配置信息</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>5</td><td>backupDate</td><td>备份日期</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>6</td><td>backupInfo</td><td>备份说明</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.5.4. 参数补充说明
+1. app 
+◦ 取值范围：“应用”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：指定要备份的应用。
+2. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：已备份的应用文件名称。
+3. appFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：已备份的应用名称。
+4. config
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：该应用的配置信息。
+5. backupDate
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：备份该应用的日期和时间。
+6. backupInfo
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：对本次备份进行备注说明，以便了解本次备份的目的，同时便于找到要恢复的应用版本。
+
+# 4.5.5. 支持的监视项
+无。
+
+# 4.6. 应用数据源
+监视由应用自行创建和管理的数据源的使用情况，包括 JDBC 连接池的资源使用情况等。该功能支持的JDBC 连接池的类型至少包括：HikariCP、Druid、DBCP、C3P0、BeeCP、BoneCP、Tomcat、Hulk，对于 DBCP、C3P0、BoneCP 目前暂不支持监控其“线程等待数”，即其监控值将始终为-1。注：使用该功能，需要首先在“全局配置”中打开“监视应用数据源”开关，并且需要在应用数据源初始化完成之后才能监控到。
+
+# 4.6.1. 模块名
+appdatasource 
+
+# 4.6.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>monitor</td><td>获取该组件的运行状态信息，该信息可反映组件的健康情况。</td></tr></table>
+
+# 4.6.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>type</td><td>类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>klass</td><td>类名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>app</td><td>所属应用</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.6.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：TongWeb 为此应用的数据源自动分配的 ID 号。
+2. type
+◦ 取值范围：HikariCP（释义：/HikariCP）, Hulk（释义：/Hulk）, Druid（释义：/Druid）, DBCP（释义：/DBCP）, C3P0（释义：/C3P0）, BeeCP（释义：/BeeCP）, BoneCP（释义：/BoneCP）,Tomcat（释义：/Tomcat）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：TongWeb 探测到的数据源的类型。
+3. className
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：数据源类的全名称。
+4. app
+◦ 取值范围：字符串长度限制0个到255个
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：数据源所在的应用。
+
+# 4.6.5. 支持的监视项
+1. 监视项：size
+◦ 语义：连接池大小
+◦ 说明：连接池中的连接总数。
+◦ 是波动类型：是
+2. 监视项：active
+◦ 语义：活跃连接数
+◦ 说明：连接池中的活跃连接数。
+◦ 是波动类型：是
+3. 监视项：idle
+◦ 语义：空闲连接数
+◦ 说明：连接池中的空闲连接数。
+◦ 是波动类型：是
+4. 监视项：waitCount
+◦ 语义：线程等待数
+◦ 说明：等待从连接池获取连接的线程数。
+◦ 是波动类型：是
+
+# 4.7. 示例应用
+汇总了Tongweb自带的应用示例，包括应用名称、应用位置，以及使用说明。
+
+# 4.7.1. 模块名
+applicationexamples 
+
+# 4.7.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr></table>
+
+# 4.7.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>应用名称</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>location</td><td>应用位置</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>usage</td><td>使用说明</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.7.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：TongWeb 示例应用的名称。
+2. location
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：TongWeb 示例应用的位置。
+3. usage
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：TongWeb 示例应用的使用说明。
+
+# 4.7.5. 支持的监视项
+无。
+
+# 4.8. 应用迁移
+将部署在其他应用服务器上的通道(名称、端口、IP)、虚拟主机（名称、别名）、应用（名称、前缀）迁移至 TongWeb。注：该操作会修改 ${tongweb.base}/conf/tongweb.xml，在修改其之前会在${tongweb.base}/data/migration 目录下进行备份。
+
+# 4.8.1. 模块名
+appmigration 
+
+# 4.8.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>执行从其他应用服务器中迁移应用到TongWeb的操作。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.8.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>serverType</td><td>应用服务器类型</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>originServerPath</td><td>应用服务器路径</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>appMigration</td><td>是否拷贝应用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>connMigration</td><td>是否迁移通道</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.8.4. 参数补充说明
+1. serverType
+◦ 取值范围：Tomcat（释义：/Tomcat）, TongWeb（释义：/TongWeb）, WebLogic（释义：/WebLogic）, WebSphere（释义：/WebSphere）, JBoss（释义：/JBoss）, Nginx（释义：/Nginx）, Jetty（释义：/Jetty）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：应用服务器类型，目前支持 Tomcat、TongWeb7（可在迁移配置中设置是否允许多端口迁移）、Weblogic、WebSphere、Nginx。
+2. originServerPath
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定要进行应用迁移的应用服务器的路径。
+3. appMigration
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：指定迁移过程中是否拷贝应用文件，若不拷贝则只迁移数据源等服务器配置参数，不会部署应用程序。
+4. connMigration
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：指定迁移过程中是否迁移通道。
+
+# 4.8.5. 支持的监视项
+无。
+
+# 4.9. 应用回收
+回收卸载的应用，应用在卸载后会自动备份，应用的备份目录和备份数量可在全局配置中指定。
+
+# 4.9.1. 模块名
+apprecycle 
+
+# 4.9.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>show</td><td>查看该应用备份的详细信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>cleanup</td><td>此操作将会删除所有自动备份（应用在卸载时会自动备份）的应用文件。注：删除的应用文件不可恢复，请谨慎进行。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>recover</td><td>以该时间的应用备份对应用进行重新部署。注：如果已经有同名应用部署了，则该同名应用将被卸载，其正在处理的请求会话也会被丢弃。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.9.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>app</td><td>备份应用</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>2</td><td>name</td><td>名称</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>3</td><td>appFile</td><td>应用文件</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>4</td><td>config</td><td>配置信息</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>5</td><td>backupDate</td><td>备份日期</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>6</td><td>backupInfo</td><td>备份说明</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.9.4. 参数补充说明
+1. app
+◦ 取值范围：“应用”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：指定要备份的应用。
+2. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：已备份的应用文件名称。
+3. appFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：已备份的应用名称。
+4. config
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：该应用的配置信息。
+5. backupDate
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：备份该应用的日期和时间。
+6. backupInfo
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：对本次备份进行备注说明，以便了解本次备份的目的，同时便于找到要恢复的应用版本。
+
+# 4.9.5. 支持的监视项
+无。
+
+# 4.10. 应用模板
+应用模板是一组预先设置的应用配置参数，在部署应用的时候选择使用应用模板，可快捷地配置应用的参数。应用模板一般常用于多个应用需要共享同一套配置参数的场景。
+
+# 4.10.1. 模块名
+apptemplate 
+4.10.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.10.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>apptemplates>apptemplate
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>模板名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>springBootCompatible</td><td>SpringBoot兼容</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>autoDeploy</td><td>自动部署</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>host</td><td>虚拟主机</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>startupPriority</td><td>启动优先级</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>6</td><td>refRealm</td><td>安全域</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>dependentApp</td><td>依赖应用</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>delegateFirst</td><td>父优先</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>useEjbStandaloneLoader</td><td>使用EJB独立类加载器</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>forcedLoad</td><td>强制从应用加载的类</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>forcedSkip</td><td>强制从TongWeb加载的类</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>webSocketEnabled</td><td>使用TongWebWebSocket</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>webModuleOnly</td><td>Web兼容模式</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>applmplModules</td><td>加载应用实现</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>refLib</td><td>添加类库</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>priorityJars</td><td>加载顺序</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>reloadable</td><td>热加载</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>18</td><td>addWebinfClassesResources</td><td>加载WEB-INF资源</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>19</td><td>loadManifestClassPath</td><td>加载Class-Path资源</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>20</td><td>manifestClassPathBase</td><td>Class-Path相对目录</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>absoluteOrdering</td><td>web-fragment绝对路径</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>22</td><td>showLoadedClasses</td><td>跟踪已加载类</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>23</td><td>customClassLoader</td><td>自定义类加载器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>24</td><td>customClass</td><td>Class自定义解析</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>25</td><td>docBases</td><td>虚拟目录</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>26</td><td>archivelIndexStrategy</td><td>资源加载策略</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>27</td><td>sessionCookieName</td><td>会话的Cookie名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>28</td><td>useLegacyCookieProcessor</td><td>使用老版Cookie处理器</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>29</td><td>allowEqualsInValue</td><td>Cookie Equal Signs</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>30</td><td>allowHttpSepsInV0</td><td>HTTP分隔符</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>31</td><td>useHttpOnly</td><td>Cookie HttpOnly</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>32</td><td>sameSiteCookies</td><td>Cookie SameSite</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>33</td><td>maxActiveSessions</td><td>最大会话数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>34</td><td>sessionTimeout</td><td>会话超时时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>35</td><td>localPersistence</td><td>本地持久化</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>36</td><td>refSessionHa</td><td>会话服务器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>37</td><td>disableSession Invalidate</td><td>禁用会话注销</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>38</td><td>jspDevelopment</td><td>开启JSP开发模式</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>39</td><td>mappedFile</td><td>Mapped File</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>40</td><td>quoteAttributeEL</td><td>Quote Attribute EL</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>41</td><td>strictQuoteEscaping</td><td>Strict Quote Escaping</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>42</td><td>strictWhiteSpace</td><td>Strict White Space</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>43</td><td>enablePooling</td><td>使用标签池</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>44</td><td>jspPrecompile</td><td>JSP预编译</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>45</td><td>jspPrecompileThreadCount</td><td>预编译线程数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>46</td><td>requestCharacterEncoding</td><td>应用请求编码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>47</td><td>responseCharacterEncoding</td><td>应用响应编码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>48</td><td>javaEncoding</td><td>JSP文件编码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>49</td><td>fileEncoding</td><td>静态文件编码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>50</td><td>slowThreadEnabled</td><td>慢线程检测</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>51</td><td>threshold</td><td>阻塞阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>52</td><td>interruptThreadThreshold</td><td>中断阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>53</td><td>cachingAllowed</td><td>开启资源缓存</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>54</td><td>cacheMaxSize</td><td>最大缓存大小</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>55</td><td>cacheObjectMaxSize</td><td>可缓存的单文件大小上限</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>56</td><td>cacheTtl</td><td>缓存时长</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>57</td><td>forceCache</td><td>强制缓存</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>58</td><td>ExpiresFilterEnabled</td><td>客户端资源缓存</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>59</td><td>ExpiresFilterInitParam</td><td>缓存时间规则</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>60</td><td>expireFilterUrlPatterns</td><td>资源匹配规则</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>61</td><td>preloadResource</td><td>资源预加载</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>62</td><td>preCompress</td><td>资源预压缩</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>63</td><td>forcedContainerHandling</td><td>强制从TongWeb加载的静态资源</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>64</td><td>staticUrlPatterns</td><td>URL模式</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>65</td><td>enableCORSAccess</td><td>允许跨域访问</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>66</td><td>corsAllowedOrigins</td><td>允许的源</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>67</td><td>corsAllowedMethods</td><td>允许的方法</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>68</td><td>corsAllowedHeaders</td><td>允许的HTTP头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>69</td><td>corsExposedHeaders</td><td>暴露HTTP头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>70</td><td>corsSupportCredentials</td><td>支持凭证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>71</td><td>corsPreflightMaxAge</td><td>预检请求的有效期</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>72</td><td>requestParametersLostValidation</td><td>参数防丢失</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>73</td><td>XSSFilterEnabled</td><td>XSS攻击拦截</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>74</td><td>csrFPrevention</td><td>CSRF防护</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>75</td><td>csrFCacheSize</td><td>CSRF令牌缓存数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>76</td><td>tokenValidTimes</td><td>CSRF令牌有效次</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>77</td><td>csrEntryPoints</td><td>CSRF免防入口</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>78</td><td>httpHeaderToken</td><td>REST 支持</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>79</td><td>secretLevel</td><td>应用密级</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>80</td><td>threadPoolPolicy</td><td>业务安全规则</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>81</td><td>threadPool</td><td>线程池</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>82</td><td>threadPoolTimeout</td><td>线程超时阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>83</td><td>taskRule</td><td>匹配规则</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>84</td><td>exclusionRule</td><td>排除规则</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>85</td><td>otherThreadPool</td><td>其它线程池</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>86</td><td>otherThreadPoolTimeout</td><td>其它线程超时阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>87</td><td>semaphoreEnabled</td><td>并发安全控制</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>88</td><td>concurrency</td><td>限制最大并发</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>89</td><td>block</td><td>阻塞等待</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>90</td><td>interruptible</td><td>允许中断阻塞</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>91</td><td>restrictedPorts</td><td>限定访问端口</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>92</td><td>crossContext</td><td>允许跨应用访问</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>93</td><td>unloadDelay</td><td>卸载等待</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>94</td><td>allowLinking</td><td>允许链接文件</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>95</td><td>clearReferences</td><td>内存泄漏检测</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>96</td><td>enableRecycling</td><td>应用回收</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>97</td><td>shtmlEnabled</td><td>支持 shtml</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>98</td><td>virtualWebappRelative</td><td>相对应用目录</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>99</td><td>allowExec</td><td>允许执行命令</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>100</td><td>expires</td><td>过期时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>101</td><td>urlPatterns</td><td>URL 类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>102</td><td>useRelativeRedirects</td><td>使用相对地址重定向</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>103</td><td>forceUseRelativeRedirects</td><td>强制使用相对地址重定向</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>104</td><td>allowCasualMultipartParsing</td><td>强制解析 Multipart 请求</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>105</td><td>allowOverrideContentType</td><td>允许覆写ContentType</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>106</td><td>enableStatelessPoolMonitor</td><td>监视无状态会话Bean</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>107</td><td>jarScannerImpl</td><td>自定义 jar 扫描器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>108</td><td>useDirectionalScanning</td><td>使用定向扫描</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>109</td><td>sarletAnnotationDeclaratio nFile</td><td>Servlet 注解声明文件</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>110</td><td>applicationPropertiesFile</td><td>SpringBoot 主资源文件</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>111</td><td>raPros</td><td>Connector 应用属性</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>112</td><td>addResponseHeader</td><td>附加响应头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>113</td><td>unpackDir</td><td>解压目录</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>114</td><td>pkgCompatible</td><td>命名空间兼容</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.10.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定应用模板的名称，唯一标识，便于识别该模板的用途。
+2. springBootCompatible
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：兼容基于 Tomcat、 Jetty、 Undertow 嵌入式版本开发的 SpringBoot 应用 jar。
+3. autoDeploy
+◦ 取值范围：true 或 false
+◦ 默认值：false
+◦ 说明：表示该应用是否是自动部署的。
+4. host
+◦ 取值范围：“虚拟主机”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：localhost
+◦ 说明：应用所部署到的虚拟主机，可共用虚拟主机提供的资源和管理控制。
+5. startupPriority
+◦ 取值范围：大小限制0到99
+◦ 默认值：99
+◦ 说明：用以约束应用的启动顺序，在服务器启动时，该值越小越优先启动。
+
+# 4.10.4. 参数补充说明
+6. refRealm
+◦ 取值范围：“安全域”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：应用安全域，应用指定的安全域优先级高于虚拟主机指定的安全域；但若虚拟主机同时开启了“单点登录（SSO）”，则优先级低于虚拟主机的安全域。
+7. dependentApp
+◦ 取值范围：“应用”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：指定当前应用依赖的应用，在加载时，依赖的应用的类加载器将作为本应用类加载器的父级类加载器。
+8. delegateFirst
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：应用的类加载顺序，父优先表示优先从服务器类路径中加载，否则优先从应用类路径中加载。
+9. useEjbStandaloneLoader
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：对于 *.ear 类型的应用，当其根目录存在多个 ejb 的 jar 文件时，是否为每个 jar 文件使用独立的类加载器进行加载。注：使用 EJB 独立类加载器，通常可解决不同 ejb jar 文件中存在相同的资源而引发的资源冲突等问题。
+10. forcedLoad
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：javax.ws.rs.
+◦ 生效条件：delegateFirst=false
+◦ 说明：一些JEE规范的实现即使在关闭了父优先的情况下，仍然会从服务器类路径中加载。为了规避这个问题，在此处可指定需要强制从应用的类路径下加载的类的前缀，如 javax.ws.rs.。配置多个前缀以英文逗号分隔。注：其优先级低于“强制从 TongWeb 加载的类”。
+
+# 4.10.4. 参数补充说明
+11. forcedSkip
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：delegateFirst=false
+◦ 说明：关闭了父优先时，也可指定需要强制从TongWeb服务器的类路径下加载的类的前缀。配置多个前缀以英文逗号分隔。
+12. webSocketEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：设置是否使用 TongWeb 服务器提供的 WebSocket 功能，WebSocket 是 Java/Jakarta EE 规范定义的技术，但并不是所有的应用都需要，若应用自带了 WebSocket 的功能实现或 TongWeb 提供的 WebSocket 实现对应用的运行环境造成了干扰，可尝试关闭此功能。
+13. webModuleOnly
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：以 Web 兼容模式加载该应用，若该应用是基于 Tomcat 等 Web 容器开发，则可以尝试打开此开关以获得更好的兼容性。开启此模式后，EJB 等企业级技术实现将不再支持，同时尝试从应用自身加载 JSF、JavaMail、WebService、Xml 等企业级技术实现。
+14. appImplModules
+◦ 取值范围：JSF（释义：/JSF）, JavaMail（释义：/JavaMail）, WebService（释义：/WebService）, Xml（释义：/Xml）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 生效条件：webModuleOnly=false
+◦ 说明：若应用自带 JavaEE 规范的实现，可指定从应用中加载这些实现，而不使用 TongWeb 服务器的实现。
+15. refLib
+◦ 取值范围：“公共类库”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：给应用附加依赖库，附加的依赖库会和应用自身的类库（WEB-INF/lib、WEB-INF/classes）合并到一起由应用类加载器加载。注：若不同应用选择相同类库，类库中的类在各个应用内是彼此隔离的，应用之间不会共享类对象，如果多个应用需要在内存中共享类对象，可考虑使用“全局配置”中的“应用共享类加载器”。
+
+# 4.10.4. 参数补充说明
+16. priorityJars
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：指定需要优先加载的 jar 的文件名，指定的文件名可以是 jar 的全名称或部分名称。注：jar 的搜索范围包括应用内的“WEB-INF/lib”目录和给应用添加的所有类库。
+17. reloadable
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，服务器会周期性（由服务器“基础配置”>“全局配置”的定时任务周期指定）检测应用的 class 等文件；若发生变化，则自动全量重新加载。注：若在“性能”页签下开启资源缓存，则该功能无效。
+18. addWebinfClassesResources
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，服务器将“/WEB-INF/classes”视为一个解压的 JAR 资源，并会加载应用的“/WEB-INF/classes/META-INF/resources”目录下的资源。
+19. loadManifestClassPath 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，将会根据应用根目录下的 META-INF/MANIFEST.MF 文件（Class-Path 参数）来加载更多的 jar 等文件到应用中。
+20. manifestClassPathBase 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：loadManifestClassPath=true
+◦ 说明：指定加载 Class-Path 资源时的相对目录，将会在此目录下查找和加载 Class-Path 中指定的jar 等文件。
+
+# 4.10.4. 参数补充说明
+21. absoluteOrdering 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启该功能后，TongWeb 会将解析到的 web-fragment 片段以绝对路径排序，以避免 web-fragment 因名称重复引起的冲突问题。
+22. showLoadedClasses 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启该功能后，您可以在类加载结构中查看应用已经加载过的类资源，以利于排查相关问题等。注：仅支持Web应用。
+23. customClassLoader 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：自定义类加载器全类名，通过继承 com.tongweb.ee.server.TongWebWebappClassLoader（所在 jar：${tongweb.home}/version*/modules/ejb/tongweb-ejb.jar） 用户可以自定义类加载行为。自定义类需要提供一个无参和一个 java.lang.ClassLoader 参数的构造方法。注：需要在TongWeb 启动前将包含自定义类加载器的 jar 放到 $\$ 1$ {tongweb.base}/lib 目录下。
+24. customClass 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定一个自定义解析类的全类名，以在解析应用的类文件时执行自定义解析操作。该类需实现com.tongweb.ext.classfile.ClassCustom 接口（所在 jar：${tongweb.home}/version*/tongweb-web.jar）。注：需在 TongWeb 启动之前，将包含 Class 自定义解析类所在的 jar 文件放置到${tongweb.base}/lib 下。
+25. docBases 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置应用的虚拟目录，可以将应用文件夹之外的 jsp、html 等资源文件加载到应用内部，作为应用的一部分。虚拟目录中的资源加载优先级高于应用文件夹本身。配置内容格式为 key=value，多个目录以英文逗号分隔。key 为资源请求路径的前缀，必须以 / 开头，value 为绝对路径的真实存在的目录。示例：/page=/opt，/opt 目录中存在 jsp/a.jsp，此时资源的访问路径为：http://ip:port/app/page/jsp/a.jsp。
+
+# 4.10.4. 参数补充说明
+26. archiveIndexStrategy 
+◦ 取值范围：SIMPLE（释义：/SIMPLE）, BLOOM（释义：/BLOOM）, PURGED（释义：/PURGED）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：SIMPLE
+◦ 说明：设置加载应用的类库等资源所使用的索引策略。SIMPLE：在应用启动时，为资源文件创建索引。BLOOM：使用布隆过滤器来优化索引。PURGED：使用布隆过滤器来加速归档文件的查找，并在运行时可以进行清除操作。
+27. sessionCookieName 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定应用会话的 Cookie 名称。注：若应用的 web.xml 中同样设置了该属性，则优先使用web.xml 中的值。若以上两处都没有设置，则使用默认的 JSESSIONID 作为名称。
+28. useLegacyCookieProcessor 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：使用老版 Cookie 处理器，是基于 RFC6265、RFC2109、RFC2616的，开启后可兼容基于Tomcat 8 以前版本开发的应用。
+29. allowEqualsInValue 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：useLegacyCookieProcessor=true
+◦ 说明：如果是 true ，则在解析未加引号的 Cookie 值时允许使用等号字符。如果是 false ，当遇到等号时，包含等号的 Cookie 值将被终止，并且剩余的 Cookie 值将被删除。
+30. allowHttpSepsInV0 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：useLegacyCookieProcessor=true
+◦ 说明：如果是 true ，则允许在 Cookie 名称和值中使用 HTTP 分隔符。
+
+# 4.10.4. 参数补充说明
+31. useHttpOnly 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：会话 Cookie 是否使用 HttpOnly 标志。
+32. sameSiteCookies 
+◦ 取值范围：Unset（释义：/Unset）, None（释义：/None）, Lax（释义：/Lax）, Strict（释义：/Strict）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：Unset
+◦ 说明：设置 Cookie 的 SameSite 属性。Unset：不要设置 SameSite Cookie 属性；None：Cookie 始终在跨站点请求中发送；Lax：Cookie 仅在同站点请求和跨站点顶级导航 GET 请求上发送；Strict：防止浏览器在所有跨站点请求中发送 cookie。
+33. maxActiveSessions 
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：100000
+◦ 说明：限制该应用同时在线的最大会话数，以防止会话过大导致系统瘫痪。设置为“-1”表示不限制。
+34. sessionTimeout 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：30
+◦ 说明：设置应用会话（Session）的超时时间（单位：分钟）。
+35. localPersistence 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，应用在停止时会将当前内存中的会话持久化存储到本地，如文件系统，并在启动后重新载入内存。本地持久化为异步进行，受“全局配置”中“定时任务周期”影响，若 TongWeb 进程被强杀（如执行了 forcestop 脚本）则最多会丢失最近一个“定时任务周期”内写入的会话数据。
+
+# 4.10.4. 参数补充说明
+36. refSessionHa 
+◦ 取值范围：“会话服务器”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：选择应用要连接的会话服务器，将应用的 Session 存储到会话服务器。其优先级高于虚拟主机设置的会话服务器；但若虚拟主机同时开启了“Session共享”则优先级低于虚拟主机的会话服务器。
+注：当由于网络等原因导致会话服务器不可用时，应用的 Session 仍会在本地内存中存取，不会中断应用的业务处理。
+37. disableSessionInvalidate 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：开启后，应用调用 session.invalidate 时会话不再销毁，后续依靠自动过期机制销毁会话。
+38. jspDevelopment 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启 JSP 开发模式后，当有 JSP 文件更新时，这些文件会在 5 秒左右的时间内重新加载以生效。注意：若开启了资源缓存，生效时间会在资源的缓存时长之后。
+39. mappedFile 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在 JSP 翻译成 Servlet 时，是否为 JSP 文件中的每个 HTML 文本行生成“out.print()”，若关闭，则将来自多行的 HTML 文本连接起来一起输出到一个“out.print()”中。此功能的主要用途是简化调试。
+40. quoteAttributeEL 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：指定当在 JSP 属性值中使用 EL（Expression Language） 时，JSP.1.6 中描述的属性引用规则是否应适用于表达式。
+
+# 4.10.4. 参数补充说明
+41. strictQuoteEscaping 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：JSP.1.6 是否严格适用于使用 scriptlet 表达式定义的属性。
+42. strictWhiteSpace 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：是否严格对属性名称前的空白进行校验，如果为 false ，则放宽要求，这样缺少空白就不会导致错误。
+43. enablePooling 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：是否使用标签池处理 JSP 标签。
+44. jspPrecompile 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，在应用部署成功时立即进行 JSP 编译，不开启则在 JSP 首次被访问时才进行编译。注：JSP 预编译是异步进行的，不会影响部署流程。
+45. jspPrecompileThreadCount 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：4
+◦ 生效条件：jspPrecompile=true
+◦ 说明：指定预编译的线程数。为了提高 JSP 预编译的效率，预编译采用多线程模式，可以同时编译多个 JSP 文件。
+
+# 4.10.4. 参数补充说明
+46. requestCharacterEncoding 
+◦ 取值范围：UTF-8（释义：/UTF-8）, GBK（释义：/GBK）, ISO-8859-1（释义：/ISO-8859-1）,GB18030（释义：/GB18030）, GB2312（释义：/GB2312）, UTF-16（释义：/UTF-16）, US-ASCII（释义：/US-ASCII）
+◦ 默认值：UTF-8
+◦ 说明：应用程序的默认 HTTP 请求编码。
+47. responseCharacterEncoding 
+◦ 取值范围：UTF-8（释义：/UTF-8）, GBK（释义：/GBK）, ISO-8859-1（释义：/ISO-8859-1）,GB18030（释义：/GB18030）, GB2312（释义：/GB2312）, UTF-16（释义：/UTF-16）, US-ASCII（释义：/US-ASCII）
+◦ 默认值：UTF-8
+◦ 说明：应用程序的默认 HTTP 响应体编码。
+48. javaEncoding 
+◦ 取值范围：UTF-8（释义：/UTF-8）, GBK（释义：/GBK）, ISO-8859-1（释义：/ISO-8859-1）,GB18030（释义：/GB18030）, GB2312（释义：/GB2312）, UTF-16（释义：/UTF-16）, US-ASCII（释义：/US-ASCII）
+◦ 默认值：UTF-8
+◦ 说明：指定 JSP 文件编码。
+49. fileEncoding 
+◦ 取值范围：UTF-8（释义：/UTF-8）, GBK（释义：/GBK）, ISO-8859-1（释义：/ISO-8859-1）,GB18030（释义：/GB18030）, GB2312（释义：/GB2312）, UTF-16（释义：/UTF-16）, US-ASCII（释义：/US-ASCII）
+◦ 默认值：UTF-8
+◦ 说明：使用指定的编码解析应用的文件资源，如 “*.html” 等静态资源，可用于解决文件编码和 Jvm
+默认编码不一致引起的乱码问题。
+50. slowThreadEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：慢线程检测功能可探测执行超时的请求，并能够自动中断执行的线程，以提高资源的利用效率。
+
+# 4.10.4. 参数补充说明
+51. threshold 
+◦ 取值范围：大小限制10到1000000000
+◦ 默认值：1000
+◦ 生效条件：slowThreadEnabled=true
+◦ 说明：线程处理应用业务的时间（从接收到客户端的请求开始计算）超过该阈值（单位：毫秒）后将会记录一条慢线程检测告警日志。注：此值建议不要小于“全局配置”模块里的“定时任务周期”参数值，否则发现慢线程会不及时。
+52. interruptThreadThreshold 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：slowThreadEnabled=true
+◦ 说明：线程处理应用业务的时间超过该阈值（单位：毫秒）后将被尝试中断，该时间从接收到客户端的请求开始计算，其值不支持小于阻塞阈值。0 表示不中断。
+53. cachingAllowed 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：缓存应用的资源文件，以提高应用服务的响应效率。注：“热加载”与“资源缓存”同时开启时，文件删除后会出现文件找不到异常，请合理开启两个选项！
+54. cacheMaxSize 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：102400
+◦ 生效条件：cachingAllowed=true
+◦ 说明：缓存的最大允许缓存大小（KB）。
+55. cacheObjectMaxSize 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1024
+◦ 生效条件：cachingAllowed $=$ true
+◦ 说明：缓存中允许单个文件的最大值（KB），超出该大小的文件不进行缓存。
+
+# 4.10.4. 参数补充说明
+56. cacheTtl 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：60
+◦ 生效条件：cachingAllowed $\scriptstyle \left| = { \begin{array} { l } { } \\ { } \end{array} } \right.$ true
+◦ 说明：缓存条目的过期时间（秒），0 表示在应用配置更新之前永不过期。
+57. forceCache
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：cachingAllowed=true
+◦ 说明：开启后，会将 .class、.jar 等二进制文件也进行缓存，否则只会缓存 .html、.js 等文本类资源。
+58. expiresFilterEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：为 HTTP 响应添加 Expires 和 Cache-Control 头信息，以此控制客户端对资源的缓存行为。
+59. expiresFilterInitParam
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 生效条件：expiresFilterEnabled=true
+◦ 说明：配置资源的缓存时间规则，如 ExpiresDefault、ExpiresByType 等。
+60. expiresFilterUrlPatterns
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：expiresFilterEnabled=true
+◦ 说明：设置对哪些资源进行客户端缓存控制。
+
+# 4.10.4. 参数补充说明
+61. preloadResource
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，首次部署应用时会将需要加载的资源存储到${tongweb.base}/app_resource_cache_index 目录下，在下次启动或重新部署时会进行异步预先加载，以加快应用的部署速度。
+62. preCompress
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：对静态资源进行预先压缩（默认使用 Gzip 压缩），以获得最佳性能。注：此功能开启后将忽略通道的压缩配置。
+63. forcedContainerHandling
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：应用中的某些静态资源被应用内部的三方框架处理时，可能会有性能方面的影响，此时可以通过指定其强制从 TongWeb 加载以提升部分性能。
+64. staticUrlPatterns
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：forcedContainerHandling=true
+◦ 说明：指定哪些静态资源URL，强制由容器处理，具体写法参考应用web.xml中的写法，*号用-来替换，多个用英文逗号隔开。
+65. enableCORSAccess
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：通过为资源实现 W3C 的 CORS（跨域资源共享）规范来启用客户端跨域请求。
+
+# 4.10.4. 参数补充说明
+66. corsAllowedOrigins
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enableCORSAccess=true
+◦ 说明：设置允许跨域访问的源，配置多个源使用英文逗号分隔，例如 http://www.xxx.com,http://www.zzz.com。注：设置为 “*” 表示所有源都允许。
+67. corsAllowedMethods
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：GET,POST,HEAD,OPTIONS
+◦ 生效条件：enableCORSAccess=true
+◦ 说明：允许跨域访问的方法，默认支持 GET,POST,HEAD,OPTIONS。配置多个方法以英文逗号分隔，例如 GET,POST,HEAD,OPTIONS。
+68. corsAllowedHeaders
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Request-Headers
+◦ 生效条件：enableCORSAccess=true
+◦ 说明：允许的 HTTP 头，XMLHttpRequest 对象的 getResponseHeader() 方法拿到的基本字段，默认支持 Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Request-Headers，配置多个 HTTP 头以英文逗号分隔。
+69. corsExposedHeaders
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enableCORSAccess=true
+◦ 说明：通过 Access-Control-Expose-Headers 暴露指定的 HTTP 头，Access-Control-Expose-Headers 标头指示哪些标头可以安全地公开给 CORS API 规范的 API。注：配置多个 HTTP 头以英文逗号分隔。
+70. corsSupportCredentials 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enableCORSAccess=true&corsAllowedOrigins!=*
+◦ 说明：CORS 请求默认不发送 Cookie 和 HTTP 认证信息。若需要把 Cookie 发到服务器，则设置为“true”，默认为 “false”。
+
+# 4.10.4. 参数补充说明
+71. corsPreflightMaxAge 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：1800
+◦ 生效条件：enableCORSAccess=true
+◦ 说明：用来指定本次预检请求的有效期（单位：秒）。在此期间，不用发出另一条预检请求，默认值1800 秒。
+72. requestParametersLostValidation 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启该功能后，若请求参数解析期间出现故障（如请求参数个数超过了设置的阈值或 POST 数据的大小超过了设置的阈值等），系统将拒绝请求，以确保客户端提交的参数值不会丢失。
+73. XSSFilterEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：拦截可疑的 XSS 攻击请求，通常是含有 script、<、> 等特殊标记的请求，以 403 响应码返回到客户端。
+74. csrfPrevention 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：注意：请谨慎打开此功能，否则可能导致应用无法访问！！！为 Web 应用提供基本的 CSRF防护支持，该功能需要应用自身予以配合：调用 HttpServletResponse#encodeRedirectURL(String)和 HttpServletResponse#encodeURL(String) 方法（每执行一次则产生一个新的令牌，当 CSRF 令牌缓存数设置为 0 时，一个会话只产生一个令牌）编码 URL 后发送到客户端，其目的是要发送回服务器的URL都带有 csrf.token 参数以认证身份。编码后的 URL 示例
+：/myservlet/myres?param $\mid =$ val&csrf.token=…。TongWeb 的 CSRF 防护同时可以阻挡重放攻击，只要不将 CSRF 令牌缓存数设置为 0 即可。
+75. csrfCacheSize
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：20
+◦ 生效条件：csrfPrevention=true
+◦ 说明：CSRF 令牌会随着客户端请求而更新，CSRF 令牌缓存数表示保留最新的令牌个数，这同时也表示允许的客户端并发数。0 表示不限制。
+
+# 4.10.4. 参数补充说明
+76. tokenValidTimes
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1
+◦ 生效条件：csrfPrevention=true&csrfCacheSize! ${ \tt = } 0$ 
+◦ 说明：提供 CSRF 令牌循环使用支持，使用次数超出有效次后会自动失效，可用于资源需要重复访问而不支持及时更新 CSRF 令牌等场景。注意：1. CSRF 令牌允许循环使用时，将无法阻挡重放攻击；2. 该功能仅在“CSRF 令牌缓存数”不为 0 时有效。
+77. csrfEntryPoints
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：/login
+◦ 生效条件：csrfPrevention $| =$ true
+◦ 说明：开启 CSRF 防护后，可选设置一些免防入口（应用 URL），如登录资源，以跳过防护检查。设置多个入口时，使用英文逗号分隔。
+78. httpHeaderToken
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：csrfPrevention=true
+◦ 说明：开启了 CSRF 防护的应用，将无法使用 REST 接口，原因是 REST 接口无法通过 URL 传递令牌，开启“REST 支持”可解决该问题。开启“REST 支持”需要应用自身予以配合：1. 客户端须首先请求免防资源，服务器通过响应头返回令牌；2. 客户端请求其它资源须通过请求头（名为：csrf.token）回传服务器令牌，以通过服务器的安全认证。
+79. secretLevel
+◦ 取值范围：Ordinary（释义：/普通）, Secret（释义：/机密）, Absolute（释义：/绝密）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：设置本应用的保密等级，此保密等级将用于应用数据网络传输、主体数据存取、客体请求访问等过程的加密处理。
+80. threadPoolPolicy
+◦ 取值范围：1（释义：/单线程池）, 2（释义：/双线程池）, 3（释义：/三线程池）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：1
+◦ 说明：1（单线程池）：使用通道内置的线程池处理所有业务；2（双线程池）：符合规则的业务由线
+程池处理，其它业务由通道内置的线程池处理；3（三线程池）：符合规则的业务由线程池处理，其它业务由其它线程池处理。线程池不会作用的范围：由服务器处理的静态资源、支持异步 Servlet 处理的业务。注意：对于使用了异步 Filter 的业务，请谨慎或不要使用线程池功能。注意：若业务处理时间过长（如超过 30 秒），则建议增大线程超时阈值，否则可能导致请求失败！
+
+# 4.10.4. 参数补充说明
+81. threadPool
+◦ 取值范围：“线程池”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：threadPoolPolicy $^ { - 2 }$ \|threadPoolPolicy=3
+◦ 说明：线程池功能可将指定的业务交给指定的线程池来处理，可支持应用根据业务的重要性、优先级等方面约束系统资源的使用。该功能一般适用于并且只建议应用于比较耗时的业务操作，例如长事务、远程服务调用等。
+82. threadPoolTimeout
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：30000
+◦ 生效条件：threadPoolPolicy $^ { - 2 }$ \|threadPoolPolicy=3
+◦ 说明：业务处理时长达到该阈值后，响应结果将即刻发送回客户端，而不再等待线程处理结束，这会提高整体的响应效率，但可能导致客户端没有获取到最终的处理结果。单位是毫秒，0 表示使用通道的异步请求的默认超时。
+83. taskRule
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：threadPoolPolicy $^ { - 2 }$ \|threadPoolPolicy=3
+◦ 说明：指定需要线程池执行的业务的匹配规则，其格式须是匹配 URL 的正则表达式。不指定则表示可接受所有业务。注：业务的匹配规则是基于请求的 Servlet 路径，而不包含应用的访问名。
+84. exclusionRule
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：threadPoolPolicy $^ { - 2 }$ \|threadPoolPolicy $^ { \circ 3 }$ 
+◦ 说明：指定需要线程池从匹配规则中要排除的业务规则，其格式须是匹配URL的正则表达式。不指定则表示不排除。注：业务的匹配规则是基于请求的 Servlet 路径，而不包含应用的访问名。
+85. otherThreadPool
+◦ 取值范围：“线程池”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：threadPoolPolicy $^ { \circ 3 }$ 
+◦ 说明：当使用三线程池策略时，符合规则的业务由线程池处理，其它业务由其它线程池处理。
+
+# 4.10.4. 参数补充说明
+86. otherThreadPoolTimeout
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：30000
+◦ 生效条件：threadPoolPolicy $^ { \circ 3 }$ 
+◦ 说明：其它业务处理时长达到该阈值后，响应结果将即刻发送回客户端，而不再等待线程处理结束，这会提高整体的响应效率，但可能导致客户端没有获取到最终的处理结果。单位是毫秒，0 表示使用通道的异步请求的默认超时。
+87. semaphoreEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：出于安全等考虑，控制访问应用的并发量。
+88. concurrency 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：10
+◦ 生效条件：semaphoreEnabled=true
+◦ 说明：允许的最大并发访问量。
+89. block 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：semaphoreEnabled=true
+◦ 说明：当应用达到最大并发访问量时，是否阻塞等待访问应用。若不等待，请求会被终止，并记录一条日志。
+90. interruptible 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：semaphoreEnabled=true&block=true
+◦ 说明：当请求线程在阻塞等待访问应用时，是否允许被中断，若被中断则请求会被终止，并记录一条日志。
+
+# 4.10.4. 参数补充说明
+91. restrictedPorts 
+◦ 取值范围：“通道”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：限定访问端口后，只有指定的端口可以访问本应用，其它端口的访问会被拒绝，不指定则表示不限制。可用于支持系统应用、重要应用、普通应用的端口隔离式的安全访问，并可通过设置不同端口的资源大小来约束不同应用的业务处理效率。注意：该功能只适用于 Web 应用，对于远程访问的EJB 应用无效，如需限制远程 EJB 的访问，则可在"EJB http协议"模块进行相关设置。
+92. crossContext 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：指定是否允许调用 ServletContext.getContext("/appName") 方法访问此服务器中其他 Web应用程序的上下文。
+93. unloadDelay
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：20
+◦ 说明：卸载应用时，若存在请求未处理完毕，则等待一段时间（单位：秒），超时后会强制卸载，此时会给出线程泄漏的警告日志。
+94. allowLinking
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否允许使用软链接访问应用的资源文件。
+95. clearReferences
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在应用停止时，检查并尝试回收与应用相关联的可能导致内存泄漏的JDBC驱动、线程、线程局部变量（ThreadLocal）、Java 序列化对象缓存、RMI 目标对象等资源。
+
+# 4.10.4. 参数补充说明
+96. enableRecycling
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：启用后，应用卸载时将备份到回收站，可在应用回收列表查看。
+97. shtmlEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：shtml 是在 html 静态页面中使用指令以分块动态生成内容。
+98. virtualWebappRelative
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：shtmlEnabled=true
+◦ 说明：shtml 里的指令路径是否按相对于应用的根目录处理。
+99. allowExec
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：shtmlEnabled=true
+◦ 说明：是否允许在 shtml 里执行本地命令，取决于具体的应用。请谨开启，这可能会带来一定的风险。
+100. expires
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：shtmlEnabled $\mid =$ true
+◦ 说明：设置 shtml 页面在 http 协议响应头里的过期时间（单位：秒），0表示不设置。
+
+# 4.10.4. 参数补充说明
+101. urlPatterns
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：*.shtml
+◦ 生效条件：shtmlEnabled=true
+◦ 说明：指定对哪些类型的 URL 请求进行 shtml 处理，多种类型以英文逗号分隔，建议的配置为“.shtml,.html”。
+102. useRelativeRedirects
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：打开此开关后，应用在重定向的时候会使用相对路径，否则使用绝对路径。注：该开关在HTTP/1.0 下无效，可搭配“强制使用相对地址重定向”来尝试解决问题。
+103. forceUseRelativeRedirects
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：useRelativeRedirects=true
+◦ 说明：打开此开关后，即使在 HTTP/1.0 协议中，也可以使用相对地址进行重定向。
+104. allowCasualMultipartParsing
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：即使目标 Servlet 未指定 @MultipartConfig 注解或没有在 web.xml 中配置 <multipart-config> 元素，也允许解析 multipart/form-data 请求。
+105. allowOverrideContentType
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：当响应头的 ContentType 已设置时，是否允许对其进行重写修改。
+
+# 4.10.4. 参数补充说明
+106. enableStatelessPoolMonitor
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，可监视到应用中包含到所有无状态会话 Bean 的实例池使用情况，当应用中包含的无状态会话 Bean 数量太多时不建议开启。
+107. jarScannerImpl
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：可以通过设置自定义 jar 扫描器，来自主决定 jar 包内 Class 文件的扫描操作，例如 LiferayPortal 应用通常需要进行这个设置。
+108. useDirectionalScanning
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：使用定向扫描时，TongWeb 会从指定的文件中获悉需要扫描的 jar 和 class 文件，而不再全局扫描应用，这通常可提升应用的加载效率。
+109. servletAnnotationDeclarationFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：useDirectionalScanning=true
+◦ 说明：指向应用中的一个 Properties 文件，以 / 开头，如“/WEB-INF/classes/annotation.properties”，在该文件中指定标注了 Servlet Web 注解（@WebServlet、@WebFilter、@WebListener）的类名及其所在的文件，格式：com/app/MyClass1.class $=$ test1.jar；com/app/MyClass2.class=classes，若以“.jar”结尾，则可省略路径和jar文件名上的版本号部分。
+110. applicationPropertiesFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：useDirectionalScanning=true
+◦ 说明：指定 SpringBoot 主资源文件在应用中的位置，以 / 开头，如“/WEB-INF/classes/application.properties”，TongWeb 将从中获取 “spring.main.sources” 参数的类名，并尝试从 /WEB-INF/classes 目录扫描其上标注的 Servlet Web 注解。
+
+# 4.10.4. 参数补充说明
+111. raPros
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：Connector 应用的属性列表。
+112. addResponseHeader
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：该功能允许服务器在HTTP响应中附加自定义头部信息。优先级：应用的优先级高于通道，通道优先级高于全局配置。
+113. unpackDir 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：deployment
+◦ 说明：在部署位于服务器上的 *.war 或 *.ear 文件时，指定该文件的解压目录。若配置为空，则解压到文件所在目录。
+114. pkgCompatible 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，可支持同时部署 javax 和 jakarta 命名空间的应用。
+
+# 4.10.5. 支持的监视项
+1. 监视项：baseName
+◦ 语义：应用名称
+◦ 说明：此应用在监视数据中的名称。
+◦ 是波动类型：否
+2. 监视项：stateName
+◦ 语义：应用状态
+◦ 说明：此应用在监视数据中的状态。
+◦ 是波动类型：否
+3. 监视项：StuckThreadCount
+◦ 语义：阻塞的线程数
+◦ 说明：此监视项仅在开启慢线程检测功能后有效。其值为 -1 时，表示未开启该项监视。注：仅统计阻塞的通道线程。
+◦ 是波动类型：是
+4. 监视项：StuckThreadNames
+◦ 语义：阻塞的线程名
+◦ 说明：列出阻塞的线程名，此监视项仅在开启慢线程检测功能后有效。其值为 -1 时，表示未开启该项监视。注：仅统计阻塞的通道线程。
+◦ 是波动类型：否
+5. 监视项：servlets
+◦ 语义：Servlet 明细
+◦ 说明：列出当前应用所包含的 Servlet。
+◦ 是波动类型：否
+6. 监视项：filters
+◦ 语义：Filter 明细
+◦ 说明：列出当前应用所包含的 Filter。
+◦ 是波动类型：否
+7. 监视项：webServices
+◦ 语义：WebService 明细
+◦ 说明：列出当前应用所包含的 WebServices。
+◦ 是波动类型：否
+8. 监视项：rests
+◦ 语义：REST 明细
+◦ 说明：列出当前应用所包含的 REST。
+◦ 是波动类型：否
+9. 监视项：InterruptedThreadsCount
+◦ 语义：中断的线程数
+◦ 说明：此监视项仅在开启慢线程检测功能后有效。其值为 -1 时，表示未开启该项监视。
+◦ 是波动类型：否
+10. 监视项：statelessPoolSize
+◦ 语义：无状态实例总数
+◦ 说明：已建立的无状态会话 bean 的实例总数。
+◦ 是波动类型：是
+
+# 4.10.5. 支持的监视项
+11. 监视项：statelessActiveCount
+◦ 语义：无状态实例活跃数
+◦ 说明：正则使用的无状态会话 bean 的实例数。
+◦ 是波动类型：是
+12. 监视项：activeSessions
+◦ 语义：当前会话数
+◦ 说明：当前活动会话的数量。
+◦ 是波动类型：是
+13. 监视项：cachedSize
+◦ 语义：资源缓存量（KB）
+◦ 说明：当前静态资源缓存所消耗的内存大小，单位为 KB。其值为 -1 时，表示相应的功能未开启。
+◦ 是波动类型：否
+14. 监视项：requestCount
+◦ 语义：请求处理总数
+◦ 说明：应用中的累计请求计数。
+◦ 是波动类型：否
+15. 监视项：processingTime
+◦ 语义：请求处理总时间（毫秒）
+◦ 说明：应用中的请求累计处理时间，单位：毫秒。
+◦ 是波动类型：否
+16. 监视项：processingQPS
+◦ 语义：每秒处理请求数（QPS）
+◦ 说明：应用中平均每秒处理的请求总数。
+◦ 是波动类型：否
+17. 监视项：averageProcessingTime
+◦ 语义：平均响应时间（毫秒）
+◦ 说明：所有请求的平均处理时间，单位：毫秒。
+◦ 是波动类型：否
+18. 监视项：errorCount
+◦ 语义：错误请求处理总数
+◦ 说明：应用中的累计错误请求计数。
+◦ 是波动类型：否
+19. 监视项：errorRate
+◦ 语义：错误率
+◦ 说明：错误请求处理总数在请求处理总数中的占比，单位：百分比。
+◦ 是波动类型：否
+20. 监视项：startTime
+◦ 语义：启动时间
+◦ 说明：此应用启动的时间。
+◦ 是波动类型：否
+21. 监视项：startupTime
+◦ 语义：启动耗时(毫秒)
+◦ 说明：启动此应用所需的时间（单位：毫秒）。
+◦ 是波动类型：否
+
+# 4.11. 应用增量
+管理应用的增量更新包。应用增量更新包是应用的局部更新文件，安装后会和目标应用合并到一起以起到更新应用的作用。一个目标应用可以安装多个增量包，合并时会根据增量包的时间依次叠加进行。可以删除一个增量包，如果应用还有其它增量包，则会重新合并生成新的应用。制作增量包时，要实现替换或新增应用文件，需使增量更新包文件组织结构与目标应用保持一致，要实现移除目标应用中的文件，需在增量更新包根目录建立 DeleteFiles.txt 文件，并在其中分行标记要移除的文件，每行记录一个文件，文件路径为相对于目标应用根目录的相对路径。应用的增量包无固定的格式，包内的文件（不含根目录）会直接覆盖合并到应用的部署目录下，基于此规则，如果要更新指定的应用文件，则应该使得增量包内的文件和部署目录下的文件保持一致的相对路径和文件名。
+
+# 4.11.1. 模块名
+appupdate 
+
+# 4.11.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>回退此更新包对应用的影响。注：回退会删除本次的更新包，且不可恢复。</td></tr></table>
+
+# 4.11.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>app</td><td>目标应用</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>fileFrom</td><td>增量包来源</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>fromServer</td><td>增量包位置</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>fromUpload</td><td>上传增量包</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>6</td><td>date</td><td>创建日期</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.11.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定这次更新的名称，便于后续管理。
+2. app
+◦ 取值范围：“应用”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：要进行增量更新的目标应用。
+3. fileFrom
+◦ 取值范围：fromUpload（释义：/上传文件）, fromServer（释义：/服务器文件）
+◦ 默认值：fromServer
+◦ 说明：应用的增量更新文件包可以从客户端上传，也可以从服务器端指定的位置读取。注：出于安全考虑，TongWeb 出厂设置禁用了文件上传功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。
+4. fromServer
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom=fromServer
+◦ 说明：指定增量包文件的绝对路径。
+5. fromUpload
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom=fromUpload
+◦ 说明：上传增量包文件到服务器。
+6. date
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：记录本次增量更新的创建时间。
+
+# 4.11.5. 支持的监视项
+无。
+
+# 4.12. 审计配置
+配置审计相关的功能，如审计日志。
+
+# 4.12.1. 模块名
+auditconfig 
+
+# 4.12.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.12.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>loggers>audit
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>enabled</td><td>启用审计日志</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>baseFile</td><td>文件目录</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>appendTypeDir</td><td>追加类型目录</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>rollingFile</td><td>日志文件轮转</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>append</td><td>日志追加</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>rotationDay</td><td>按天轮转</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>rotationSize</td><td>按大小轮转</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>keepMaxFiles</td><td>保留文件个数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>compression</td><td>日志文件压缩</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>charset</td><td>文件编码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>buffered</td><td>缓冲写入</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>bufferedSize</td><td>缓冲大小</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.12.4. 参数补充说明
+1. enabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：启用审计日志后，管理员登录 TongWeb 进行的操作将被记录到加密的审计日志文件里。
+2. baseFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：logs
+◦ 生效条件：enabled=true
+◦ 说明：将日志文件存放到指定的目录下。
+3. appendTypeDir
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：启用后，将在指定的文件目录下增加一个 audit 目录以存放日志文件。
+4. rollingFile
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：将日志信息按文件大小或时间进行轮转，确保日志文件不会过大。
+5. append
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true&rollingFile=false
+◦ 说明：启用日志追加模式，日志信息将追加到现有日志文件中而不是覆盖。
+
+# 4.12.4. 参数补充说明
+6. rotationByDay
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true&rollingFile=true
+◦ 说明：将每日未达到大小阈值的日志在零点切割到一个新文件中。
+7. rotationBySize
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：50
+◦ 生效条件：enabled=true&rollingFile $=$ true
+◦ 说明：当日志文件大小（单位：MB）达到该阈值时，将切割出一个新的日志文件。注：设置为 0 表示不启用此功能。
+8. keepMaxFiles
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：100
+◦ 生效条件：enabled=true&rollingFile $=$ true
+◦ 说明：指定在清理日志文件时，须保留文件的个数。
+9. compression
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enabled=true&rollingFile $=$ true
+◦ 说明：是否开启日志文件压缩功能。开启后，对轮转后的日志文件进行压缩。
+10. charset
+◦ 取值范围：UTF-8（释义：/UTF-8）, GBK（释义：/GBK）, ISO-8859-1（释义：/ISO-8859-1）,GB18030（释义：/GB18030）, GB2312（释义：/GB2312）, UTF-16（释义：/UTF-16）, US-ASCII（释义：/US-ASCII）
+◦ 默认值：UTF-8
+◦ 生效条件：enabled=true
+◦ 说明：指定日志文件的编码格式。
+11. buffered
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否开启文件缓冲写入功能。开启后，当持续记录的日志内容大小（单位：字节）之和达到缓冲大小时才一次性写入文件，而不是每条日志都立即写入文件（在服务器停止时会全部写入），这通常可以提高日志记录性能。关闭后，每条日志都立即写入文件。
+12. bufferedSize
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：65536
+◦ 生效条件：enabled=true&buffered=true
+◦ 说明：缓冲写入的阈值，当持续记录的日志内容大小（单位：字节）之和达到此值时，一次性写入进文件。
+
+# 4.12.5. 支持的监视项
+无。
+
+# 4.13. 审计列表
+展示操作审计列表。注意：可以将属于"自主访问控制"类型的上报数据添加到"可信策略"中，同时禁止其上报。列表中主体类型、主体值、客体类型、客体值、操作类型，依次对应可信策略中发起方类型、发起方值、目标类型、目标值、动作。
+
+# 4.13.1. 模块名
+auditlist 
+
+# 4.13.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.13.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>terminalName</td><td>终端名称</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>terminalIP</td><td>终端IP</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>type</td><td>类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>subjectType</td><td>主体类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>subjectValue</td><td>主体值</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>objectType</td><td>客体类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>objectValue</td><td>客体值</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>operationType</td><td>操作类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>auditResults</td><td>审计结果</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>time</td><td>时间</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.13.4. 参数补充说明
+1. terminalName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：终端名称。
+2. terminalIP
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：终端IP。
+3. type
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：类型。
+4. subjectType
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：主体类型。
+5. subjectValue
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：主体类型。
+6. objectType
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：客体类型。
+7. objectValue
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：客体值。
+8. operationType
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：操作类型。
+9. auditResults
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：审计结果。
+10. time
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：时间。
+
+# 4.13.5. 支持的监视项
+无。
+
+# 4.14. 审计日志
+TongWeb 服务器的审计日志，用于跟踪记录用户对服务器所进行的操作。
+
+# 4.14.1. 模块名
+auditlog 
+
+# 4.14.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>audit</td><td>点击按钮进行审计（对日志的签名做个验签）。</td></tr></table>
+
+# 4.14.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>time</td><td>操作时间</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>user</td><td>管理员</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>model</td><td>操作对象</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>action</td><td>操作类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>result</td><td>操作结果</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>requestUri</td><td>请求地址</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>clientIp</td><td>客户端IP</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>auditLogFile</td><td>日志文件</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.14.4. 参数补充说明
+1. time 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：操作时间。
+2. user 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：进行该操作的管理员。
+3. model
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：组件名。
+4. action
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：操作名。
+5. result
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：操作结果。
+6. requestUri
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：请求地址。
+7. clientIp
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：客户端IP。
+8. auditLogFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：audit.log
+◦ 说明：选择审计日志文件，审计日志列表中将显示该选定日志文件中的日志。
+
+# 4.14.5. 支持的监视项
+无。
+
+# 4.15. 阻塞线程
+汇总阻塞的线程，可查看阻塞的堆栈及相同堆栈上阻塞的线程。
+
+# 4.15.1. 模块名
+blockedthread 
+
+# 4.15.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>show</td><td>查看该阻塞线程的信息，包括其调用的堆栈等。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>forcestop</td><td>尝试强制终止该线程的运行。注：该操作可能具有一定的危险，请在确保业务安全的前提下进行。此外，该操作不一定能够成功终止死锁的线程。</td></tr></table>
+4.15.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>线程ID</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>threadName</td><td>线程名</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>3</td><td>threadState</td><td>线程状态</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>4</td><td>blockedStack</td><td>线程栈</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>5</td><td>blockedMethod</td><td>阻塞方法</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>6</td><td>sameStackThreadCount</td><td>相同阻塞线程数</td><td>数值类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>7</td><td>sameStackThreads</td><td>相同阻塞线程</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>8</td><td>isAppBlockedThreads</td><td>应用阻塞线程</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>9</td><td>canBeKilled</td><td>支持强停</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.15.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：阻塞线程的ID。
+2. threadName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：阻塞线程的名称。
+3. threadState
+◦ 取值范围：BLOCKED（释义：/BLOCKED）, WAITING（释义：/WAITING）, TIMED_WAITING（释义：/TIMED_WAITING）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：阻塞线程的当前状态。
+4. blockedStack 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：阻塞线程栈。
+5. blockedMethod 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：线程阻塞的类方法。
+6. sameStackThreadCount 
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：无。
+◦ 说明：阻塞的线程栈相同的线程数量。
+7. sameStackThreads 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：阻塞的线程栈相同的线程信息。
+8. isAppBlockedThreads 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否是应用阻塞的线程。
+9. canBeKilled 
+◦ 取值范围：true 或 false
+◦ 默认值：false
+◦ 说明：标记该线程是否支持强制终止。
+
+# 4.15.5. 支持的监视项
+无。
+
+# 4.16. 忙碌线程
+检测消耗 CPU 的线程，可查看线程的状态及 CPU 耗时等信息。
+
+# 4.16.1. 模块名
+busythread 
+
+# 4.16.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.16.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>线程ID</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>info</td><td>信息</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>3</td><td>cpuTime</td><td>CPU耗时（ms）</td><td>数值类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>4</td><td>threadState</td><td>线程状态</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>5</td><td>stack</td><td>线程栈</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.16.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：忙碌线程的ID。
+2. info 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此线程的名字等信息。
+3. cpuTime 
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0.0
+◦ 说明：CPU使用时间。
+4. threadState 
+◦ 取值范围：NEW（释义：/NEW）, RUNNABLE（释义：/RUNNABLE）, BLOCKED（释义：/BLOCKED）, WAITING（释义：/WAITING）, TIMED_WAITING（释义：/TIMED_WAITING）,TERMINATED（释义：/TERMINATED）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：忙碌线程的当前状态。
+5. stack
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：忙碌线程栈。
+
+# 4.16.5. 支持的监视项
+无。
+
+# 4.17. 集中配置
+对集中管理过程中环境、安全等方面进行配置。
+
+# 4.17.1. 模块名
+centralizedconfig 
+
+# 4.17.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>custom</td><td>农行指定监控指标接口</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>monitor</td><td>监视</td></tr></table>
+
+# 4.17.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>publicKey</td><td>加密公钥</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>2</td><td>remotelvokeTimeout</td><td>远程操作等待时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>tasktimeout</td><td>集群子任务超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.17.4. 参数补充说明
+1. publicKey
+◦ 取值范围：字符串长度限制0个到2000个
+◦ 默认值：无。
+◦ 说明：为了能够管理远端的 TongWeb 节点或实例，需要将此密钥在远端的 TongWeb 节点或实例进行保存（在其“全局配置”模块打开“支持集中管理”后设置）。此外，客户端通过 REST、JMX 等接口管理 TongWeb 服务器时，也需要使用此密钥对敏感数据进行加密后再传输。
+2. remoteInvokeTimeout
+◦ 取值范围：大小限制10到1000000000
+◦ 默认值：600
+◦ 说明：设置远程操作的等待时间，单位：秒，超过该时间的操作，页面不再继续等待，而是需要在稍后手动刷新页面以检查最终结果。
+3. tasktimeout
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：120
+◦ 说明：设置集群内子任务执行的超时时间，单位为秒，执行超时的任务将会得到一个错误的提示。
+
+# 4.17.5. 支持的监视项
+无。
+
+# 4.18. 类冲突检测
+检查应用可加载的类路径中，是否存在版本冲突的类文件。
+
+# 4.18.1. 模块名
+classconflict 
+
+# 4.18.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>检测应用的类冲突情况并生成报告。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>previewfile</td><td>在线预览检查报告的页面。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.18.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>检测结果</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>2</td><td>app</td><td>应用</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.18.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：查看本次冲突检测的结果。
+2. app
+◦ 取值范围：“应用”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：选择需要检测的应用。
+
+# 4.18.5. 支持的监视项
+无。
+
+# 4.19. 类资源分析
+在已部署的应用中，查找指定类的加载信息，包括类的所有分布位置和实际加载的位置。
+
+# 4.19.1. 模块名
+classloaded 
+
+# 4.19.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>find</td><td>查找在应用中的指定类的加载位置。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.19.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>packageName</td><td>查找类</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>app</td><td>查找范围</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>foundPath</td><td>分布位置</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>loadedPath</td><td>加载位置</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>classLoader</td><td>加载器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.19.4. 参数补充说明
+1. className
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定要查找的类的全名称，如：java.lang.Object。
+2. app
+◦ 取值范围：“应用”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：选定一个应用，在其中查找指定的类。
+3. foundPath
+◦ 取值范围：字符串长度限制0个到65536个
+◦ 默认值：无。
+◦ 说明：查找的类的所有分布的位置。
+4. loadedPath
+◦ 取值范围：字符串长度限制0个到65536个
+◦ 默认值：无。
+◦ 说明：查找的类的实际加载位置。
+5. classLoader 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：实际加载的类加载器。
+
+# 4.19.5. 支持的监视项
+无。
+
+# 4.20. 类加载结构
+类加载结构展示了系统内应用的类加载器及其加载顺序。
+
+# 4.20.1. 模块名
+classloaderstruct 
+
+# 4.20.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>tree</td><td>以树状结构展示组件数据或界面。</td></tr></table>
+
+# 4.20.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr></table>
+
+# 4.20.4. 参数补充说明
+
+# 4.20.5. 支持的监视项
+1. 监视项：name
+◦ 语义：对象名
+◦ 说明：节点的对象名。
+◦ 是波动类型：否
+2. 监视项：treeName
+◦ 语义：类型
+◦ 说明：树的类型。
+◦ 是波动类型：否
+3. 监视项：treeData
+◦ 语义：数据
+◦ 说明：树的数据。
+◦ 是波动类型：否
+4. 监视项：loadpath
+◦ 语义：加载顺序
+◦ 说明：类加载器查找和加载资源的路径和顺序。
+◦ 是波动类型：否
+5. 监视项：loadedClasses
+◦ 语义：已加载的类
+◦ 说明：该字段显示已经加载的类的名称，仅在显示已加载类功能开启时可用。请在应用部署时，在资源加载页签下进行开启。
+◦ 是波动类型：否
+
+# 4.21. 注册实例集群
+注册到集中管理的 TongWeb 实例集群。TongWeb 实例可以通过“全局配置”模块的“自动注册”功能，将自己注册到集中管理，注册时如果指定了所属集群，则可以在这里进行管理。
+
+# 4.21.1. 模块名
+cloudcluster 
+
+# 4.21.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr></table>
+
+# 4.21.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>2</td><td>alias</td><td>别名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>tenantName</td><td>租户</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>instanceCount</td><td>实例数量</td><td>数值类型</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.21.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制1个到150个
+◦ 默认值：无。
+◦ 说明：唯一标识。
+2. alias
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：用来标识实例集群的备注。
+3. tenantName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：集群所属的租户。
+4. instanceCount
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0
+◦ 说明：集群中包含的实例数量。
+
+# 4.21.5. 支持的监视项
+无。
+
+# 4.22. 集群
+集群是一组具有业务相关性的服务器集合，集群中通常可以包含 TongWeb 实例、会话服务器和负载均衡器，同一个集群下的所有实例都具有相同的配置（如部署的应用、数据源等），并且这些实例可以分布在不同的节点之上。 注意：在集群环境中，使用服务器文件配置时，请确保每个实例所在的服务器上都放置了所需的文件。
+
+# 4.22.1. 模块名
+cluster 
+
+# 4.22.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>access</td><td>查看通过 HTTP 协议访问该集群的 URL。</td></tr><tr><td>start</td><td>启动操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否启动成功。</td></tr><tr><td>stop</td><td>停止操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否停止成功。</td></tr><tr><td>forcestop</td><td>对于长时间难以停止成功或者停止过程被意外阻塞的情况，可以选择强制停止进程，强制停止通常是以强制杀死进程的方式来实现。</td></tr><tr><td>restartupgrade</td><td>升级需要重启 TongWeb，这可能因为超时而提示失败，您可在一段时间后刷新状态以确认是否启动成功。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr><tr><td>gc</td><td>对集群下的所有实例进行重启。若开启了滚动更新，实例重启操作将会逐个进行，否则多个实例会同时进行。</td></tr></table>
+
+# 4.22.3. 支持的参数
+持久化位置：conf/console.xml:console>clusters>cluster
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>2</td><td>changeToName</td><td>重命名</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>3</td><td>running</td><td>运行中</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>4</td><td>autostart</td><td>宕机重启</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>maxretrycount</td><td>最大重试次数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>startwithnode</td><td>自启动</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>rollingUpdate</td><td>滚动更新</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>node</td><td>节点</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>9</td><td>instanceTemplate</td><td>实例模板</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>10</td><td>instances</td><td>实例</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>11</td><td>instanceCount</td><td>实例数量</td><td>数值类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>12</td><td>loadBalanceServer</td><td>负载均衡器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>lbPort</td><td>负载均衡器监听端口</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>14</td><td>autoUpdateLbConf</td><td>自动更新负载配置</td><td>布尔类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>15</td><td>ipHash</td><td>IP 哈希</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>accessLogEnabled</td><td>访问日志开启</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>accessLogPath</td><td>访问日志路径</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>18</td><td>version</td><td>实例版本</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>19</td><td>needUpgrade</td><td>待升级</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.22.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制1个到150个
+◦ 默认值：无。
+◦ 说明：唯一标识。
+2. changeToName 
+◦ 取值范围：字符串长度限制1个到150个
+◦ 默认值：无。
+◦ 说明：将名称更改为此值。注：修改名称的时候不要修改其他属性。
+3. running 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：了解该组件的运行状态。
+4. autostart 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：异常宕机（如：被kill）后是否自动重启。
+5. maxretrycount 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：autostart=true
+◦ 说明：启用异常宕机（如：被kill）后尝试自动重启的次数上限。若设置为0，则表示自动重启的次数不受限制。
+
+# 4.22.4. 参数补充说明
+6. startwithnode 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：指定集群下的实例是否跟随其所在节点启动而启动。若其所在节点设置了“开机自启”，则通过这种方式可以实现集群下实例的开机自启。
+7. rollingUpdate 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，对集群下多实例的操作将会逐个进行，直到全部完成，这可较大程度地保障业务不中断，但通常效率比较低。关闭后，对集群下多实例操作将会多实例同时进行，这会提高效率但可能引起业务中断。
+8. node 
+◦ 取值范围：“节点”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：实例所属的节点。编辑集群时，所选节点可以为空。
+9. instanceTemplate
+◦ 取值范围：“实例模板”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：选取一个实例模板，新创建的实例配置使用此模板的配置。
+10. instances
+◦ 取值范围：“实例”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：集群中包含的实例。
+
+# 4.22.4. 参数补充说明
+11. instanceCount
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0
+◦ 说明：集群中包含的实例数量。
+12. loadBalanceServer
+◦ 取值范围：“负载均衡器”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：选择使用的负载均衡器。
+13. lbPort
+◦ 取值范围：大小限制1到65535
+◦ 默认值：无。
+◦ 生效条件：loadBalanceServer!=
+◦ 说明：负载均衡器的代理监听端口。
+14. autoUpdateLbConf
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：loadBalanceServer!=
+◦ 说明：当集群内的实例状态发生变化时（如：增加或删除了实例个数，或修改了实例的业务访问端口等），是否需要将相关配置信息自动更新到负载均衡器。打开此开关则自动更新，否则需要您手动更新负载均衡器的相关配置。注：自动更新可能会覆盖掉负载均衡器上的原有手动添加的配置。
+15. ipHash
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：loadBalanceServer!=&autoUpdateLbConf=true
+◦ 说明：开启此配置后，将使用 IP 哈希算法进行负载均衡。即同一客户的请求将被路由到同一后端实例。关闭此配置后，将使用默认的负载均衡策略。
+
+# 4.22.4. 参数补充说明
+16. accessLogEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：loadBalanceServer!=&autoUpdateLbConf=true
+◦ 说明：开启此配置以记录访问日志，包括请求的时间、IP、请求方法、请求路径等信息。日志文件可以用于监控和分析访问情况。
+17. accessLogPath
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：logs/access.log
+◦ 生效条件：loadBalanceServer!=&autoUpdateLbConf=true&accessLogEnabled=true
+◦ 说明：设置负载均衡器访问日志的存储路径。请确保负载均衡器有权写入该路径，并且该路径是有效的。
+18. version
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此集群中的实例正在使用的 TongWeb 的最低版本。
+19. needUpgrade
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：此实例正在使用的 TongWeb 是否可以升级到一个更新的版本。
+
+# 4.22.5. 支持的监视项
+无。
+
+# 4.23. 组合监视
+将您关注的模块指标组合到一起进行监视。
+
+# 4.23.1. 模块名
+combinedmonitor 
+
+# 4.23.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>monitor</td><td>将您关注的模块指标一起进行监视。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.23.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>combinedmonitors>combinedmonitor
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>monitors</td><td>监视信息</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.23.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：唯一标识。
+2. monitors
+◦ 取值范围：
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：设置需要组合到一起进行监视的模块指标。
+
+# 4.23.5. 支持的监视项
+无。
+
+# 4.24. 通道
+通道提供监听地址和端口，用于接收用户请求，包含了线程池、网络连接、SSL/TLS等的配置，通过配置这些参数可为应用提供安全、高效的网络连接服务。admin 通道只做系统管理使用，只能用来访问控制台应
+用以及相应的管理接口，除 admin 通道（管理端口）外，其它任何通道均可以访问虚拟主机及其上部署的应用（应用设置了限定访问端口的除外）。
+
+# 4.24.1. 模块名
+connector 
+
+# 4.24.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>monitor</td><td>监视这个通道的运行状况，如线程池的使用率等。</td></tr><tr><td>start</td><td>启动这个通道，以使客户端可以通过此通道的IP和端口接入到服务器。</td></tr><tr><td>stop</td><td>停止这个通道，停止后客户端将不能再通过此通道接入到服务器。</td></tr><tr><td>delete</td><td>删除这个通道，删除后将无法再使用此通道访问相关的应用。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.24.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>service>connector
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>通道名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>protocolHandlerClassName</td><td>协议处理器类名称</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>3</td><td>protocol</td><td>协议</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>ioMode</td><td>IO 模式</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>address</td><td>IP</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>port</td><td>端口</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>7</td><td>redirectPort</td><td>重定向端口</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>secret</td><td>AJP协议密钥</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>allowedRequestAttributesPattern</td><td>允许的请求属性</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>useVirtualThreads</td><td>使用虚拟线程</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>useSelfTuned</td><td>使用自调节线程</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>maxThreads</td><td>最大线程数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>minSpareThreads</td><td>最小备用线程数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>threadKeepAliveTime</td><td>空闲回收时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>queueSize</td><td>任务队列大小</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>threadPriority</td><td>优先级</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>allowMethods</td><td>支持HTTP方法</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>18</td><td>maxHeaderCount</td><td>最大请求头数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>19</td><td>maxHttpHeaderSize</td><td>最大请求头信息大小</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>20</td><td>maxCookieCount</td><td>最大Cookie数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>maxParameterCount</td><td>最大参数个数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>22</td><td>maxPartCount</td><td>分段表单最大段数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>23</td><td>maxPartHeaderSize</td><td>分段表单每段最大请求头</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>24</td><td>sendReasonPhrase</td><td>附加原因短语</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>25</td><td>relaxedPathCharsEnable</td><td>路径中允许使用未编码字符</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>26</td><td>relaxedPathChars</td><td>未编码字符</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>27</td><td>relaxedQueryCharsEnable</td><td>参数中允许使用未编码字符</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>28</td><td>relaxedQueryChars</td><td>未编码字符</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>29</td><td>skipCharsValidate</td><td>跳过特殊字符校验</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>30</td><td>maxPostSize</td><td>最大POST字节</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>31</td><td>maxSwallowSize</td><td>上传文件溢值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>32</td><td>parseBodyMethods</td><td>以POST方式解析方法</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>33</td><td>maxSavePostSize</td><td>认证时POST缓存</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>34</td><td>useKeepAliveResponseHead er</td><td>Keep-Alive响应头</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>35</td><td>keepAliveTimeout</td><td>长连接超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>36</td><td>maxKeepAliveRequests</td><td>长连接服务阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>37</td><td>maxTrailerSize</td><td>尾部标头总长度</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>38</td><td>addResponseHeader</td><td>附加响应头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>39</td><td>connectionTimeout</td><td>连接超时时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>40</td><td>tcpNoDelay</td><td>开启TCP_NO_DELAY</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>41</td><td>acceptCount</td><td>等待队列大小</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>42</td><td>maxConnections</td><td>最大连接数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>43</td><td>enableLookups</td><td>允许DNS反向查找</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>44</td><td>compression</td><td>压缩级别</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>45</td><td>compressionMinSize</td><td>压缩阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>46</td><td>noCompressionUserAgents</td><td>免压缩客户端</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>47</td><td>compressibleMimeType</td><td>可压缩类型</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>48</td><td>ignoreHeader</td><td>强制压缩</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>49</td><td>secure</td><td>Cookie Secure</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>50</td><td>SSLEnabled</td><td>开启SSL</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>51</td><td>httpRedirect</td><td>HTTP重定向</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>52</td><td>http2Enabled</td><td>支持 HTTP/2</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>53</td><td>gmEnabled</td><td>国密认证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>54</td><td>sslEnabledProtocols</td><td>启用协议</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>55</td><td>ciphers</td><td>启用密码套件</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>56</td><td>useServerCipherSuitesOrder</td><td>使用服务端密码顺序</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>57</td><td>refKeyStore</td><td>服务器证书</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>58</td><td>keystoreFile</td><td>服务器证书路径</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>59</td><td>keystorePass</td><td>服务器证书密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>60</td><td>clientAuth</td><td>客户端认证</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>61</td><td>trustManagerClassName</td><td>自定义信任管理器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>62</td><td>refTrustStore</td><td>信任证书</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>63</td><td>truststoreFile</td><td>信任证书路径</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>64</td><td>truststorePass</td><td>信任证书密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>65</td><td>refGmEnc</td><td>加密证书</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>66</td><td>gmEncFile</td><td>加密证书路径</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>67</td><td>gmEncPass</td><td>加密证书密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>68</td><td>refGmSign</td><td>签名证书</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>69</td><td>gmSignFile</td><td>签名证书路径</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>70</td><td>gmSignPass</td><td>签名证书密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>71</td><td>enableKAE</td><td>KAE 加速</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>72</td><td>useSendfile</td><td>启用 Send File</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>73</td><td>sendFileSize</td><td>Send File 阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>74</td><td>asyncTimeout</td><td>异步请求的默认超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>75</td><td>URIEncoding</td><td>URI 编码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>76</td><td>useBodyEncodingForURI</td><td>URI 使用 Content-Type 解码</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>77</td><td>xpoweredBy</td><td>开启 X-Powered-By</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>78</td><td>enableProxyServerConfigura-tion</td><td>开启代理服务器配置</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>79</td><td>proxyName</td><td>代理服务器的名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>80</td><td>proxyPort</td><td>代理服务器端口</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>81</td><td>managedPort</td><td>管理端口</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>82</td><td>running</td><td>运行中</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>83</td><td>systemManaged</td><td>系统受管</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>84</td><td>appPort</td><td>是应用端口</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>85</td><td>useNetworkMonitor</td><td>启用网络数据监控</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>86</td><td>slowTime</td><td>慢请求阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>87</td><td>resetMonitorData</td><td>归零网络监控数据</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>88</td><td>resetMonitorDataPeriod</td><td>归零周期</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.24.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：通道的名称。
+2. protocolHandlerClassName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：TongWeb 内部使用的协议处理器类全名称。
+3. protocol
+◦ 取值范围：HTTP/1.1（释义：/HTTP/1.1）, AJP（释义：/AJP）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：HTTP/1.1
+◦ 说明：本通道支持的网络层协议。
+4. ioMode
+◦ 取值范围：NIO（释义：/NIO）, NIO2（释义：/NIO2）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：NIO
+◦ 说明：配置通道的 IO 模式，如 NIO、NIO2。
+5. address
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：0.0.0.0
+◦ 说明：监听网络请求的 IP 地址。注：若设置了全局IP，则优先使用全局IP。
+
+# 4.22.4. 参数补充说明
+6. port
+◦ 取值范围：大小限制1到65535
+◦ 默认值：无。
+◦ 说明：设置监听网络请求的端口，此端口须是平台允许使用的端口（如不会被防火墙拦截等）。
+7. redirectPort
+◦ 取值范围：大小限制1到65535
+◦ 默认值：443
+◦ 说明：用于非 SSL 到 SSL 重定向的重定向端口。
+8. secret
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：protocol=AJP
+◦ 说明：设置 AJP 协议传输加密密钥。安全起见，建议设置以开启 AJP 协议传输加密。开启 AJP 协议加密后，AJP 协议内容会加密传输，这需要 Apache 等负载均衡器的支持。
+9. allowedRequestAttributesPattern
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：protocol=AJP
+◦ 说明：指定 AJP 协议允许的请求属性，格式为正则表达式。
+10. useVirtualThreads
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：useSelfTuned=false
+◦ 说明：虚拟线程是由 Java 21 版本中实现的一种轻量级线程，它主要解决的问题是减少I/O密集型任务的阻塞。虚拟线程并没有增加实际的 CPU 可用线程，而是增加了线程的利用率，所以在面对 CPU密集型任务时，如数学计算等，它与传统线程没有区别。因此，如果您的需求中存在大量 I/O 等待导致性能瓶颈，那么可以考虑使用虚拟线程。此外，使用虚拟线程，如果效果不理想，也可以尝试它的优化参数：`-Djdk.virtualThreadScheduler.parallelism $\mid = \mid$ xxx`、`-Djdk.virtualThreadScheduler.maxPoolSize=xxx`、`-Djdk.virtualThreadScheduler.minRunnable=xxx`。 
+
+# 4.22.4. 参数补充说明
+11. useSelfTuned
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：useVirtualThreads=false
+◦ 说明：开启后，TongWeb 会根据业务请求处理的速率自主调节线程池的大小，以持续优化处理效率和系统资源的使用率。
+12. maxThreads
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：200
+◦ 生效条件：useVirtualThreads=false
+◦ 说明：线程池中用于处理网络请求的最大的线程数。注：当使用自调节线程时，此值为自调节允许同时创建的最大线程数。
+13. minSpareThreads
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：10
+◦ 生效条件：useVirtualThreads=false
+◦ 说明：线程池中用于处理网络请求的最小的备用线程数，即线程池中最少存在的线程数。
+14. threadKeepAliveTime
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：60
+◦ 生效条件：useVirtualThreads=false
+◦ 说明：当线程池里的空闲线程数大于“最小备用线程数”时，线程空闲的时间超过该时间后将被回收。单位：秒。
+15. queueSize
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：100000
+◦ 生效条件：useVirtualThreads!=true&useSelfTuned!=true
+◦ 说明：设置用于保存任务并移交给工作线程的队列的大小。
+
+# 4.22.4. 参数补充说明
+16. threadPriority
+◦ 取值范围：大小限制1到10
+◦ 默认值：5
+◦ 生效条件：useVirtualThreads=false
+◦ 说明：指定此线程的优先级。
+17. allowMethods
+◦ 取值范围：GET（释义：/GET）, POST（释义：/POST）, PUT（释义：/PUT）, DELETE（释义：/DELETE）, HEAD（释义：/HEAD）, TRACE（释义：/TRACE）, OPTIONS（释义：/OPTIONS）,PATCH（释义：/PATCH）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：GET,POST
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：设置该通道支持的 HTTP 方法，当客户端使用不支持的方法时将得到一个 405 的响应码。
+18. maxHeaderCount
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：100
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：允许的请求头个数的最大值，若一个请求包含的请求头大于指定的最大值，则此请求将被拒绝。
+19. maxHttpHeaderSize
+◦ 取值范围：大小限制2048到1000000000
+◦ 默认值：8192
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：HTTP 消息头的最大值(单位：字节)。
+20. maxCookieCount
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：200
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：设置请求中允许的最大 Cookie 数，小于“0”表示不限制。
+
+# 4.22.4. 参数补充说明
+21. maxParameterCount
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：5000
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：服务器将自动解析的最大参数数（GET 加 POST）。小于“0”表示不限制。
+22. maxPartCount
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：5000
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：限制分段表单（如"multipart/form-data"）的最大分段个数。分段表单最常见的表现是文件上传类表单，在文件上传表单场景下，这里限制的是文本类表单参数和二进制文件类表单参数的总和。
+注：该参数的作用等同于 Tomcat 的 maxPartCount 参数，其值为 -1 表示不限制。
+23. maxPartHeaderSize
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：5120
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：限制分段表单（如"multipart/form-data"）中每段的最大请求头大小（单位：字节）。注：该参数的作用等同于 Tomcat 的 maxPartHeaderSize 参数，其值为 -1 表示不限制。
+24. sendReasonPhrase
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：开启后，TongWeb 将在 HTTP 响应中添加 HTTP Reason Phrase（原因短语）。
+25. relaxedPathCharsEnable
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：URI 请求路径中允许使用的未编码的字符。允许填写的字符包括："<>[\]^`{\\|}。
+
+# 4.22.4. 参数补充说明
+26. relaxedPathChars
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值："<>[\]^`{\|}
+◦ 生效条件：relaxedPathCharsEnable=true
+◦ 说明：URI 请求路径中允许使用的未编码的字符。
+27. relaxedQueryCharsEnable
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：URI 请求参数中允许使用的未编码的字符。允许填写的字符包括："<>[\]^`{\\|}。
+28. relaxedQueryChars 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值： $\because [ 1 ] \sim \{ \backslash \}$ 
+◦ 生效条件：relaxedQueryCharsEnable=true
+◦ 说明：URI 请求参数中允许使用的未编码的字符。
+29. skipCharsValidate 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：当请求参数中包含了未遵从 RFC 7230、RFC 3986 规定的特殊字符时，是否跳过校验，跳过校验后该请求会交给应用处理，否则请求将会被中断。
+30. maxPostSize 
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：-1
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：将由容器自动解析的 POST 的最大字节，“-1” 表示不限制。
+
+# 4.22.4. 参数补充说明
+31. maxSwallowSize 
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：2097152
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：若上传文件大小超过“最大 POST 字节”并且超过了此溢值，则中断当前的连接（即响应头里会添加“Connection:close”），未超过则不会中断。
+32. parseBodyMethods 
+◦ 取值范围：GET（释义：/GET）, POST（释义：/POST）, PUT（释义：/PUT）, DELETE（释义：/DELETE）, HEAD（释义：/HEAD）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：POST
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：指定一些 HTTP 方法，在解析正文时将这些方法的请求视为 POST 请求。可用以支持一些RESTFul PUT 无法向后端传递参数的场景。
+33. maxSavePostSize 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：4096
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：指定 FORM or CLIENT-CERT 认证期间，服务器缓存的 POST 请求的最大字节数（单位：字节）。
+34. useKeepAliveResponseHeader 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：在使用长连接时，是否在响应头中添加 Keep-Alive。
+35. keepAliveTimeout 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：60000
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：长连接建立后，在这个时间内没有新的请求进来，则断开连接。
+
+# 4.22.4. 参数补充说明
+36. maxKeepAliveRequests 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1000
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：长连接建立后，当其接收的请求数达到此阈值后，则断开连接。
+37. maxTrailerSize 
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：8192
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：尾部标头的最大大小（以字节为单位），“-1”表示不限制。
+38. addResponseHeader 
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：该功能允许服务器在HTTP响应中附加自定义头部信息。优先级：应用的优先级高于通道，通道优先级高于全局配置。
+39. connectionTimeout 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：60000
+◦ 说明：读写网络的连接超时时间，单位: 毫秒。
+40. tcpNoDelay 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：设置网络连接的 TCP_NO_DELAY 属性。
+
+# 4.22.4. 参数补充说明
+41. acceptCount 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：500
+◦ 说明：连接等待队列的长度，是操作系统 Socket 连接的配置参数；当处理请求的线程数不够用时，请求被放到等待队列中，等待队列满后的请求将被拒绝。
+42. maxConnections 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：8192
+◦ 说明：TongWeb 能够同时接受和处理的最大连接数。
+43. enableLookups
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，调用 request.getRemoteHost() 会进行 DNS 查询得到远程客户端的实际主机名；不开启，则得到 IP 地址。
+44. compression
+◦ 取值范围：on（释义：/on）, off（释义：/off）, force（释义：/force）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：off
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：压缩级别，on：表示开启，off：表示关闭，force：表示任何情况都开启。
+45. compressionMinSize
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：2048
+◦ 生效条件：compression=on&protocol=HTTP/1.1
+◦ 说明：压缩所需的最小内容长度，以字节为单位，以触发压缩。
+
+# 4.22.4. 参数补充说明
+46. noCompressionUserAgents
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：compression $=$ on&protocol=HTTP/1.1
+◦ 说明：不应用压缩的客户端代理字符串的正则表达式，如“.*Safari.*,.*Firefox.*”。
+47. compressibleMimeType
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值
+：text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json,app lication/xml 
+◦ 生效条件：compression $=$ on&protocol=HTTP/1.1
+◦ 说明：指定需要压缩的 MIME-TYPE 列表，多个类型以英文逗号分隔。
+48. ignoreHeader
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：compression=on&protocol=HTTP/1.1
+◦ 说明：当请求头中未指定压缩算法时，开启此强制压缩，可对资源进行压缩处理。适用于动态资源需要压缩的场景。
+49. secure
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：SSLEnabled=false&protocol=HTTP/1.1
+◦ 说明：设置 Cookie 的 Secure 属性，打开后设置为“true”，关闭则设置为“false”。当设置为“true”时，只有在 HTTPS 协议下浏览器才可以传递此 Cookie，HTTP 协议则不传递。注：此连接器开启 SSL后，本项设置自动为“true”，不可更改。
+50. SSLEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：protocol=HTTP/1.1
+◦ 说明：开启后，使用 SSL/TLS 加密网络数据，访问协议将变为 HTTPS。注：若要使用 HTTP/2.0 协议，则需首先开启 SSL。
+
+# 4.22.4. 参数补充说明
+51. httpRedirect
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：SSLEnabled=true&protocol=HTTP/1.1
+◦ 说明：开启后，如果使用 HTTP 访问则重定向至 HTTPS。
+52. http2Enabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：SSLEnabled=true&protocol=HTTP/1.1
+◦ 说明：是否支持 HTTP 2.0 协议。
+53. gmEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：SSLEnabled=true&protocol=HTTP/1.1
+◦ 说明：开启国密 SSL 加密认证，开启后，此通道将支持使用国密算法 SM2、SM3、SM4 进行 SSL 加密通信。
+54. sslEnabledProtocols
+◦ 取值范围：TLSv1.2（释义：/TLSv1.2）, TLSv1.3（释义：/TLSv1.3）, TLSv1.1（释义：/TLSv1.1）,TLSv1（释义：/TLSv1）, SSLv3（释义：/SSLv3）, SSLv2Hello（释义：/SSLv2Hello）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：TLSv1.2
+◦ 生效条件：SSLEnabled=true&gmEnabled=false&protocol=HTTP/1.1
+◦ 说明：指定启用的 SSL/TLS 协议，不指定将根据运行环境自动配置。考虑安全问题，不建议启用SSLv3 和 SSLv2Hello。
+55. ciphers 
+◦ 取值范围：字符串长度限制0个到65536个
+◦ 默认值：无。
+◦ 生效条件：SSLEnabled=true&gmEnabled=false&protocol=HTTP/1.1
+◦ 说明：密码套件决定了 SSL/TLS 通信过程中使用的加密算法，可根据不同的业务需求设置使用不同的加密算法，以英文逗号分隔可设置等多个。注：不设置表示不限制。
+
+# 4.22.4. 参数补充说明
+56. useServerCipherSuitesOrder 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：SSLEnabled=true&gmEnabled=false&protocol=HTTP/1.1
+◦ 说明：启用后会强制使用服务器端的的密码顺序，而不是允许客户端来选择。
+57. refKeyStore 
+◦ 取值范围：“证书管理”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：SSLEnabled=true&gmEnabled=false&protocol=HTTP/1.1
+◦ 说明：选择已导入服务器的 SSL 证书。
+58. keystoreFile 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：conf/server.keystore
+◦ 生效条件：SSLEnabled=true&gmEnabled=false&protocol=HTTP/1.1&refKeyStore=
+◦ 说明：存放服务器证书 keystore 文件的路径。 证书支持的类型：JKS， PKCS11 或 PKCS12。
+59. keystorePass 
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：SSLEnabled=true&gmEnabled=false&protocol=HTTP/1.1&refKeyStore=
+◦ 说明：指定 keystore 证书的密码。
+60. clientAuth 
+◦ 取值范围：true（释义：/true）, false（释义：/false）, want（释义：/want）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：SSLEnabled=true&protocol=HTTP/1.1
+◦ 说明：true：必须有客户端证书才可以访问；false：不验证是否有客户端证书；want：会检查客户端证书，若没有也可以继续访问。
+
+# 4.22.4. 参数补充说明
+61. trustManagerClassName 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：SSLEnabled=true&gmEnabled=false&clientAuth!=false&protocol=HTTP/1.1
+◦ 说明：用于验证客户端证书的自定义信任管理器类的名称。该类必须有一个零参数构造函数，并且还必须实现 javax.net.ssl.X509TrustManager 接口。设置此属性，并且是可用的，则可能忽略信任证书相关设置。
+62. refTrustStore
+◦ 取值范围：“证书管理”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：SSLEnabled=true&gmEnabled=false&clientAuth!=false&protocol=HTTP/1.1
+◦ 说明：选择已导入服务器的 SSL 信任证书。
+63. truststoreFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：conf/server.keystore
+◦ 生效条件
+：SSLEnabled $=$ true&gmEnabled=false&clientAuth!=false&protocol=HTTP/1.1&refTrustStore= 
+◦ 说明：存放服务器证书 truststore 文件的路径。 证书支持的类型：JKS，PKCS11 或 PKCS12。
+64. truststorePass
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件
+：SSLEnabled=true&gmEnabled=false&clientAuth!=false&protocol=HTTP/1.1&refTrustStore= 
+◦ 说明：指定 truststore 证书的密码。
+65. refGmEnc
+◦ 取值范围：“证书管理”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：SSLEnabled=true&gmEnabled=true&protocol=HTTP/1.1
+◦ 说明：选择已导入服务器的加密证书。
+
+# 4.22.4. 参数补充说明
+66. gmEncFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：conf/sm2.enc.pfx
+◦ 生效条件：SSLEnabled=true&gmEnabled=true&protocol=HTTP/1.1&refGmEnc=
+◦ 说明：加密证书路径。
+67. gmEncPass
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：SSLEnabled=true&gmEnabled=true&protocol=HTTP/1.1&refGmEnc=
+◦ 说明：加密证书密码。
+68. refGmSign
+◦ 取值范围：“证书管理”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：SSLEnabled=true&gmEnabled=true&protocol=HTTP/1.1
+◦ 说明：选择已导入服务器的签名证书。
+69. gmSignFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：conf/sm2.sig.pfx
+◦ 生效条件：SSLEnabled=true&gmEnabled=true&protocol=HTTP/1.1&refGmSign=
+◦ 说明：签名证书路径。
+70. gmSignPass
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：SSLEnabled=true&gmEnabled=true&protocol=HTTP/1.1&refGmSign=
+◦ 说明：签名证书密码。
+
+# 4.22.4. 参数补充说明
+71. enableKAE
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：SSLEnabled=true&protocol=HTTP/1.1
+◦ 说明：设置是否使用 KAE 加速引擎。
+72. useSendfile
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：protocol!=AJP
+◦ 说明：是否启用 Send File 功能。启用后大于 Send File 阈值的文件将通过 Send File 的方式发送到客户端（注意：此方式发送的文件不支持使用压缩功能），小于阈值的文件则不会。
+73. sendfileSize
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：48
+◦ 生效条件：useSendfile=true
+◦ 说明：当通道启用 Send File 功能时，大于此阈值的文件将通过 Send File 的方式发送到客户端，单位为 KB。
+74. asyncTimeout
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：30000
+◦ 说明：当使用异步 Servlet 时，设置异步处理机制（AsyncContext）的默认超时时间，单位是毫秒。
+该参数可以被应用主动调用 AsyncContext 的 setTimeout(long timeout) 方法所覆盖。
+75. URIEncoding
+◦ 取值范围：UTF-8（释义：/UTF-8）, GBK（释义：/GBK）, ISO-8859-1（释义：/ISO-8859-1）,GB18030（释义：/GB18030）, GB2312（释义：/GB2312）, UTF-16（释义：/UTF-16）, US-ASCII（释义：/US-ASCII）
+◦ 默认值：UTF-8
+◦ 说明：使用指定的编码解析 URI 中的参数。
+
+# 4.22.4. 参数补充说明
+76. useBodyEncodingForURI
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，URI 中的参数可以使用 Content-Type 中指定的编码。
+77. xpoweredBy
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启 X-Powered-By 后，响应头会添加和服务器有关的信息。
+78. enableProxyServerConfiguration
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，可以配置代理服务器的名称和端口。
+79. proxyName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enableProxyServerConfiguration=true
+◦ 说明：指定代理服务器名称，调用 request.getServerName() 将返回该值给应用。
+80. proxyPort
+◦ 取值范围：大小限制1到65535
+◦ 默认值：1
+◦ 生效条件：enableProxyServerConfiguration=true
+◦ 说明：指定代理服务器端口，调用 request.getServerPort() 将返回该值给应用。
+
+# 4.22.4. 参数补充说明
+81. managedPort
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：管理端口是用于管理 TongWeb 服务器的系统端口，true 表示该通道属于管理端口，false 则不是。
+82. running
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：了解该组件的运行状态。
+83. systemManaged
+◦ 取值范围：true 或 false
+◦ 默认值：false
+◦ 说明：不建议您对系统受管的组件或服务进行写操作，这可能会影响服务器的管理机制！
+84. appPort
+◦ 取值范围：true 或 false
+◦ 默认值：false
+◦ 说明：标记此端口是否可以访问应用。
+85. useNetworkMonitor
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后将监视此通道的当前连接数、请求处理总数、错误请求处理总数、请求处理总时间、接收的字节数、发送的字节数等信息，这可能会有些许的性能消耗。
+
+# 4.22.4. 参数补充说明
+86. slowTime
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：5
+◦ 生效条件：useNetworkMonitor=true
+◦ 说明：单次请求被判断为慢速请求的处理时间阈值（单位：秒），超过阈值则记录慢请求次数，设置为 0 表示不监视慢请求数量。
+87. resetMonitorData
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：useNetworkMonitor=true
+◦ 说明：设置是否需要在指定的周期时间内清理累积的监控数据。
+88. resetMonitorDataPeriod
+◦ 取值范围：大小限制60到1000000000
+◦ 默认值：600
+◦ 生效条件：useNetworkMonitor=true&resetMonitorData $\mid =$ true
+◦ 说明：累积的监控数据超过此周期（单位：秒）后进行自动归零。
+
+# 4.24.5. 支持的监视项
+1. 监视项：activeCount
+◦ 语义：活跃线程数
+◦ 说明：线程池中的活跃线程数。注：使用虚拟线程时，不支持该监视，其值将永久是 -1。
+◦ 是波动类型：是
+2. 监视项：poolSize
+◦ 语义：总线程数
+◦ 说明：线程池中的总线程数。注：使用虚拟线程时，不支持该监视，其值将永久是 -1。
+◦ 是波动类型：是
+3. 监视项：submittedCount
+◦ 语义：当前请求总数
+◦ 说明：正在处理中的请求数和在请求队列中等待被处理的请求数的总和。注：使用虚拟线程时，不支持该监视，其值将永久是 -1。
+◦ 是波动类型：是
+4. 监视项：waitingCount
+◦ 语义：待处理请求数
+◦ 说明：在请求队列中等待被处理的请求数。注：使用虚拟线程时，不支持该监视，其值将永久是-1。
+◦ 是波动类型：是
+5. 监视项：connectionCount
+◦ 语义：当前连接数
+◦ 说明：当前已建立的连接总数。
+◦ 是波动类型：是
+6. 监视项：requestCount
+◦ 语义：请求处理总数
+◦ 说明：此通道累计处理的请求总数。注：未启用网络数据监控时，不支持该监视，其值将永久是-1。
+◦ 是波动类型：否
+
+# 4.24.5. 支持的监视项
+7. 监视项：slowCount
+◦ 语义：慢请求总数
+◦ 说明：此通道累计处理的慢请求总数。注：未启用网络数据监控时，不支持该监视，其值将永久是-1。
+◦ 是波动类型：否
+8. 监视项：errorCount
+◦ 语义：错误请求处理总数
+◦ 说明：此通道累计处理的错误请求总数。注：未启用网络数据监控时，不支持该监视，其值将永久是-1。
+◦ 是波动类型：否
+9. 监视项：errorRate
+◦ 语义：错误率
+◦ 说明：错误请求处理总数在请求处理总数中的占比，单位：百分比。
+◦ 是波动类型：否
+10. 监视项：processingTime
+◦ 语义：请求处理总时间（毫秒）
+◦ 说明：此通道处理请求的累计时间，单位：毫秒。注：未启用网络数据监控时，不支持该监视，其值将永久是 -1。
+◦ 是波动类型：否
+11. 监视项：averageProcessingTime
+◦ 语义：平均响应时间（毫秒）
+◦ 说明：所有请求的平均处理时间，单位：毫秒。
+◦ 是波动类型：否
+12. 监视项：processingQPS
+◦ 语义：每秒处理请求数（QPS）
+◦ 说明：该通道平均每秒处理的请求总数。
+◦ 是波动类型：否
+
+# 4.24.5. 支持的监视项
+13. 监视项：bytesReceived
+◦ 语义：接收的字节数
+◦ 说明：服务器从客户端接收到的字节总数。注：未启用网络数据监控时，不支持该监视，其值将永久是 -1。
+◦ 是波动类型：否
+14. 监视项：bytesSent
+◦ 语义：发送的字节数
+◦ 说明：服务器发送给客户端的字节总数。注：未启用网络数据监控时，不支持该监视，其值将永久是-1。
+◦ 是波动类型：否
+15. 监视项：enabledCipherSuites
+◦ 语义：启用的密码套件
+◦ 说明：若此通道开启了 SSL/TLS，这里显示其已启用的密码套件。
+◦ 是波动类型：否
+
+# 4.25. 控制台安全
+配置 TongWeb 管理控制台的安全策略。
+
+# 4.25.1. 模块名
+consolesecurity 
+
+# 4.25.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.25.3. 支持的参数
+持久化位置：
+1. conf/console.xml:console 
+2. [consoleContextRoot]conf/tongweb.xml:tongweb>server>applications>app 
+3. [verCodeEnabled]conf/console.xml:console>auth 
+4. [oauth2]conf/console.xml:console>oauth2 
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>consoleContextRoot</td><td>访问前缀</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>trustedIP</td><td>信任 IP</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>warnTrustedIP</td><td>信任 IP 安全警示</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>disableUpload</td><td>禁用文件上传</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>disableDownload</td><td>禁用文件下载</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>failureCount</td><td>失败锁定次数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>lockOutTime</td><td>锁定时长</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>sessionTimeout</td><td>会话超时时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>verCodeEnabled</td><td>启用验证码</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>enabled</td><td>启用 OAuth2 认证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>serverVendor</td><td>OAuth2 服务商</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>twHost</td><td>此 TongWeb 对外域名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>13</td><td>clientId</td><td>客户端ID</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>14</td><td>clientSecret</td><td>客户端密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>15</td><td>authorizeUrl</td><td>授权地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>16</td><td>tokenUrl</td><td>获取 Token 地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>17</td><td>introspectUrl</td><td>验证 Token 地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>18</td><td>userUrl</td><td>获取用户信息地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>19</td><td>logoutUrl</td><td>注销 Token 地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>20</td><td>rememberPwd</td><td>允许浏览器记住密码</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.25.4. 参数补充说明
+1. consoleContextRoot
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：console
+◦ 说明：变更访问 TongWeb 管理控制台的 URI 前缀。注：TongWeb 控制台的访问前缀变更之后，需要在提示的时间后使用新的 URL 重新发起对控制台的访问。
+2. trustedIP
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定信任的客户端 IP 地址，其值可为具体的 IP、匹配 IP 的正则表达式或通配符 IP（如：168.1.2.*，168.1.4.5-168.1.4.99）。远程的客户端只有在被设置为信任后，才可进行首次默认密码更改、文件上传等敏感操作。注：不设置表示只有 TongWeb 的安装机器受信任，设置为 * 表示信任所有机器（不建议）。
+3. warnTrustedIP
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：trustedIP $^ { \dag } = ^ { \ast }$ 
+◦ 说明：当受信任的 IP 被设置为 * 时，在控制台页面上以“小红点”形式给出安全警示信息。
+4. disableUpload
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：禁用文件上传可以在很大程度上保护系统的安全，禁用后，攻击者将不能再通过 TongWeb 控制台来进行部署木马应用、上传恶意程序等操作。禁用文件上传后，您仍然可以选择服务器上已有的文件来进行相关操作。注：出于安全考虑，建议保持禁用文件上传功能。
+5. disableDownload
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：禁用文件下载可以在很大程度上保护系统的安全，禁用后，攻击者将不能再通过 TongWeb 控制台来下载系统相关的文件。出于安全考虑，建议保持禁用文件下载功能。
+
+# 4.25.4. 参数补充说明
+6. failureCount
+◦ 取值范围：大小限制1到5
+◦ 默认值：5
+◦ 说明：用户连续认证失败后被锁定的次数。
+7. lockOutTime
+◦ 取值范围：大小限制60到1000000000
+◦ 默认值：300
+◦ 说明：用户在多次认证失败后被锁定的时间（秒）。
+8. sessionTimeout
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：15
+◦ 说明：设置控制台会话（Session）的超时时间（单位：分钟）。
+9. verCodeEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：开启用户登录时的验证码校验，当首次登录失败后，再次登录需要输入验证码。
+10. enabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启 OAuth2 认证，这将会关闭 TongWeb 自身的认证模式，转而切换到指定的 OAuth2 认证模式。注：该功能启用后立即生效，请刷新浏览器重新登录，并且相关参数在运行期间不可更改，如需变更则需在停止 TongWeb 后通过手动修改 ${tongweb.base}/conf/console.xml 文件来完成。
+
+# 4.25.4. 参数补充说明
+11. serverVendor
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：TongAuth
+◦ 生效条件：enabled=true
+◦ 说明：指定 OAuth2 服务的提供商，默认为东方通认证中心产品 TongAuth。出于安全性考虑，此处并未给出已支持的厂商列表，有关定制需求可联系 https://www.tongtech.com/。
+12. twHost
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：此 TongWeb 服务控制台对外可见的域名，注意不要包含其“访问前缀”，例如：https://localhost:9060/。
+13. clientId
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：设置从 OAuth2 服务器注册得到的身份ID。
+14. clientSecret
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：设置从 OAuth2 服务器注册得到的身份ID的验证密码。
+15. authorizeUrl
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：设置从 OAuth2 服务器获得用户授权的 url 地址。
+
+# 4.25.4. 参数补充说明
+16. tokenUrl
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：设置从 OAuth2 服务器获取访问 Token 的 url 地址。
+17. introspectUrl
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：设置从 OAuth2 服务器刷新 Token 的 url 地址。
+18. userUrl
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：设置从 OAuth2 服务器获取用户账号等信息的 url 地址。
+19. logoutUrl
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：设置从 OAuth2 服务器注销 Token 的 url 地址。
+20. rememberPwd
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，可支持通过浏览器记住登录密码，通常情况下，浏览器对密码进行管理，会校验当前SSL/TLS 通信的证书，所以开启此功能的同时，需更换为有效的证书（默认的自签名证书可能会校验不通过）或者关闭SSL/TLS通道（https 协议切换为 http）。
+
+# 4.25.5. 支持的监视项
+无。
+
+# 4.26. 守护监视
+在指定的时间内对指定的系统指标进行周期性地监视，监视结果会持久存储到文件。
+
+# 4.26.1. 模块名
+daemonmonitor 
+
+# 4.26.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>monitor</td><td>查看此项守护监视在其指定的时间段内持久化的历史监视信息。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.26.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>daemonmonitors>daemonmonitor
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>monitor</td><td>组合监视</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>startTime</td><td>开始时间</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>endTime</td><td>结束时间</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>interval</td><td>采集频率</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>totalCount</td><td>采集总次数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>fileName</td><td>文件名称</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>filePath</td><td>文件路径</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>rotationBySize</td><td>按大小轮转</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>keepMaxDays</td><td>保留时长（天）</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>compression</td><td>文件压缩</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>log</td><td>记录日志</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>enabled</td><td>是否启用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>running</td><td>运行中</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.26.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：唯一标识。
+2. monitor
+◦ 取值范围：“组合监视”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：指定一个组合监视，用以限定需要守护监视的系统指标范围，即指定监视的数据来源。注：以逗号分隔可指定多个。
+3. startTime
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定守护监视的开始时间。
+4. endTime
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定守护监视的结束时间。
+5. interval
+◦ 取值范围：大小限制2到1000000000
+◦ 默认值：5
+◦ 说明：设置在指定的时间内每间隔多久（单位：秒）进行一次对系统监视指标数据的采集。
+6. totalCount
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：设置采集监视数据的总次数，达到后，将终止采集并结束本次守护监视。注：为 0 表示不限制采集次数。
+7. fileName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：data.txt
+◦ 说明：指定保存监视数据文件的名称。
+8. filePath
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定监视数据文件的存放目录。
+9. rotationBySize
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：50
+◦ 说明：当监视数据文件大小（单位：MB）达到该阈值时，将切割出一个新的监视数据文件。注：设置为 0 表示不启用此功能。
+10. keepMaxDays
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：保留数据的时长（单位：天）。注：设置为 0 表示永久保存。
+
+# 4.26.4. 参数补充说明
+11. compression
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否开启监视数据文件压缩功能。开启后，对轮转后的监视数据文件进行压缩。
+12. log
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：当有采集动作发生时，是否在系统日志里记录一条信息。
+13. enabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：是否启用此守护监视。
+14. running
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：反映守护监视是否正在运行。
+
+# 4.26.5. 支持的监视项
+1. 监视项：dataTime
+◦ 语义：数据时间
+◦ 说明：监视数据的产生时间。
+◦ 是波动类型：否
+2. 监视项：data
+◦ 语义：监视数据
+◦ 说明：监视指标产生的数据。
+◦ 是波动类型：否
+
+# 4.27. 数据源
+数据源是 TongWeb 提供给应用访问数据库的方式，通过配置数据源的连接池大小、空闲、超时、泄漏、健康检查等优化数据库和网络资源的利用率，提高性能。数据源连接池采用了 FIFO 队列保持所有的数据库连接，每次获取连接都是从队列头部拿，归还连接是放到队列尾部，两种行为都会更新连接的时间戳，这种设计可以使得所有的连接被均匀地使用，进而保持所有连接的活跃性。
+
+# 4.27.1. 模块名
+datasource 
+
+# 4.27.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>monitor</td><td>获取该数据源的运行状态信息，该信息可反映组件的健康情况。</td></tr><tr><td>start</td><td>启动这个数据源。</td></tr><tr><td>validate</td><td>从系统JNDI查找该数据源，进而获取数据库连接对象，对此连接对象进行有效性检查。注：若重启数据库后测试连接失败，请点击更新数据源后重试。</td></tr><tr><td>stop</td><td>停止这个数据源。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.27.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>Resources>Resource
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>数据源名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>aliases</td><td>绑定 JNDI 名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>dataSourceTemplate</td><td>数据源模板</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>jdbcUrITemplate</td><td>数据库连接方式</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>ip</td><td>数据库 IP</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>port</td><td>数据库端口</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>dbname</td><td>数据库名称</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>JdbcUrl</td><td>连接 URL</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>9</td><td>JdbcDriver</td><td>驱动类</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>10</td><td>UserName</td><td>用户名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>11</td><td>Password</td><td>密码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>klasspath</td><td>驱动包位置</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>refLib</td><td>驱动包类库</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>connectionProperties</td><td>连接属性</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>clientInfo</td><td>客户端信息</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>defaultCatalog</td><td>Catalog</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>initSQL</td><td>初始化 SQL</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>18</td><td>maxActive</td><td>最大连接数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>19</td><td>initialSize</td><td>初始连接数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>20</td><td>minIdle</td><td>最小空闲数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>maxIdle</td><td>最大空闲数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>22</td><td>minEvictableldleTimeMillis</td><td>空闲容忍时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>23</td><td>batchSize</td><td>单批次创建数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>24</td><td>batchInterval</td><td>批次间隔</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>25</td><td>usingLIFOQueue</td><td>连接后进先出</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>26</td><td>fair</td><td>线程公平等待</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>27</td><td>maxWait</td><td>等待超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>28</td><td>threadBinding</td><td>线程绑定</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>29</td><td>instantRecycling</td><td>即时回收</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>30</td><td>maxAge</td><td>检查连接寿命</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>31</td><td>removeAbandoned</td><td>检查连接泄漏</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>32</td><td>removeAbandonedTimeout</td><td>泄漏判定时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>33</td><td>abandonWhenPercentageFull</td><td>泄漏判定比例</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>34</td><td>logAbandoned</td><td>泄漏时记录日志</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>35</td><td>abandonedConnection</td><td>泄漏时关闭连接</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>36</td><td>testOnConnect</td><td>创建连接时验证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>37</td><td>testOnBorrow</td><td>获取连接时验证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>38</td><td>testOnReturn</td><td>归还连接时验证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>39</td><td>testWhileIdle</td><td>空闲时验证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>40</td><td>clearPolicy</td><td>失效清理策略</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>41</td><td>timeBetweenEvictionRunsMilis</td><td>检查周期</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>42</td><td>connectionVerificationMode</td><td>验证方式</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>43</td><td>tableName</td><td>测试连接表名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>44</td><td>validationQueryTimeout</td><td>验证超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>45</td><td>validationInterval</td><td>验证间隔</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>46</td><td>logValidationErrors</td><td>记录验证失败日志</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>47</td><td>customInterceptor</td><td>SQL拦截器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>48</td><td>enableStatementEnhancer</td><td>语句设置</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>49</td><td>queryTimeout</td><td>SQL超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>50</td><td>fetchSize</td><td>Fetch-Size</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>51</td><td>enableStatementCache</td><td>缓存语句</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>52</td><td>prepared</td><td>缓存PreparedStateme nt</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>53</td><td>callable</td><td>缓存CallableStatement</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>54</td><td>max</td><td>单连接的最大缓存数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>55</td><td>enableStatementFinalizer</td><td>自动关闭语句</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>56</td><td>trace</td><td>跟踪语句堆栈</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>57</td><td>releaseOnError</td><td>SQL错误时回收</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>58</td><td>enableSlowQueryReport</td><td>监视慢 SQL</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>59</td><td>threshold</td><td>测量阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>60</td><td>maxQueries</td><td>最大 SQL 记录量</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>61</td><td>logSlow</td><td>记录较慢的 SQL</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>62</td><td>sqlForParamPrintRegex</td><td>记录 SQL 参数</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>63</td><td>logFailed</td><td>记录失败 SQL</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>64</td><td>JtaManaged</td><td>支持 JTA</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>65</td><td>defaultAutoCommit</td><td>自动提交</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>66</td><td>defaultTransactionIsolation</td><td>事务隔离级别</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>67</td><td>rollbackOnReturn</td><td>归还连接时回滚</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>68</td><td>commitOnReturn</td><td>归还连接时提交</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>69</td><td>defaultReadOnly</td><td>只读模式</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>70</td><td>running</td><td>已验证</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.27.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：数据源的名称。
+2. aliases 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：数据源的别名会被用作其绑定到 JNDI 资源树上的名字，一个数据源可以逗号分隔指定多个别名。
+3. dataSourceTemplate 
+◦ 取值范围：“数据源模板”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：指定数据源模板后，将会使用数据源模板里的参数来创建数据源。注：在表单页面切换数据源模板后，表单页面内的数据将会被覆盖更新。
+4. jdbcUrlTemplate 
+◦ 取值范围：“Jdbc 模板”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：可选使用 TongWeb 预置的 Jdbc 模板（可通过“Jdbc 模板”模块添加新的模板）连接数据库，使用 Jdbc 模板可省去输入 JDBC 的 URL、驱动类等信息，由 TongWeb 根据输入的数据库服务器IP、端口、数据库名等信息自动组装这些信息。注：为空表示不使用模板，而使用 JDBC 标准方式。
+5. ip 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：jdbcUrlTemplate!=
+◦ 说明：连接数据库的 IP 地址，支持使用 localhost 域名。
+6. port 
+◦ 取值范围：大小限制1到65535
+◦ 默认值：无。
+◦ 生效条件：jdbcUrlTemplate!=
+◦ 说明：连接数据库的端口。
+7. dbname
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：`jdbcUrlTemplate!= NULL`
+◦ 说明：数据库名称。
+8. JdbcUrl
+◦ 取值范围：字符串长度限制0个到1000个
+◦ 默认值：无。
+◦ 说明：数据库连接 URL。
+9. JdbcDriver
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：jdbcUrlTemplate=
+◦ 说明：数据库驱动类的全名称。
+10. UserName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：登录数据库的用户名。
+
+# 4.27.4. 参数补充说明
+11. Password
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 说明：登录数据库的用户密码。
+12. classpath
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置数据库驱动类所在的 Jar 文件的绝对路径，多个路径以英文逗号分隔。若在启动之前（注：启动后再放无效）已经将文件放置到了 ${tongweb.base}/lib 下，则可以不设置。 注意：在集群环境中，请确保每个实例所在的服务器上都需放置所需的文件。
+13. refLib
+◦ 取值范围：“公共类库”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：添加数据库驱动类所在的类库，如果同时设置了“驱动包位置”，那么将一起生效，且“驱动包位置”比“驱动包类库”更优先加载。
+14. connectionProperties
+◦ 取值范围：字符串长度限制0个到1024个
+◦ 默认值：无。
+◦ 说明：当驱动类型为 Driver 时，Driver 连接数据库所需要的连接参数。根据需要进行填写，格式要求是 propertyName propertyValue，多个参数以英文逗号分隔。注意：数据库的用户名和密码参数不需要在这里填写。
+15. clientInfo
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置 JDBC 连接的客户端信息，其值格式为 key=value 的键值对，多个键值对以英文逗号分隔。
+16. defaultCatalog
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置给定的目录名称，以便在此连接对象的数据库中选择一个子空间来工作。若驱动程序不支持目录，则它将默默地忽略这个请求。
+ 17. initSQL
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定一个存放 SQL 语句的文件的名称，可在每次建立数据库物理连接以后执行其中的 SQL，以完成相应的数据库初始化操作。出于安全考虑，该文件须位于 $\$ 1$ {tongweb.base}/conf/jdbc 目录，且其类型限定为 *.txt 和 *.sql。
+18. maxActive
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：100
+◦ 说明：连接池可分配的最大活动连接数。
+19. initialSize
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：10
+◦ 说明：连接池建立时初始创建的连接数。
+20. minIdle
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：10
+◦ 说明：连接池始终维持一定数量的数据库连接，以供应用所需，其数量至少是此处设置的最小空闲数。
+
+# 4.27.4. 参数补充说明
+21. maxIdle
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：100
+◦ 说明：连接池中保留的空闲连接的最大数量，若达到了此数，会释放多余的数据库物理连接。
+22. minEvictableIdleTimeMillis
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：600000
+◦ 生效条件：minIdle! ${ \boldsymbol { \mathbf { \rho } } } = 0$ \|maxIdle!=0
+◦ 说明：连接池在其空闲连接数超出最小空闲数后，会对超出的空闲连接进行空闲时间检查，若其空闲时间超过了此处设置的空闲容忍时间（单位：毫秒），则会释放对应的数据库物理连接。
+23. batchSize
+◦ 取值范围：大小限制0到65535
+◦ 默认值：0
+◦ 说明：连接池创建数据库连接数量可分批次进行，以减小对数据库的压力。此处设置连接池单批次创建连接的最大个数，注：设置为 0 表示不限制，即不启用此功能。
+24. batchInterval
+◦ 取值范围：大小限制1到2147483647
+◦ 默认值：60
+◦ 生效条件：batchSize! ${ \tt = } 0$ 
+◦ 说明：连接池创建数据库连接是分批次进行，可设置批次间的间隔时间（单位：秒）。注：此选项在“单批次创建数”大于 0 时有效。
+25. usingLIFOQueue
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，连接池中的连接将以后进先出顺序提供给客户端线程，即后创建和后回池的连接优先被客户端线程获取使用。
+26. fair
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在连接池为空时，客户端线程会等待池中有连接可用，打开此功能后，先等待的线程会优先获得连接，否则顺序会不确定（但会有更好的性能），注：此功能通常适用于需要严格顺序的场景，但会有一定的性能损失。
+27. maxWait
+◦ 取值范围：大小限制0到3600000
+◦ 默认值：30000
+◦ 说明：客户端最多等待连接可用的时间（单位：毫秒），超时后，会得到连接池抛出的SQLException。设置为 0 表示不等待，此时若无可用连接，客户端会立即得到 SQLException。
+28. threadBinding
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：JtaManaged=false
+◦ 说明：开启后，通过此数据源获取的连接将会绑定到当前工作的 HTTP 线程上。在当前 HTTP 请求处理完成之前，多次从该数据源获取连接将会是之前绑定的同一个。在 HTTP 请求处理完成之后，绑定的连接自动从线程上解绑。注：若该数据源会参与多种数据库事务，请谨慎开启本功能。注：打开“支持 JTA”后不支持此设置。
+29. instantRecycling 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：threadBinding=false
+◦ 说明：在业务请求处理结束后，立即检查并将未关闭的连接对象回收至连接池内，以供继续复用。
+30. maxAge 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：设置连接对象在池中的最大存活时间，即连接的寿命。连接池会周期性地检查底层物理连接的建立时长，当发现超出设置的时长（单位：毫秒）后，底层物理连接将会被销毁并重新建立。“0”表示不进行此检查处理，但若在获取连接时验证失败，仍然会去重新建立失效的连接。
+
+# 4.27.4. 参数补充说明
+31. removeAbandoned 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启检查连接泄漏功能后，若一个连接的使用时间超过泄漏超时时间且池的使用比例达到泄漏判定比例，则可选打印泄漏警告日志或强制关闭该连接。
+32. removeAbandonedTimeout 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：60
+◦ 生效条件：removeAbandoned=true
+◦ 说明：连接被判定为“泄漏”的条件之一为连接的使用时长，单位是秒。满足该条件并且满足“泄漏判定比例”，才被认定为“泄漏”。
+33. abandonWhenPercentageFull 
+◦ 取值范围：大小限制0到100
+◦ 默认值：0
+◦ 生效条件：removeAbandoned=true
+◦ 说明：连接被判定为“泄漏”的条件之一为当前连接池的使用比例（即使用中的连接数与池最大连接数的比值）大于该比例，单位是百分比。满足该条件并且满足“泄漏判定时间”，才被认定为“泄漏”。
+34. logAbandoned 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：removeAbandoned=true
+◦ 说明：在检测到泄漏连接时，打印客户端获取连接的调用栈日志。注：开启后会记录连接被应用使用时的调用栈，会对性能造成一定的影响。
+35. abandonedConnection 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：removeAbandoned=true
+◦ 说明：在检测到泄漏连接时，是否强制关闭连接。
+36. testOnConnect 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在创建连接时进行数据库连接有效性验证，失效后立即回收。
+37. testOnBorrow 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在从池中获取连接时进行数据库连接有效性验证，失效后立即回收。
+38. testOnReturn 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在连接返回到池之时进行数据库连接有效性验证，失效后立即回收。
+39. testWhileIdle 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：对未使用的连接进行数据库连接有效性验证，失效后立即回收。注：若处于空闲中的连接正在进行验证（开启了“空闲时验证”），则会被同时计入“空闲连接数”和“验证中连接数”两个指标，此时“活跃连接数”、“空闲连接数”和“验证中连接数”三者之和会比“连接池大小”多1。
+40. clearPolicy 
+◦ 取值范围：ALL（释义：/所有空闲连接）, FAILED（释义：/当前检测连接）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：ALL
+◦ 生效条件：testWhileIdle=true
+◦ 说明：当检测到有连接失效后，有两种可选的清理方式，当前检测连接：仅回收当前检测到的失效连接；所有空闲连接：立即回收池中所有的空闲连接。
+
+# 4.27.4. 参数补充说明
+41. timeBetweenEvictionRunsMillis 
+◦ 取值范围：大小限制2000到1000000000
+◦ 默认值：60000
+◦ 说明：周期性进行空闲连接验证、泄漏连接关闭和空闲连接池大小调整的时间间隔（单位：毫秒）。
+42. connectionVerificationMode 
+◦ 取值范围：isValid（释义：/isValid）, table（释义：/table）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：isValid
+◦ 说明：连接验证的方式，包括 Connection.isValid 方式和 table 验证。当选择 table 验证时，需要填写一个用于测试的数据库表名，若填写表名则测试语句为 SELECT 1 FROM [表名]，若填写表名为空则测试语句为 SELECT 1。
+43. tableName 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：DUAL
+◦ 生效条件：connectionVerificationMode=table
+◦ 说明：填写一个用于测试的数据库表名，若填写表名则测试语句为 SELECT 1 FROM [表名]，若填写表名为空则测试语句为 SELECT 1。
+44. validationQueryTimeout 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：5
+◦ 说明：连接验证查询失败前的超时时间（单位：秒），“0”表示由数据库驱动决定。
+45. validationInterval 
+◦ 取值范围：大小限制1000到1000000000
+◦ 默认值：30000
+◦ 说明：为避免频繁的验证，在指定的间隔时间内最多进行一次验证。单位：毫秒。
+46. logValidationErrors 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在验证失败后记录错误日志。
+47. customInterceptor 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：SQL 拦截器用于拦截 SQL 语句的执行过程，以便进行必要的业务操作。此处设置 SQL 拦截器的全类名（需继承自
+com.tongweb.web.jdbc.pool.interceptor.AbstractCreateStatementInterceptor），以英文逗号分隔可设置多个，并需要在 TongWeb 启动前将包含这些类的 jar 放到 $\$ 1$ {tongweb.base}/lib 或${tongweb.home}/lib 目录下。此外，设置 SQL 拦截器也可使用编程的方式：将从 JNDI 获取到的TongWeb 数据源对象，强转为 com.tongweb.web.jdbc.pool.DataSource 对象，再调用其addJdbcInterceptor 方法即可实现。注：上述依赖类可从 $\$ 1$ {tongweb.home}/version*/tongweb-web.jar 获取。
+48. enableStatementEnhancer
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：对新创建的语句进行默认设置，包括 SQL 超时、Fetch-Size 等。
+49. queryTimeout
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：5
+◦ 生效条件：enableStatementEnhancer=true
+◦ 说明：指定语句执行的超时时间，单位为秒。若超过这个时间，就会抛出一个SQLTimeoutException，适用于 execute、executeQuery 和 executeUpdate 方法。“0”表示使用JDBC 驱动程序的默认值。
+50. fetchSize
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0
+◦ 生效条件：enableStatementEnhancer=true
+◦ 说明：给 JDBC 驱动程序一个提示，当该语句生成的结果集对象需要更多的行时，应该从数据库中获取的行数。若指定的值为“0”，则该提示将被忽略。
+
+# 4.27.4. 参数补充说明
+51. enableStatementCache
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：语句缓存可通过复用对象等方式提升 SQL 执行性能。
+52. prepared
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enableStatementCache $=$ true
+◦ 说明：对创建的 PreparedStatement 实例进行缓存。
+53. callable
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enableStatementCache $=$ true
+◦ 说明：对创建的 CallableStatement 实例进行缓存。
+54. max
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：20
+◦ 生效条件：enableStatementCache=true
+◦ 说明：每个连接缓存语句的最大数量。
+55. enableStatementFinalizer 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：追踪与连接相关的语句，并在 Connection.close() 时将其关闭。对于那些使用完连接但没有关闭相关语句的应用是非常有用的。
+56. trace 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enableStatementFinalizer $\mathbf { \equiv }$ true
+◦ 说明：启用/禁用对未关闭语句的堆栈跟踪。启用后，若语句没有关闭，则通过日志记录其创建的堆栈，以便于排查程序问题。
+57. releaseOnError 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在执行 SQL 遇到错误时，立即回收当前连接。
+58. enableSlowQueryReport 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：追踪 SQL 执行的时间，当对 execute/executeQuery 或executeBatch 的调用成功并超过时间阈值时，记录缓慢的 SQL。
+59. threshold 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：1000
+◦ 生效条件：enableSlowQueryReport=true
+◦ 说明：以毫秒为单位的阈值。若查询的速度比这个快，则不记录该 SQL。
+60. maxQueries 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1000
+◦ 生效条件：enableSlowQueryReport=true
+◦ 说明：存储的最大 SQL 数量。
+
+# 4.27.4. 参数补充说明
+61. logSlow 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enableSlowQueryReport=true
+◦ 说明：启用/禁用记录慢 SQL 日志，日志会记录在独立的 logs/sql 目录以方便排查业务问题。
+62. sqlForParamPrintRegex 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enableSlowQueryReport=true&logSlow=true
+◦ 说明：在记录较慢的 SQL 时，是否一起记录数据参数（可能包含密码、ID、金额等敏感数据，请谨慎考虑），若需要记录则在此处输入哪些 SQL 需要记录，格式为正则表达式。注：出于安全考虑，不建议使用此功能。
+63. logFailed 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enableSlowQueryReport=true
+◦ 说明：启用/禁用记录失败 SQL 日志，日志会记录在独立的 logs/sql 目录以方便排查业务问题。
+64. JtaManaged 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：threadBinding=false
+◦ 说明：若计划将此数据源应用于 EJB 事务或者用户管理的 JTA 事务，则需要开启 JTA 支持。开启JTA 支持要求驱动类型为 XA 类型，且自动提交会被强制关闭。注：打开“线程绑定”后不支持此设置。
+65. defaultAutoCommit 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：连接创建时的默认自动提交状态。若支持 JTA，则会被强制关闭。
+66. defaultTransactionIsolation 
+◦ 取值范围：-1（释义：/数据库驱动决定）, 1（释义：/读未提交）, 2（释义：/读已提交）, 4（释义：/可重复读）, 8（释义：/串行化）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：2
+◦ 说明：指定默认的事务隔离级别。“-1”表示由数据库驱动决定，“1”表示读未提交，“2”表示读已提交，“4”表示可重复读，“8”表示串行化。
+67. rollbackOnReturn 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：当有连接返回池中（连接的 close 方法被调用）时，回滚任何未决的事务。该功能仅在“自动提交”关闭时生效。
+68. commitOnReturn 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：rollbackOnReturn=false
+◦ 说明：当有连接返回池中（连接的 close 方法被调用）时，提交任何未决的事务。该功能仅在“自动提交”关闭时生效。
+69. defaultReadOnly 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：将此连接置于只读模式，作为对驱动程序的提示，以实现数据库优化。
+70. running 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：表示在过去很近的时间（通常是一个检查周期和验证间隔的总和）内，已自动或手动运行通过有效性验证。
+
+# 4.27.5. 支持的监视项
+1. 监视项：size
+◦ 语义：连接池大小
+◦ 说明：连接池中的连接总数，通常是空闲连接数、活跃连接数、报备连接数三者之和。
+◦ 是波动类型：是
+2. 监视项：idle
+◦ 语义：空闲连接数
+◦ 说明：处于空闲状态，可随时被应用借走使用的连接数。
+◦ 是波动类型：是
+3. 监视项：active
+◦ 语义：活跃连接数
+◦ 说明：被应用借走且尚未归还的连接数。
+◦ 是波动类型：是
+4. 监视项：pending
+◦ 语义：报备连接数
+◦ 说明：正在等待与数据库建立物理连接的逻辑上的连接数，一般出现在两种场景：1. 驱动与数据库建立连接耗时较长；2. 开启了分批连接功能，有批次正在等待中。
+◦ 是波动类型：是
+5. 监视项：validating
+◦ 语义：验证中连接数
+◦ 说明：正在进行有效性验证的连接数量，这些连接可能处于活跃或空闲状态。
+◦ 是波动类型：是
+6. 监视项：waitCount
+◦ 语义：线程等待数
+◦ 说明：等待获取连接的线程数量。当连接池中没有空闲连接时，线程拿不到连接将会等待。
+◦ 是波动类型：是
+7. 监视项：slowSQLSize
+◦ 语义：慢SQL数
+◦ 说明：连接池检测到的慢SQL数。
+◦ 是波动类型：是
+8. 监视项：cacheSize
+◦ 语义：语句缓存数
+◦ 说明：连接池缓存的语句数。
+◦ 是波动类型：是
+9. 监视项：poolCleanerRunning
+◦ 语义：回收器工作中
+◦ 说明：反映数据库连接回收器（一个独立线程，用于回收泄漏的、超时的、验证未通过的连接）是否在工作，1：工作中；0：休眠中。
+◦ 是波动类型：是
+10. 监视项：slowSQLDetail
+◦ 语义：SQL明细
+◦ 说明：明细显示了每条SQL的具体执行情况，字段说明：sql（SQL语句）；numberOfInvocations（慢执行次数）；maxInvocationTime（最长执行时间，毫秒）；maxInvocationDate（最长执行时的日期）；minInvocationTime（最短执行时间，毫秒）；minInvocationDate（最短执行时的日期）；totalInvocationTime（总执行时间）；failures（执行失败次数）；prepareCount（总prepare次数）；prepareTime（总prepare时间）。
+◦ 是波动类型：否
+
+# 4.28. 数据源模板
+数据源模板是一组预先设置的数据源配置参数，在创建数据源的时候选择使用数据源模板，可快捷地配置数据源的参数。数据源模板一般常用于多个数据源需要共享同一套配置参数的场景。
+
+# 4.28.1. 模块名
+datasourcetemplate 
+
+# 4.28.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.28.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>datasourcetemplates>datasourcetemplate
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>数据源模板名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>klasspath</td><td>驱动包位置</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>refLib</td><td>驱动包类库</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>connectionProperties</td><td>连接属性</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>clientInfo</td><td>客户端信息</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>defaultCatalog</td><td>Catalog</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>initSQL</td><td>初始化 SQL</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>maxActive</td><td>最大连接数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>initialSize</td><td>初始连接数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>minIdle</td><td>最小空闲数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>maxIdle</td><td>最大空闲数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>minEvictableldleTimeMillis</td><td>空闲容忍时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>batchSize</td><td>单批次创建数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>batchInterval</td><td>批次间隔</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>usingLIFOQueue</td><td>连接后进先出</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>fair</td><td>线程公平等待</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>maxWait</td><td>等待超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>18</td><td>threadBinding</td><td>线程绑定</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>19</td><td>instantRecycling</td><td>即时回收</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>20</td><td>maxAge</td><td>检查连接寿命</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>removeAbandoned</td><td>检查连接泄漏</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>22</td><td>removeAbandonedTimeout</td><td>泄漏判定时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>23</td><td>abandonWhenPercentageFull</td><td>泄漏判定比例</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>24</td><td>logAbandoned</td><td>泄漏时记录日志</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>25</td><td>abandonedConnection</td><td>泄漏时关闭连接</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>26</td><td>testOnConnect</td><td>创建连接时验证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>27</td><td>testOnBorrow</td><td>获取连接时验证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>28</td><td>testOnReturn</td><td>归还连接时验证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>29</td><td>testWhileIdle</td><td>空闲时验证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>30</td><td>clearPolicy</td><td>失效清理策略</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>31</td><td>timeBetweenEvictionRunsMilis</td><td>检查周期</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>32</td><td>connectionVerificationMode</td><td>验证方式</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>33</td><td>tableName</td><td>测试连接表名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>34</td><td>validationQueryTimeout</td><td>验证超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>35</td><td>validationInterval</td><td>验证间隔</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>36</td><td>logValidationErrors</td><td>记录验证失败日志</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>37</td><td>customInterceptor</td><td>SQL拦截器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>38</td><td>enableStatementEnhancer</td><td>语句设置</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>39</td><td>queryTimeout</td><td>SQL超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>40</td><td>fetchSize</td><td>Fetch-Size</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>41</td><td>enableStatementCache</td><td>缓存语句</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>42</td><td>prepared</td><td>缓存PreparedStateme nt</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>43</td><td>callable</td><td>缓存CallableStatement</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>44</td><td>max</td><td>单连接的最大缓存数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>45</td><td>enableStatementFinalizer</td><td>自动关闭语句</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>46</td><td>trace</td><td>跟踪语句堆栈</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>47</td><td>releaseOnError</td><td>SQL错误时回收</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>48</td><td>enableSlowQueryReport</td><td>监视慢 SQL</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>49</td><td>threshold</td><td>测量阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>50</td><td>maxQueries</td><td>最大 SQL 记录量</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>51</td><td>logSlow</td><td>记录较慢的 SQL</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>52</td><td>sqlForParamPrintRegex</td><td>记录 SQL 参数</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>53</td><td>logFailed</td><td>记录失败 SQL</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>54</td><td>JtaManaged</td><td>支持 JTA</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>55</td><td>defaultAutoCommit</td><td>自动提交</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>56</td><td>defaultTransactionIsolation</td><td>事务隔离级别</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>57</td><td>rollbackOnReturn</td><td>归还连接时回滚</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>58</td><td>commitOnReturn</td><td>归还连接时提交</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>59</td><td>defaultReadOnly</td><td>只读模式</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.28.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：数据源模板的名称。
+2. classpath
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置数据库驱动类所在的 Jar 文件的绝对路径，多个路径以英文逗号分隔。若在启动之前（注：启动后再放无效）已经将文件放置到了 ${tongweb.base}/lib 下，则可以不设置。 注意：在集群环境中，请确保每个实例所在的服务器上都需放置所需的文件。
+3. refLib
+◦ 取值范围：“公共类库”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：添加数据库驱动类所在的类库，如果同时设置了“驱动包位置”，那么将一起生效，且“驱动包位置”比“驱动包类库”更优先加载。
+4. connectionProperties
+◦ 取值范围：字符串长度限制0个到1024个
+◦ 默认值：无。
+◦ 说明：当驱动类型为 Driver 时，Driver 连接数据库所需要的连接参数。根据需要进行填写，格式要求是 propertyName=propertyValue，多个参数以英文逗号分隔。注意：数据库的用户名和密码参数不需要在这里填写。
+5. clientInfo
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置 JDBC 连接的客户端信息，其值格式为 key=value 的键值对，多个键值对以英文逗号分隔。
+6. defaultCatalog
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置给定的目录名称，以便在此连接对象的数据库中选择一个子空间来工作。若驱动程序不支持目录，则它将默默地忽略这个请求。
+7. initSQL
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定一个存放 SQL 语句的文件的名称，可在每次建立数据库物理连接以后执行其中的 SQL，以完成相应的数据库初始化操作。出于安全考虑，该文件须位于 $\$ 1$ {tongweb.base}/conf/jdbc 目录，且其类型限定为 *.txt 和 *.sql。
+8. maxActive
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：100
+◦ 说明：连接池可分配的最大活动连接数。
+9. initialSize
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：10
+◦ 说明：连接池建立时初始创建的连接数。
+10. minIdle
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：10
+◦ 说明：连接池始终维持一定数量的数据库连接，以供应用所需，其数量至少是此处设置的最小空闲数。
+
+# 4.28.4. 参数补充说明
+11. maxIdle
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：100
+◦ 说明：连接池中保留的空闲连接的最大数量，若达到了此数，会释放多余的数据库物理连接。
+12. minEvictableIdleTimeMillis
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：600000
+◦ 生效条件：minIdle! ${ \boldsymbol { \mathbf { \rho } } } = 0$ \|maxIdle!=0
+◦ 说明：连接池在其空闲连接数超出最小空闲数后，会对超出的空闲连接进行空闲时间检查，若其空闲时间超过了此处设置的空闲容忍时间（单位：毫秒），则会释放对应的数据库物理连接。
+13. batchSize
+◦ 取值范围：大小限制0到65535
+◦ 默认值：0
+◦ 说明：连接池创建数据库连接数量可分批次进行，以减小对数据库的压力。此处设置连接池单批次创建连接的最大个数，注：设置为 0 表示不限制，即不启用此功能。
+14. batchInterval
+◦ 取值范围：大小限制1到2147483647
+◦ 默认值：60
+◦ 生效条件：batchSize! $\mathtt { = 0 }$ 
+◦ 说明：连接池创建数据库连接是分批次进行，可设置批次间的间隔时间（单位：秒）。注：此选项在“单批次创建数”大于 0 时有效。
+15. usingLIFOQueue
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，连接池中的连接将以后进先出顺序提供给客户端线程，即后创建和后回池的连接优先被客户端线程获取使用。
+16. fair
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在连接池为空时，客户端线程会等待池中有连接可用，打开此功能后，先等待的线程会优先获得连接，否则顺序会不确定（但会有更好的性能），注：此功能通常适用于需要严格顺序的场景，但会有一定的性能损失。
+17. maxWait
+◦ 取值范围：大小限制0到3600000
+◦ 默认值：30000
+◦ 说明：客户端最多等待连接可用的时间（单位：毫秒），超时后，会得到连接池抛出的SQLException。设置为 0 表示不等待，此时若无可用连接，客户端会立即得到 SQLException。
+18. threadBinding
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：JtaManaged=false
+◦ 说明：开启后，通过此数据源获取的连接将会绑定到当前工作的 HTTP 线程上。在当前 HTTP 请求处理完成之前，多次从该数据源获取连接将会是之前绑定的同一个。在 HTTP 请求处理完成之后，绑定的连接自动从线程上解绑。注：若该数据源会参与多种数据库事务，请谨慎开启本功能。注：打开“支持 JTA”后不支持此设置。
+19. instantRecycling
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：threadBinding=false
+◦ 说明：在业务请求处理结束后，立即检查并将未关闭的连接对象回收至连接池内，以供继续复用。
+20. maxAge
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：设置连接对象在池中的最大存活时间，即连接的寿命。连接池会周期性地检查底层物理连接的建立时长，当发现超出设置的时长（单位：毫秒）后，底层物理连接将会被销毁并重新建立。“0”表示不进行此检查处理，但若在获取连接时验证失败，仍然会去重新建立失效的连接。
+
+# 4.28.4. 参数补充说明
+21. removeAbandoned 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启检查连接泄漏功能后，若一个连接的使用时间超过泄漏超时时间且池的使用比例达到泄漏判定比例，则可选打印泄漏警告日志或强制关闭该连接。
+22. removeAbandonedTimeout 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：60
+◦ 生效条件：removeAbandoned=true
+◦ 说明：连接被判定为“泄漏”的条件之一为连接的使用时长，单位是秒。满足该条件并且满足“泄漏判定比例”，才被认定为“泄漏”。
+23. abandonWhenPercentageFull 
+◦ 取值范围：大小限制0到100
+◦ 默认值：0
+◦ 生效条件：removeAbandoned=true
+◦ 说明：连接被判定为“泄漏”的条件之一为当前连接池的使用比例（即使用中的连接数与池最大连接数的比值）大于该比例，单位是百分比。满足该条件并且满足“泄漏判定时间”，才被认定为“泄漏”。
+24. logAbandoned 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：removeAbandoned=true
+◦ 说明：在检测到泄漏连接时，打印客户端获取连接的调用栈日志。注：开启后会记录连接被应用使用时的调用栈，会对性能造成一定的影响。
+25. abandonedConnection 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：removeAbandoned=true
+◦ 说明：在检测到泄漏连接时，是否强制关闭连接。
+26. testOnConnect 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在创建连接时进行数据库连接有效性验证，失效后立即回收。
+27. testOnBorrow
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在从池中获取连接时进行数据库连接有效性验证，失效后立即回收。
+28. testOnReturn
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在连接返回到池之时进行数据库连接有效性验证，失效后立即回收。
+29. testWhileIdle
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：对未使用的连接进行数据库连接有效性验证，失效后立即回收。注：若处于空闲中的连接正在进行验证（开启了“空闲时验证”），则会被同时计入“空闲连接数”和“验证中连接数”两个指标，此时“活跃连接数”、“空闲连接数”和“验证中连接数”三者之和会比“连接池大小”多1。
+30. clearPolicy
+◦ 取值范围：ALL（释义：/所有空闲连接）, FAILED（释义：/当前检测连接）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：ALL
+◦ 生效条件：testWhileIdle=true
+◦ 说明：当检测到有连接失效后，有两种可选的清理方式，当前检测连接：仅回收当前检测到的失效连接；所有空闲连接：立即回收池中所有的空闲连接。
+
+# 4.28.4. 参数补充说明
+31. timeBetweenEvictionRunsMillis
+◦ 取值范围：大小限制2000到1000000000
+◦ 默认值：60000
+◦ 说明：周期性进行空闲连接验证、泄漏连接关闭和空闲连接池大小调整的时间间隔（单位：毫秒）。
+32. connectionVerificationMode
+◦ 取值范围：isValid（释义：/isValid）, table（释义：/table）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：isValid
+◦ 说明：连接验证的方式，包括 Connection.isValid 方式和 table 验证。当选择 table 验证时，需要填写一个用于测试的数据库表名，若填写表名则测试语句为 SELECT 1 FROM [表名]，若填写表名为空则测试语句为 SELECT 1。
+33. tableName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：DUAL
+◦ 生效条件：connectionVerificationMode=table
+◦ 说明：填写一个用于测试的数据库表名，若填写表名则测试语句为 SELECT 1 FROM [表名]，若填写表名为空则测试语句为 SELECT 1。
+34. validationQueryTimeout 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：5
+◦ 说明：连接验证查询失败前的超时时间（单位：秒），“0”表示由数据库驱动决定。
+35. validationInterval 
+◦ 取值范围：大小限制1000到1000000000
+◦ 默认值：30000
+◦ 说明：为避免频繁的验证，在指定的间隔时间内最多进行一次验证。单位：毫秒。
+36. logValidationErrors 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在验证失败后记录错误日志。
+37. customInterceptor 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：SQL 拦截器用于拦截 SQL 语句的执行过程，以便进行必要的业务操作。此处设置 SQL 拦截器的全类名（需继承自com.tongweb.web.jdbc.pool.interceptor.AbstractCreateStatementInterceptor），以英文逗号分隔可设置多个，并需要在 TongWeb 启动前将包含这些类的 jar 放到 $\$ 1$ {tongweb.base}/lib 或${tongweb.home}/lib 目录下。此外，设置 SQL 拦截器也可使用编程的方式：将从 JNDI 获取到的TongWeb 数据源对象，强转为 com.tongweb.web.jdbc.pool.DataSource 对象，再调用其addJdbcInterceptor 方法即可实现。注：上述依赖类可从 $\$ 1$ {tongweb.home}/version*/tongweb-web.jar 获取。
+38. enableStatementEnhancer 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：对新创建的语句进行默认设置，包括 SQL 超时、Fetch-Size 等。
+39. queryTimeout 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：5
+◦ 生效条件：enableStatementEnhancer=true
+◦ 说明：指定语句执行的超时时间，单位为秒。若超过这个时间，就会抛出一个SQLTimeoutException，适用于 execute、executeQuery 和 executeUpdate 方法。“0”表示使用JDBC 驱动程序的默认值。
+40. fetchSize 
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0
+◦ 生效条件：enableStatementEnhancer=true
+◦ 说明：给 JDBC 驱动程序一个提示，当该语句生成的结果集对象需要更多的行时，应该从数据库中获取的行数。若指定的值为“0”，则该提示将被忽略。
+
+# 4.28.4. 参数补充说明
+41. enableStatementCache
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：语句缓存可通过复用对象等方式提升 SQL 执行性能。
+42. prepared
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enableStatementCache=true
+◦ 说明：对创建的 PreparedStatement 实例进行缓存。
+43. callable
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enableStatementCache=true
+◦ 说明：对创建的 CallableStatement 实例进行缓存。
+44. max
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：20
+◦ 生效条件：enableStatementCache=true
+◦ 说明：每个连接缓存语句的最大数量。
+45. enableStatementFinalizer
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：追踪与连接相关的语句，并在 Connection.close() 时将其关闭。对于那些使用完连接但没有关闭相关语句的应用是非常有用的。
+46. trace
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enableStatementFinalizer=true
+◦ 说明：启用/禁用对未关闭语句的堆栈跟踪。启用后，若语句没有关闭，则通过日志记录其创建的堆
+栈，以便于排查程序问题。
+47. releaseOnError 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在执行 SQL 遇到错误时，立即回收当前连接。
+48. enableSlowQueryReport 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：追踪 SQL 执行的时间，当对 execute/executeQuery 或executeBatch 的调用成功并超过时间阈值时，记录缓慢的 SQL。
+49. threshold 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：1000
+◦ 生效条件：enableSlowQueryReport=true
+◦ 说明：以毫秒为单位的阈值。若查询的速度比这个快，则不记录该 SQL。
+50. maxQueries 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1000
+◦ 生效条件：enableSlowQueryReport=true
+◦ 说明：存储的最大 SQL 数量。
+
+# 4.28.4. 参数补充说明
+51. logSlow 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enableSlowQueryReport=true
+◦ 说明：启用/禁用记录慢 SQL 日志，日志会记录在独立的 logs/sql 目录以方便排查业务问题。
+52. sqlForParamPrintRegex 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enableSlowQueryReport=true&logSlow=true
+◦ 说明：在记录较慢的 SQL 时，是否一起记录数据参数（可能包含密码、ID、金额等敏感数据，请谨慎考虑），若需要记录则在此处输入哪些 SQL 需要记录，格式为正则表达式。注：出于安全考虑，不建议使用此功能。
+53. logFailed 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enableSlowQueryReport=true
+◦ 说明：启用/禁用记录失败 SQL 日志，日志会记录在独立的 logs/sql 目录以方便排查业务问题。
+54. JtaManaged
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：threadBinding=false
+◦ 说明：若计划将此数据源应用于 EJB 事务或者用户管理的 JTA 事务，则需要开启 JTA 支持。开启JTA 支持要求驱动类型为 XA 类型，且自动提交会被强制关闭。注：打开“线程绑定”后不支持此设置。
+55. defaultAutoCommit
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：连接创建时的默认自动提交状态。若支持 JTA，则会被强制关闭。
+56. defaultTransactionIsolation
+◦ 取值范围：-1（释义：/数据库驱动决定）, 1（释义：/读未提交）, 2（释义：/读已提交）, 4（释义：/可重复读）, 8（释义：/串行化）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：2
+◦ 说明：指定默认的事务隔离级别。“-1”表示由数据库驱动决定，“1”表示读未提交，“2”表示读已提交，“4”表示可重复读，“8”表示串行化。
+57. rollbackOnReturn
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：当有连接返回池中（连接的 close 方法被调用）时，回滚任何未决的事务。该功能仅在“自动提交”关闭时生效。
+58. commitOnReturn
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：rollbackOnReturn=false
+◦ 说明：当有连接返回池中（连接的 close 方法被调用）时，提交任何未决的事务。该功能仅在“自动提交”关闭时生效。
+59. defaultReadOnly
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：将此连接置于只读模式，作为对驱动程序的提示，以实现数据库优化。
+
+# 4.28.5. 支持的监视项
+1. 监视项：size
+◦ 语义：连接池大小
+◦ 说明：连接池中的连接总数，通常是空闲连接数、活跃连接数、报备连接数三者之和。
+◦ 是波动类型：是
+2. 监视项：idle
+◦ 语义：空闲连接数
+◦ 说明：处于空闲状态，可随时被应用借走使用的连接数。
+◦ 是波动类型：是
+3. 监视项：active
+◦ 语义：活跃连接数
+◦ 说明：被应用借走且尚未归还的连接数。
+◦ 是波动类型：是
+4. 监视项：pending
+◦ 语义：报备连接数
+◦ 说明：正在等待与数据库建立物理连接的逻辑上的连接数，一般出现在两种场景：1. 驱动与数据库建立连接耗时较长；2. 开启了分批连接功能，有批次正在等待中。
+◦ 是波动类型：是
+5. 监视项：validating
+◦ 语义：验证中连接数
+◦ 说明：正在进行有效性验证的连接数量，这些连接可能处于活跃或空闲状态。
+◦ 是波动类型：是
+6. 监视项：waitCount
+◦ 语义：线程等待数
+◦ 说明：等待获取连接的线程数量。当连接池中没有空闲连接时，线程拿不到连接将会等待。
+◦ 是波动类型：是
+7. 监视项：slowSQLSize
+◦ 语义：慢SQL数
+◦ 说明：连接池检测到的慢SQL数。
+◦ 是波动类型：是
+8. 监视项：cacheSize
+◦ 语义：语句缓存数
+◦ 说明：连接池缓存的语句数。
+◦ 是波动类型：是
+9. 监视项：poolCleanerRunning
+◦ 语义：回收器工作中
+◦ 说明：反映数据库连接回收器（一个独立线程，用于回收泄漏的、超时的、验证未通过的连接）是否在工作，1：工作中；0：休眠中。
+◦ 是波动类型：是
+10. 监视项：slowSQLDetail
+◦ 语义：SQL明细
+◦ 说明：明细显示了每条SQL的具体执行情况，字段说明：sql（SQL语句）；numberOfInvocations（慢执行次数）；maxInvocationTime（最长执行时间，毫秒）；maxInvocationDate（最长执行时的日期）；minInvocationTime（最短执行时间，毫秒）；minInvocationDate（最短执行时的日期）；totalInvocationTime（总执行时间）；failures（执行失败次数）；prepareCount（总prepare次数）；prepareTime（总prepare时间）。
+◦ 是波动类型：否
+
+# 4.29. 数据库连接
+汇总和管理数据库连接池中的活跃连接对象，可对检测为泄漏的数据库连接进行手动回收。
+
+# 4.29.1. 模块名
+dbconnection 
+
+# 4.29.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>show</td><td>查看该连接的信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>cleanup</td><td>尝试回收该连接。注：该操作可能具有一定的危险，请在确保业务安全的前提下进行。</td></tr></table>
+
+# 4.29.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>连接对象哈希码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>datasourceName</td><td>所属数据源</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>threadName</td><td>线程名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>stackTrace</td><td>线程栈</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>lastConnected</td><td>连接建立时间</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>busy</td><td>使用中</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>markedAbandoned</td><td>已标记泄露</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.29.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：表示数据库物理连接的 Java 对象信息。
+2. datasourceName 
+◦ 取值范围：“数据源”的ID
+◦ 默认值：无。
+◦ 说明：该连接所属数据源的名称。
+3. threadName 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：从连接池中取走该连接的线程名称。注：仅在数据源启用连接泄露检查并且记录泄露日志时显示该信息。
+4. stackTrace 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：从连接池中取走该连接的线程栈。注：仅在数据源启用连接泄露检查并且记录泄露日志时显示该信息。
+5. lastConnected 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：首次连接数据库的时间。
+6. busy 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：标记该连接是否正在被应用业务使用而未归还到连接池中。
+7. markedAbandoned 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：根据数据源配置的连接泄露检测规则，该连接是否已经被检测为泄漏。
+
+# 4.29.5. 支持的监视项
+无。
+
+# 4.30. 死锁线程
+汇总死锁的线程，可查看死锁等待对象监视器或同步器的线程栈。
+
+# 4.30.1. 模块名
+deadlockedthread 
+
+# 4.30.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>show</td><td>查看该死锁线程的信息，包括其死锁的堆栈等。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>forcestop</td><td>尝试强制终止该线程的运行。注：该操作可能具有一定的危险，请在确保业务安全的前提下进行。此外，该操作不一定能够成功终止死锁的线程。</td></tr></table>
+
+# 4.30.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>线程ID</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>threadName</td><td>线程名</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>3</td><td>threadState</td><td>线程状态</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>4</td><td>鎖Name</td><td>等待的锁</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>5</td><td>lockOwnerId</td><td>锁占有线程ID</td><td>数值类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>6</td><td>lockOwnerName</td><td>锁占有线程名</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>7</td><td>deadlockedStack</td><td>死锁线程栈</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>8</td><td>canBeKilled</td><td>支持强停</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.30.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：死锁线程的ID。
+2. threadName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：死锁线程的名称。
+3. threadState
+◦ 取值范围：BLOCKED（释义：/BLOCKED）, WAITING（释义：/WAITING）, TIMED_WAITING（释义：/TIMED_WAITING）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：死锁线程的当前状态。
+4. lockName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：该死锁线程正在等待的锁名称。
+5. lockOwnerId
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0
+◦ 说明：该死锁线程等待的锁正在被其它线程占有，此处给出占有线程的ID。-1 表示该死锁线程没有在等待锁，或锁没有被其它线程占有。
+6. lockOwnerName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：该死锁线程等待的锁正在被其它线程占有，此处给出占有线程的名称。空表示该死锁线程没有在等待锁，或锁没有被其它线程占有。
+7. deadlockedStack
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：死锁等待对象监视器或同步器的线程栈。
+8. canBeKilled
+◦ 取值范围：true 或 false
+◦ 默认值：false
+◦ 说明：标记该线程是否支持强制终止。
+
+# 4.30.5. 支持的监视项
+无。
+
+# 4.31. EJB w3协议
+在部署远程 EJB 服务的时候，可选 HTTP 协议或 EJB w3协议，相比于 HTTP 协议，使用 EJB w3协议处理EJB 请求，通常可以获得更好的性能。对于 EJB 客户端，在使用 HTTP 协议时，其连接串（JNDI 的java.naming.provider.url 参数）示例为”http://IP:8088/ejbserver/ejb“，而使用 EJB w3协议时，其连接串示例则为”w3://IP:5200“。注：使用此协议请确保防火墙不会拦截该协议的端口。运行客户端项目需要下载依赖包并引入项目中。
+
+# 4.31.1. 模块名
+ejbconnection 
+
+# 4.31.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>monitor</td><td>获取该组件的运行状态信息，该信息可反映组件的健康情况。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr></table>
+
+# 4.31.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>enterprise>serverservices>serverservice
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>enabled</td><td>启用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>bind</td><td>绑定IP</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>port</td><td>端口号</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>only_from</td><td>允许的客户端</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>timeout</td><td>连接超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>backlog</td><td>连接队列</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>forceSocketClose</td><td>自动关闭</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>socketReadTimeout</td><td>读超时时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>keepAliveTime</td><td>会话超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>threadsCore</td><td>最小备用线程数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>threads</td><td>最大线程数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>queue</td><td>最大等待数量</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>iiop</td><td>兼容IIOP协议</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.31.4. 参数补充说明
+1. enabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：若不需要处理 EJB 或受限于防火墙不能开放对应的端口，则可以不启用此专有协议。
+2. bind
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：0.0.0.0
+◦ 生效条件：enabled=true
+◦ 说明：指定该 EJB 协议绑定的 IP 地址。
+3. port
+◦ 取值范围：大小限制1到65535
+◦ 默认值：5200
+◦ 生效条件：enabled=true
+◦ 说明：指定该 EJB 协议绑定的端口。
+4. only_from
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：设置允许连接本服务的客户端 IP 地址，多个 IP 地址以英文逗号分隔；不设置，则表示不限制客户端 IP。
+5. timeout
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：30000
+◦ 生效条件：enabled=true
+◦ 说明：与客户端建立连接的超时时间，单位为毫秒。
+6. backlog
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：200
+◦ 生效条件：enabled=true
+◦ 说明：传入连接队列的请求的最大长度。
+7. forceSocketClose
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：Socket 被忘记关闭时，自动关闭 Socket。
+8. socketReadTimeout
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1800
+◦ 生效条件：enabled=true
+◦ 说明：Socket 读超时时间，单位（秒）。对与此 Socket 相关的输入流读取调用将只阻塞这个时间。
+9. keepAliveTime
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：300
+◦ 生效条件：enabled=true
+◦ 说明：与客户端的会话超时时间（单位：秒），当客户端与服务器没有任何通信的时长超过该值后，客户端连接将被强制终止。
+10. threadsCore
+◦ 取值范围：大小限制2到1000000000
+◦ 默认值：10
+◦ 生效条件：enabled=true
+◦ 说明：线程池中用于处理网络请求的最小的备用线程数，即线程池中最少存在的线程数。
+11. threads
+◦ 取值范围：大小限制2到1000000000
+◦ 默认值：150
+◦ 生效条件：enabled=true
+◦ 说明：线程池中用于处理网络请求的最大的线程数。
+12. queue
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：9
+◦ 生效条件：enabled=true
+◦ 说明：暂存待执行任务的队列长度。
+13. iiop
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enabled=true
+◦ 说明：开启兼容 IIOP 协议后，可支持使用 IIOP 协议连接 EJB 服务，如 iiop://IP:5200。
+
+# 4.31.5. 支持的监视项
+
+1. 监视项：activeCount
+◦ 语义：活跃线程数
+◦ 说明：线程池中的活跃线程数。其值为 -1 时，表示未开启该项监视。
+◦ 是波动类型：是
+2. 监视项：poolSize
+◦ 语义：总线程数
+◦ 说明：线程池中的总线程数。其值为 -1 时，表示未开启该项监视。
+◦ 是波动类型：是
+
+# 4.32. EJB http协议
+在部署远程 EJB 服务的时候，可选 HTTP 协议或 EJB w3协议，相比于 w3 协议，使用 HTTP 协议处理 EJB请求，虽然性能稍差，但使用简单并且通常可以穿透防火墙。对于 EJB 客户端，在使用 HTTP 协议时，其连接串（JNDI 的 java.naming.provider.url 参数）示例为”http://IP:8088/ejbserver/ejb“。运行客户端项目需要下载依赖包并引入项目中。
+
+# 4.32.1. 模块名
+ejbhttp 
+
+# 4.32.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr></table>
+
+# 4.32.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>ejbHttpEnabled</td><td>EJB http协议</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>ejbHttpRestrictedPorts</td><td>限定访问端口</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.32.4. 参数补充说明
+1. ejbHttpEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：启用EJB http协议，启用后可通过除“管理端口”之外的所有 HTTP 通道（如系统默认的访问web 应用的8088端口）访问远程 EJB 服务。
+2. ejbHttpRestrictedPorts
+◦ 取值范围：“通道”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：限定远程访问 EJB 服务的端口，只有指定的端口才允许访问，其它端口的访问将会被拒绝，不指定则表示所有端口均不允许访问。
+
+# 4.32.5. 支持的监视项
+无。
+
+# 4.33. 加密工具
+对密码等敏感数据进行加密，如数据库密码、证书密码等。
+
+# 4.33.1. 模块名
+encryptor 
+
+# 4.33.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>按照指定的方式，对明文进行加密处理。</td></tr></table>
+
+# 4.33.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>input</td><td>待加密字符</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>encryptMethod</td><td>加密类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>digestAlg</td><td>摘要算法</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>saltLength</td><td>加盐长度</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>iterations</td><td>迭代次数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>output</td><td>加密结果</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.33.4. 参数补充说明
+1. input
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：需要进行加密的字符串。
+2. encryptMethod
+◦ 取值范围：symmetric（释义：/对称）, asymmetric（释义：/非对称）, digest（释义：/摘要）, id（释义：/特殊字符）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：symmetric
+◦ 说明：指定加密字符串时采用的加密类型。symmetric 表示对称算法，asymmetric 表示非对称算法，digest 表示摘要算法。对称加密适用于：数据源的数据库连接密码；通道的 AJP 协议密钥、私钥库密码、信任库密码、证书密码；节点的 SSH 密码、密钥字符串；JavaMail 资源的会话密码；安全域的连接 LDAP 服务的密码；SNMP 服务的认证密码、加密密码；以及其它需要解密获得原始密码的配置参数。非对称加密适用于：在传输过程中需要加密的任意参数，可用于防止网络数据窥探，在使用 SSL 传输时通常不需要再进行此项加密。摘要加密适用于：控制台管理员的登录密码；安全域用户的用户登录密码。特殊字符加密适用于：使用 REST 等接口需要传递的 #、?、&、:、%、+以及空白符等参数。
+3. digestAlg
+◦ 取值范围：SM3（释义：/SM3）, SHA-256（释义：/SHA-256）, SHA-384（释义：/SHA-384）,SHA-512（释义：/SHA-512）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：SHA-256
+◦ 生效条件：encryptMethod=digest
+◦ 说明：进行摘要加密所采用的算法。
+4. saltLength
+◦ 取值范围：大小限制0到32
+◦ 默认值：1
+◦ 生效条件：encryptMethod=digest
+◦ 说明：将自动生成的盐值和字符串一起加密可以提高加密强度。
+5. iterations
+◦ 取值范围：大小限制1到128
+◦ 默认值：1
+◦ 生效条件：encryptMethod=digest
+◦ 说明：连续多次摘要加密可以提高加密强度。
+6. output
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此处用于回显加密后的结果。
+
+# 4.33.5. 支持的监视项
+无。
+
+# 4.34. 数据源集群
+数据源集群是对外暴露一个资源地址，内部管理多个真实的数据源资源，能根据所选策略实现数据源的故障转移，负载均衡等能力。
+
+# 4.34.1. 模块名
+failoverdatasource 
+
+# 4.34.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>validate</td><td>从系统JNDI查找该数据源，进而获取数据库连接对象，对此连接对象进行有效性检查。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.34.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>Resources>Resource
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>aliases</td><td>绑定 JNDI 名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>datasourceNames</td><td>数据源列表</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>strategy</td><td>调度策略</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.34.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：数据源集群的名称。
+2. aliases
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：对象的别名会被用作其绑定到 JNDI 资源树上的名字，一个对象可以逗号分隔指定多个别名。
+3. datasourceNames
+◦ 取值范围：“数据源”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：指定在数据源集群中包含的数据源。若没有选项，则需首先建立所需要的数据源。
+4. strategy
+◦ 取值范围：default（释义：/default）, round-robin（释义：/round-robin）, random（释义：/random）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：default
+◦ 说明：获取数据库连接时的调度策略，default：从列表的第一个开始，始终使用这一个，直到其不可用后切换为下一个；round-robin：从列表的第一个开始，本次使用这一个，下次切换为下一个；random：每次都从列表中随机选择一个使用；
+
+# 4.34.5. 支持的监视项
+无。
+
+# 4.35. 我的收藏
+查看当前登录用户收藏的功能列表。
+
+# 4.35.1. 模块名
+favorites 
+
+# 4.35.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>addfavorite</td><td>将该功能入口添加至我的收藏。</td></tr><tr><td>cancel favorites</td><td>从我的收藏中移除该功能入口。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.35.3. 支持的参数
+持久化位置：conf/console.xml:console>auth>users>user
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>favorite</td><td>收藏</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.35.4. 参数补充说明
+
+# 4.35.4.1. favorite
+◦ 取值范围：accesslog/edit（释义：访问日志配置/编辑）, accesslog/show（释义：访问日志配置/查看）, accesstoken/show（释义：访问令牌/查看）, accesstoken/create（释义：访问令牌/创建）,accesstoken/list（释义：访问令牌/列表）, advanced/show（释义：进阶使用/查看）,advanced/list（释义：进阶使用/列表）, app/create（释义：应用/部署）, app/show（释义：应用/查看）, app/list（释义：应用/列表）, app/monitor（释义：应用/监视）, appbackup/show（释义：应用备份/配置信息）, appbackup/create（释义：应用备份/创建）, appbackup/list（释义：应用备份/列表）, appdatasource/list（释义：应用数据源/列表）, appdatasource/show（释义：应用数据源/查看）, appdatasource/monitor（释义：应用数据源/监视）, applicationexamples/show（释义：示例应用/查看）, applicationexamples/list（释义：示例应用/列表）, appmigration/show（释义：应用迁移/查看）, appmigration/edit（释义：应用迁移/编辑）, apprecycle/show（释义：应用回收/配置信息）, apprecycle/list（释义：应用回收/列表）, apprecycle/cleanup（释义：应用回收/清空回收站）, apptemplate/create（释义：应用模板/创建）, apptemplate/show（释义：应用模板/查看）, apptemplate/list（释义：应用模板/列表）, appupdate/create（释义：应用增量/创建）, appupdate/list（释义：应用增量/列表）, appupdate/show（释义：应用增量/查看）,auditconfig/show（释义：审计配置/查看）, auditconfig/edit（释义：审计配置/编辑）,auditlist/list（释义：审计列表/列表）, auditlog/list（释义：审计日志/列表）, blockedthread/show（释义：阻塞线程/查看）, blockedthread/list（释义：阻塞线程/列表）, busythread/list（释义：忙碌线程/列表）, busythread/show（释义：忙碌线程/查看）, centralizedconfig/edit（释义：集中配置/编辑）, centralizedconfig/show（释义：集中配置/查看）, centralizedconfig/monitor（释义：集中配置/监视）, classconflict/create（释义：类冲突检测/检测）, classconflict/list（释义：类冲突检测/列表）, classconflict/show（释义：类冲突检测/查看）, classloaded/edit（释义：类资源分析/查找）, classloaded/show（释义：类资源分析/查看）, classloaderstruct/tree（释义：类加载结构/树）, classweaver/create（释义：类方法织入/创建）, classweaver/list（释义：类方法织入/列表）,classweaver/show（释义：类方法织入/查看）, cloudcluster/show（释义：注册实例集群/查看）,cloudcluster/list（释义：注册实例集群/列表）, cluster/show（释义：集群/查看）, cluster/create（释义：集群/创建）, cluster/list（释义：集群/列表）, combinedmonitor/create（释义：组合监视/创建）, combinedmonitor/list（释义：组合监视/列表）, combinedmonitor/show（释义：组合监视/查看）, combinedmonitor/monitor（释义：组合监视/监视）, connector/create（释义：通道/创建）, connector/show（释义：通道/查看）, connector/list（释义：通道/列表）connector/monitor（释义：通道/监视）, consolesecurity/show（释义：控制台安全/查看）,consolesecurity/edit（释义：控制台安全/编辑）, convert/create（释义：SpringBoot/转换）,convert/show（释义：SpringBoot/查看）, convert/list（释义：SpringBoot/列表）,daemonmonitor/create（释义：守护监视/创建）, daemonmonitor/list（释义：守护监视/列表）,daemonmonitor/show（释义：守护监视/查看）, daemonmonitor/monitor（释义：守护监视/监视）, datasource/create（释义：数据源/创建）, datasource/list（释义：数据源/列表）,datasource/show（释义：数据源/查看）, datasource/monitor（释义：数据源/监视）,datasourcetemplate/create（释义：数据源模板/创建）, datasourcetemplate/list（释义：数据源模板/列表）, datasourcetemplate/show（释义：数据源模板/查看）, dbconnection/show（释义：数据库连接/查看）, dbconnection/list（释义：数据库连接/列表）, dbconnection/cleanup（释义：数据库连接/回收）, deadlockedthread/show（释义：死锁线程/查看）, deadlockedthread/list（释义：死锁线程/列表）, ejbconnection/edit（释义：EJB w3协议/编辑）, ejbconnection/show（释义：EJB w3协议/查看）, ejbconnection/monitor（释义：EJB w3协议/监视）, ejbhttp/edit（释义：EJB http协议/编辑）, ejbhttp/show（释义：EJB http协议/查看）, encryptor/edit（释义：加密工具/编辑）, failoverdatasource/create（释义：数据源集群/创建）, failoverdatasource/list（释义：数据源集群/列表）, failoverdatasource/show（释义：数据源集群/查看）, favorites/list（释义：我的收藏/列表）, favorites/show（释义：我的收藏/查看）, feature/show（释义：页面定制/查看）, feature/edit（释义：页面定制/编辑）, gmImportCert/create（释义：证书导入/导入证书）,gmImportCert/list（释义：证书导入/列表）, gmcertrequest/create（释义：证书请求/生成证书请求）, gmcertrequest/show（释义：证书请求/查看公钥）, gmcertrequest/list（释义：证书请求/列表）, gmselfinspect/create（释义：安全自检/自检）, gmselfinspect/show（释义：安全自检/查看）, gmselfinspect/list（释义：安全自检/列表）, gmtrustedca/create（释义：可信CA/导入CA证书）, gmtrustedca/show（释义：可信CA/查看证书）, gmtrustedca/list（释义：可信CA/列表）,host/create（释义：虚拟主机/创建）, host/list（释义：虚拟主机/列表）, host/show（释义：虚拟主机/查看）, inspect/create（释义：一键巡检/巡检）, inspect/show（释义：一键巡检/查看）,inspect/list（释义：一键巡检/列表）, inspectionbaseline/edit（释义：巡检基线/编辑）,inspectionbaseline/show（释义：巡检基线/查看）, instance/show（释义：实例/查看）,instance/create（释义：实例/创建）, instance/list（释义：实例/列表）, instancetemplate/show（释义：实例模板/查看）, instancetemplate/create（释义：实例模板/创建）, instancetemplate/list（释义：实例模板/列表）, javamail/create（释义：JavaMail 资源/创建）, javamail/list（释义：JavaMail 资源/列表）, javamail/show（释义：JavaMail 资源/查看）, jcaadminobject/create（释义：JCA 托管对象/创建）, jcaadminobject/list（释义：JCA 托管对象/列表）,jcaadminobject/show（释义：JCA 托管对象/查看）, jcaconnectionpool/create（释义：JCA 连接池/创建）, jcaconnectionpool/list（释义：JCA 连接池/列表）, jcaconnectionpool/show（释义：JCA 连接池/查看）, jcaconnectionpool/monitor（释义：JCA 连接池/监视）jdbcurltemplate/show（释义：Jdbc 模板/查看）, jdbcurltemplate/create（释义：Jdbc 模板/创建）, jdbcurltemplate/list（释义：Jdbc 模板/列表）, jmx/show（释义：远程 JMX/查看）, jmx/edit（释义：远程 JMX/编辑）, jndi/tree（释义：JNDI 树/树）, jndiresource/create（释义：JNDI 资源/创建）, jndiresource/list（释义：JNDI 资源/列表）, jndiresource/show（释义：JNDI 资源/查看）,jta/edit（释义：JTA 事务/编辑）, jta/show（释义：JTA 事务/查看）, jta/monitor（释义：JTA 事务/监视）, jvm/monitor（释义：JVM/监视）, jvmconfig/edit（释义：JVM 配置/编辑）,jvmconfig/show（释义：JVM 配置/查看）, key/edit（释义：密码安全/编辑）, key/show（释义：密码安全/查看）, keystore/create（释义：证书管理/导入）, keystore/list（释义：证书管理/列表）, keystore/show（释义：证书管理/查看）, lib/create（释义：公共类库/创建）, lib/list（释义：公共类库/列表）, lib/show（释义：公共类库/查看）, license/show（释义：产品授权/查看）,license/edit（释义：产品授权/编辑）, loadbalanceserver/show（释义：负载均衡器/查看）,loadbalanceserver/create（释义：负载均衡器/创建）, loadbalanceserver/list（释义：负载均衡器/列表）, logpush/edit（释义：ES 推送/编辑）, logpush/show（释义：ES 推送/查看）, mdb/edit（释义：消息驱动 Bean/编辑）, mdb/show（释义：消息驱动 Bean/查看）,migrationconfiguration/edit（释义：迁移配置/编辑）, migrationconfiguration/show（释义：迁移配置/查看）, modeswitch/edit（释义：模式切换/编辑）, modeswitch/show（释义：模式切换/查看）, mqserver/show（释义：消息服务器/查看）, mqserver/create（释义：消息服务器/创建）,mqserver/list（释义：消息服务器/列表）, node/show（释义：节点/查看）, node/create（释义：节点/创建）, node/list（释义：节点/列表）, notice/show（释义：系统通知/查看）, notice/list（释义：系统通知/列表）, operatingsystem/monitor（释义：操作系统/监视）,operationrecording/show（释义：脚本录制/查看）, operationrecording/create（释义：脚本录制/创建）, operationrecording/list（释义：脚本录制/列表）, osgibundle/create（释义：OSGi 应用/创建）, osgibundle/list（释义：OSGi 应用/列表）, osgibundle/show（释义：OSGi 应用/查看）,osgiservice/edit（释义：OSGi 服务/编辑）, osgiservice/show（释义：OSGi 服务/查看）, otlp/edit（释义：OTLP 支持/编辑）, otlp/show（释义：OTLP 支持/查看）, overview/overview（释义：概览/概览）, password/edit（释义：修改密码/编辑）, processsecurity/create（释义：进程安全/添加）, processsecurity/show（释义：进程安全/查看）, processsecurity/list（释义：进程安全/列表）,prometheus/edit（释义：Prometheus 服务/编辑）, prometheus/show（释义：Prometheus 服务/查看）, realm/create（释义：安全域/创建）, realm/list（释义：安全域/列表）, realm/show（释义：安全域/查看）, realmuser/create（释义：安全域用户/创建）, realmuser/list（释义：安全域用户/列表）, realmuser/show（释义：安全域用户/查看）, registry/create（释义：注册中心/创建）,registry/list（释义：注册中心/列表）, registry/show（释义：注册中心/查看）, remotejmx/edit（释义：远程 JMX/编辑）, remotejmx/show（释义：远程 JMX/查看）, requestlog/list（释义：访问日志明细/列表）, requestlog/show（释义：访问日志明细/查看）, role/show（释义：角色/查看）,role/create（释义：角色/创建）, role/list（释义：角色/列表）, security/edit（释义：安全策略/编辑）, security/show（释义：安全策略/查看）, server/show（释义：全局配置/查看）, server/edit（释义：全局配置/编辑）, serverlog/edit（释义：系统日志/编辑）, serverlog/show（释义：系统日志/查看）, serverlog/monitor（释义：系统日志/监视）, servicediscovery/show（释义：注册实例/查看）, servicediscovery/list（释义：注册实例/列表）, sessionha/create（释义：会话服务器/创建）, sessionha/list（释义：会话服务器/列表）, sessionha/show（释义：会话服务器/查看）,sessionserver/show（释义：TongDataGrid/查看）, sessionserver/create（释义：TongDataGrid/创建）, sessionserver/list（释义：TongDataGrid/列表）, singleton/edit（释义：单例 EJB/编辑）,singleton/show（释义：单例 EJB/查看）, sms/create（释义：短信服务/创建）, sms/list（释义：短信服务/列表）, sms/show（释义：短信服务/查看）, snapshotfile/create（释义：快照文件/打快照）, snapshotfile/list（释义：快照文件/列表）, snapshotfile/show（释义：快照文件/查看）,snapshottemplate/create（释义：采集模板/创建）, snapshottemplate/list（释义：采集模板/列表）, snapshottemplate/show（释义：采集模板/查看）, snmp/edit（释义：SNMP 服务/编辑）,snmp/show（释义：SNMP 服务/查看）, startpolicy/edit（释义：启动策略/编辑）,startpolicy/show（释义：启动策略/查看）, startupargs/show（释义：启动参数/查看）,startupargs/create（释义：启动参数/创建）, startupargs/list（释义：启动参数/列表）,stateful/edit（释义：有状态 EJB/编辑）, stateful/show（释义：有状态 EJB/查看）, stateless/edit（释义：无状态 EJB/编辑）, stateless/show（释义：无状态 EJB/查看）, staticmetrics/create（释义：静态度量/新增）, staticmetrics/list（释义：静态度量/列表）, staticmetrics/show（释义：静态度量/查看）, support/show（释义：支持列表/查看）, support/list（释义：支持列表/列表）,syslog/edit（释义：Syslog 推送/编辑）, syslog/show（释义：Syslog 推送/查看）,threadpool/create（释义：线程池/创建）, threadpool/list（释义：线程池/列表）,threadpool/show（释义：线程池/查看）, threadpool/monitor（释义：线程池/监视）,thresholdstrategy/create（释义：预警策略/创建）, thresholdstrategy/list（释义：预警策略/列表）, thresholdstrategy/show（释义：预警策略/查看）, trustedauthority/edit（释义：可信授权/编辑）, trustedauthority/show（释义：可信授权/查看）, trustedbehaviordetails/list（释义：可信行为详情/列表）, trustedbehaviordetails/show（释义：可信行为详情/查看）,trustedbehaviormodel/create（释义：可信行为模型/添加采集）, trustedbehaviormodel/list（释义：可信行为模型/列表）, trustedbehaviormodel/show（释义：可信行为模型/查看）,trustedfiles/list（释义：可信文件/列表）, trustedfiles/show（释义：可信文件/查看）,trustedpolicy/create（释义：可信策略/创建）, trustedpolicy/list（释义：可信策略/列表）,trustedpolicy/show（释义：可信策略/查看）, trustedprocess/create（释义：可信进程/添加）,trustedprocess/list（释义：可信进程/列表）, trustedprocess/show（释义：可信进程/查看）,upgrade/create（释义：产品升级/升级）, upgrade/show（释义：产品升级/发布说明）,upgrade/list（释义：产品升级/列表）, user/show（释义：管理员/查看）, user/create（释义：管理员/创建）, user/list（释义：管理员/列表）, userrole/show（释义：权限分配/查看）,userrole/list（释义：权限分配/列表）, version/create（释义：版本生成/创建）, version/show（释义：版本生成/查看）, version/list（释义：版本生成/列表）, webflux/create（释义：WebFlux 应用/创建）, webflux/list（释义：WebFlux 应用/列表）, webflux/show（释义：WebFlux 应用/查看）, workmanager/create（释义：工作管理器/创建）, workmanager/list（释义：工作管理器/列表）, workmanager/show（释义：工作管理器/查看）
+◦ 默认值：无。
+◦ 说明：当前登录用户收藏的功能入口项。
+
+# 4.35.5. 支持的监视项
+无。
+
+# 4.36. 页面定制
+定制 TongWeb 的控制台的菜单功能。
+
+# 4.36.1. 模块名
+feature 
+
+# 4.36.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.36.3. 支持的参数
+持久化位置：conf/console.xml:console
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>disabled</td><td>隐藏菜单</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>extendedCharset</td><td>扩展字符集</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>extendedHttpMethod</td><td>扩展HTTP方法</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>customDisplayName</td><td>定制显示名称</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.36.4. 参数补充说明
+# 4.36.4.1. disabled
+◦ 取值范围：accesslog（释义：访问日志配置/访问日志配置）, accesslog/downloadfile（释义：访问日志配置/下载文件）, accesslog/show（释义：访问日志配置/查看）, accesslog/update（释义：访问日志配置/更新）, accesslog/weblog（释义：访问日志配置/在线日志）, advanced（释义：进阶使用/进阶使用）, advanced/show（释义：进阶使用/查看）, app（释义：应用/应用）, app/access（释义：应用/链接）, app/add（释义：应用/添加）, app/delete（释义：应用/卸载）,app/monitor（释义：应用/监视）, app/show（释义：应用/查看）, app/start（释义：应用/启动）,app/stop（释义：应用/停止）, app/update（释义：应用/更新）, appbackup（释义：应用备份/应用备份）, appbackup/add（释义：应用备份/添加）, appbackup/delete（释义：应用备份/删除）,appbackup/downloadfile（释义：应用备份/下载文件）, appbackup/recover（释义：应用备份/恢复）, appbackup/show（释义：应用备份/配置信息）, appbackup/update（释义：应用备份/更新）, appdatasource（释义：应用数据源/应用数据源）, appdatasource/monitor（释义：应用数据源/监视）, appdatasource/show（释义：应用数据源/查看）, appmigration（释义：应用迁移/应用迁移）, appmigration/show（释义：应用迁移/查看）, appmigration/update（释义：应用迁移/迁移）, apprecycle（释义：应用回收/应用回收）, apprecycle/cleanup（释义：应用回收/清空回收站）, apprecycle/delete（释义：应用回收/删除）, apprecycle/downloadfile（释义：应用回收/下载文件）, apprecycle/recover（释义：应用回收/恢复）, apprecycle/show（释义：应用回收/配置信息）, apptemplate（释义：应用模板/应用模板）, apptemplate/add（释义：应用模板/添加）,apptemplate/delete（释义：应用模板/删除）, apptemplate/show（释义：应用模板/查看）,apptemplate/update（释义：应用模板/更新）, appupdate（释义：应用增量/应用增量）,appupdate/add（释义：应用增量/添加）, appupdate/delete（释义：应用增量/回退）,appupdate/show（释义：应用增量/查看）, auditlist（释义：审计列表/审计列表）, auditlist/add（释义：审计列表/添加）, auditlist/delete（释义：审计列表/删除）, auditlist/update（释义：审计列表/更新）, blockedthread（释义：阻塞线程/阻塞线程）, blockedthread/forcestop（释义：阻塞线程/强停）, blockedthread/show（释义：阻塞线程/查看）, busythread（释义：忙碌线程/忙碌线程）, busythread/show（释义：忙碌线程/查看）, centralizedconfig（释义：集中配置/集中配置）,centralizedconfig/monitor（释义：集中配置/监视）, centralizedconfig/show（释义：集中配置/查看）, centralizedconfig/update（释义：集中配置/更新）, classconflict（释义：类冲突检测/类冲突检测）, classconflict/add（释义：类冲突检测/开始检测）, classconflict/delete（释义：类冲突检测/删除）, classconflict/downloadfile（释义：类冲突检测/下载文件）, classconflict/previewfile（释义：类冲突检测/预览）, classconflict/show（释义：类冲突检测/查看）, classloaded（释义：类资源分析/类资源分析）, classloaded/find（释义：类资源分析/查找）, classloaded/show（释义：类资源分析/查看）, classloaded/update（释义：类资源分析/更新）, classloaderstruct（释义：类加载结构/类加载结构）, classloaderstruct/tree（释义：类加载结构/树）, cloudcluster（释义：注册实例集群/注册实例集群）, cloudcluster/show（释义：注册实例集群/查看）, cluster（释义：集群/集群）, cluster/access（释义：集群/链接）, cluster/add（释义：集群/添加）, cluster/delete（释义：集群/删除）, cluster/forcestop（释义：集群/强停）, cluster/gc（释义：集群/重启）,cluster/restartupgrade（释义：集群/升级）, cluster/show（释义：集群/查看）, cluster/start（释义：集群/启动）, cluster/stop（释义：集群/停止）, cluster/update（释义：集群/更新）,combinedmonitor（释义：组合监视/组合监视）, combinedmonitor/add（释义：组合监视/添加）,combinedmonitor/delete（释义：组合监视/删除）, combinedmonitor/monitor（释义：组合监视/监视）, combinedmonitor/show（释义：组合监视/查看）, combinedmonitor/update（释义：组合监视/更新）, connector（释义：通道/通道）, connector/add（释义：通道/添加）,connector/delete（释义：通道/删除）, connector/monitor（释义：通道/监视）, connector/show（释义：通道/查看）, connector/start（释义：通道/启动）, connector/stop（释义：通道/停止）,connector/update（释义：通道/更新）, consolesecurity（释义：控制台安全/控制台安全）,consolesecurity/show（释义：控制台安全/查看）, consolesecurity/update（释义：控制台安全/更新）, daemonmonitor（释义：守护监视/守护监视）, daemonmonitor/add（释义：守护监视/添加）, daemonmonitor/delete（释义：守护监视/删除）, daemonmonitor/downloadfile（释义：守护监视/下载文件）, daemonmonitor/monitor（释义：守护监视/监视）, daemonmonitor/show（释义：守护监视/查看）, daemonmonitor/update（释义：守护监视/更新）, datasource（释义：数据源/数据源）, datasource/add（释义：数据源/添加）, datasource/delete（释义：数据源/删除）,datasource/monitor（释义：数据源/监视）, datasource/show（释义：数据源/查看）,datasource/start（释义：数据源/启动）, datasource/stop（释义：数据源/停止）,datasource/update（释义：数据源/更新）, datasource/validate（释义：数据源/测试）,datasourcetemplate（释义：数据源模板/数据源模板）, datasourcetemplate/add（释义：数据源模板/添加）, datasourcetemplate/delete（释义：数据源模板/删除）, datasourcetemplate/show（释义：数据源模板/查看）, datasourcetemplate/update（释义：数据源模板/更新）, dbconnection（释义：数据库连接/数据库连接）, dbconnection/cleanup（释义：数据库连接/回收）,dbconnection/show（释义：数据库连接/查看）, deadlockedthread（释义：死锁线程/死锁线程）,deadlockedthread/forcestop（释义：死锁线程/强停）, deadlockedthread/show（释义：死锁线程/查看）, encryptor（释义：加密工具/加密工具）, encryptor/update（释义：加密工具/加密）,failoverdatasource（释义：数据源集群/数据源集群）, failoverdatasource/add（释义：数据源集群/添加）, failoverdatasource/delete（释义：数据源集群/删除）, failoverdatasource/show（释义：数据源集群/查看）, failoverdatasource/update（释义：数据源集群/更新）,failoverdatasource/validate（释义：数据源集群/测试）, gmImportCert（释义：证书导入/证书导入）, gmImportCert/add（释义：证书导入/导入）, gmImportCert/delete（释义：证书导入/删除）, gmcertrequest（释义：证书请求/证书请求）, gmcertrequest/add（释义：证书请求/生成）,gmcertrequest/delete（释义：证书请求/删除）, gmcertrequest/downloadfile（释义：证书请求/下载文件）, gmcertrequest/show（释义：证书请求/查看公钥）, gmselfinspect（释义：安全自检/安全自检）, gmselfinspect/add（释义：安全自检/安全自检）, gmselfinspect/delete（释义：安全自检/删除）, gmselfinspect/show（释义：安全自检/查看）, gmtrustedca（释义：可信CA/可信CA）, gmtrustedca/add（释义：可信CA/导入）, gmtrustedca/delete（释义：可信CA/删除）,gmtrustedca/show（释义：可信CA/查看证书）, host（释义：虚拟主机/虚拟主机）, host/add（释义：虚拟主机/添加）, host/delete（释义：虚拟主机/删除）, host/show（释义：虚拟主机/查看）,host/update（释义：虚拟主机/更新）, inspect（释义：一键巡检/一键巡检）, inspect/add（释义：一键巡检/开始巡检）, inspect/delete（释义：一键巡检/删除）, inspect/downloadfile（释义：一键巡检/下载文件）, inspect/previewfile（释义：一键巡检/预览）, inspect/show（释义：一键巡检/查看）, inspectionbaseline（释义：巡检基线/巡检基线）, inspectionbaseline/show（释义：巡检基线/查看）, inspectionbaseline/update（释义：巡检基线/更新）, instance（释义：实例/实例）,instance/add（释义：实例/添加）, instance/delete（释义：实例/删除）, instance/downloadfile（释义：实例/下载文件）, instance/forcestop（释义：实例/强停）, instance/gc（释义：实例/重启）, instance/remove（释义：实例/移除记录）, instance/restartupgrade（释义：实例/重启升级）,instance/show（释义：实例/查看）, instance/start（释义：实例/启动）, instance/stop（释义：实例/停止）, instance/update（释义：实例/更新）, instancetemplate（释义：实例模板/实例模板）,instancetemplate/add（释义：实例模板/添加）, instancetemplate/delete（释义：实例模板/删除）, instancetemplate/downloadfile（释义：实例模板/下载文件）, instancetemplate/show（释义：实例模板/查看）, jdbcurltemplate（释义：Jdbc 模板/Jdbc 模板）, jdbcurltemplate/add（释义：Jdbc 模板/添加）, jdbcurltemplate/delete（释义：Jdbc 模板/删除）, jdbcurltemplate/show（释义：Jdbc 模板/查看）, jdbcurltemplate/update（释义：Jdbc 模板/更新）, jmx（释义：远程 JMX/远程 JMX）, jmx/show（释义：远程 JMX/查看）, jmx/update（释义：远程 JMX/更新）, jndi（释义：JNDI 树/JNDI 树）, jndi/tree（释义：JNDI 树/树）, jndiresource（释义：JNDI 资源/JNDI 资源）, jndiresource/add（释义：JNDI 资源/添加）, jndiresource/delete（释义：JNDI 资源/删除）,jndiresource/show（释义：JNDI 资源/查看）, jndiresource/update（释义：JNDI 资源/更新）, jvm（释义：JVM/JVM）, jvm/gc（释义：JVM/垃圾回收）, jvm/monitor（释义：JVM/监视）,jvmconfig（释义：JVM 配置/JVM 配置）, jvmconfig/show（释义：JVM 配置/查看）,jvmconfig/update（释义：JVM 配置/更新）, key（释义：密码安全/密码安全）, key/show（释义：密码安全/查看）, key/update（释义：密码安全/更新）, keystore（释义：证书管理/证书管理）,keystore/add（释义：证书管理/导入）, keystore/delete（释义：证书管理/删除）,keystore/downloadfile（释义：证书管理/下载文件）, keystore/show（释义：证书管理/查看）,keystore/update（释义：证书管理/更新）, lib（释义：公共类库/公共类库）, lib/add（释义：公共类库/添加）, lib/delete（释义：公共类库/删除）, lib/show（释义：公共类库/查看）, lib/update（释义：公共类库/更新）, license（释义：产品授权/产品授权）, license/show（释义：产品授权/查看）, license/update（释义：产品授权/更新）, loadbalanceserver（释义：负载均衡器/负载均衡器）,loadbalanceserver/access（释义：负载均衡器/THS控制台）, loadbalanceserver/add（释义：负载均衡器/添加）,loadbalanceserver/delete（释义：负载均衡器/删除）,loadbalanceserver/downloadfile（释义：负载均衡器/下载文件）, loadbalanceserver/forcestop（释义：负载均衡器/强停）, loadbalanceserver/remove（释义：负载均衡器/移除记录）,loadbalanceserver/restartupgrade（释义：负载均衡器/平滑重启）, loadbalanceserver/show（释义：负载均衡器/查看）, loadbalanceserver/start（释义：负载均衡器/启动）,loadbalanceserver/startconsole（释义：负载均衡器/启动THS控制台）, loadbalanceserver/stop（释义：负载均衡器/停止）, loadbalanceserver/update（释义：负载均衡器/更新）, logpush（释义：ES 推送/ES 推送）, logpush/show（释义：ES 推送/查看）, logpush/update（释义：ES 推送/更新）, migrationconfiguration（释义：迁移配置/迁移配置）, migrationconfiguration/show（释义：迁移配置/查看）, migrationconfiguration/update（释义：迁移配置/更新）, modeswitch（释义：模式切换/模式切换）, modeswitch/show（释义：模式切换/查看）, modeswitch/update（释义：模式切换/更新）, node（释义：节点/节点）, node/add（释义：节点/添加）, node/delete（释义：节点/移除）, node/downloadfile（释义：节点/下载文件）, node/forcestop（释义：节点/强停）,node/restartupgrade（释义：节点/重启升级）, node/show（释义：节点/查看）, node/start（释义：节点/启动）, node/stop（释义：节点/停止）, node/update（释义：节点/更新）,node/updateLic（释义：节点/更新授权）, operatingsystem（释义：操作系统/操作系统）,operatingsystem/monitor（释义：操作系统/监视）, operationrecording（释义：脚本录制/脚本录制）, operationrecording/add（释义：脚本录制/添加）, operationrecording/delete（释义：脚本录制/删除）, operationrecording/downloadfile（释义：脚本录制/下载文件）,operationrecording/finish（释义：脚本录制/完成）, operationrecording/show（释义：脚本录制/查看）, otlp（释义：OTLP 支持/OTLP 支持）, otlp/show（释义：OTLP 支持/查看）, otlp/update（释义：OTLP 支持/更新）, overview（释义：概览/概览）, overview/os（释义：概览/操作系统负荷）, overview/server（释义：概览/TongWeb 负荷）, processsecurity（释义：进程安全/进程安全）, processsecurity/add（释义：进程安全/添加）, processsecurity/delete（释义：进程安全/删除）, processsecurity/show（释义：进程安全/查看）, processsecurity/update（释义：进程安全/更新）, prometheus（释义：Prometheus 服务/Prometheus 服务）, prometheus/show（释义：Prometheus 服务/查看）, prometheus/update（释义：Prometheus 服务/更新）, realm（释义：安全域/安全域）, realm/add（释义：安全域/添加）, realm/delete（释义：安全域/删除）,realm/show（释义：安全域/查看）, realm/update（释义：安全域/更新）, realmuser（释义：安全域用户/安全域用户）, realmuser/add（释义：安全域用户/添加）, realmuser/delete（释义：安全域用户/删除）, realmuser/show（释义：安全域用户/查看）, realmuser/update（释义：安全域用户/更新）, registry（释义：注册中心/注册中心）, registry/add（释义：注册中心/添加）,registry/delete（释义：注册中心/删除）, registry/show（释义：注册中心/查看）, registry/update（释义：注册中心/更新）, remotejmx（释义：远程 JMX/远程 JMX）, remotejmx/show（释义：远程 JMX/查看）, remotejmx/update（释义：远程 JMX/更新）, requestlog（释义：访问日志明细/访问日志明细）, requestlog/show（释义：访问日志明细/查看）, requestlog/weblog（释义：访问日志明细/请求日志）, security（释义：安全策略/安全策略）, security/show（释义：安全策略/查看）, security/update（释义：安全策略/更新）, server（释义：全局配置/全局配置）,server/downloadfile（释义：全局配置/下载文件）, server/show（释义：全局配置/查看）,server/update（释义：全局配置/更新）, serverlog（释义：系统日志/系统日志）,serverlog/downloadfile（释义：系统日志/下载文件）, serverlog/monitor（释义：系统日志/监视）, serverlog/show（释义：系统日志/查看）, serverlog/update（释义：系统日志/更新）,serverlog/weblog（释义：系统日志/在线日志）, servicediscovery（释义：注册实例/注册实例）,servicediscovery/show（释义：注册实例/查看）, sessionha（释义：会话服务器/会话服务器）,sessionha/add（释义：会话服务器/添加）, sessionha/delete（释义：会话服务器/删除）,sessionha/show（释义：会话服务器/查看）, sessionha/update（释义：会话服务器/更新）,sessionha/validate（释义：会话服务器/测试）, sms（释义：短信服务/短信服务）, sms/add（释义：短信服务/添加）, sms/delete（释义：短信服务/删除）, sms/show（释义：短信服务/查看）,sms/update（释义：短信服务/更新）, snapshotfile（释义：快照文件/快照文件）,snapshotfile/add（释义：快照文件/打快照）,snapshotfile/delete（释义：快照文件/删除）,snapshotfile/downloadfile（释义：快照文件/下载文件）, snapshotfile/show（释义：快照文件/查看）, snapshottemplate（释义：采集模板/采集模板）, snapshottemplate/add（释义：采集模板/添加）, snapshottemplate/delete（释义：采集模板/删除）, snapshottemplate/show（释义：采集模板/查看）, snapshottemplate/update（释义：采集模板/更新）, snmp（释义：SNMP 服务/SNMP 服务）, snmp/show（释义：SNMP 服务/查看）, snmp/update（释义：SNMP 服务/更新）, startpolicy（释义：启动策略/启动策略）, startpolicy/show（释义：启动策略/查看）,startpolicy/update（释义：启动策略/更新）, startupargs（释义：启动参数/启动参数）startupargs/add（释义：启动参数/添加）, startupargs/delete（释义：启动参数/删除）,startupargs/show（释义：启动参数/查看）, startupargs/update（释义：启动参数/更新）,staticmetrics（释义：静态度量/静态度量）, staticmetrics/add（释义：静态度量/添加）,staticmetrics/delete（释义：静态度量/删除）, staticmetrics/show（释义：静态度量/查看）,support（释义：支持列表/支持列表）, support/downloadfile（释义：支持列表/下载文件）,support/show（释义：支持列表/查看）, syslog（释义：Syslog 推送/Syslog 推送）, syslog/show（释义：Syslog 推送/查看）, syslog/update（释义：Syslog 推送/更新）, threadpool（释义：线程池/线程池）, threadpool/add（释义：线程池/添加）, threadpool/delete（释义：线程池/删除）,threadpool/monitor（释义：线程池/监视）, threadpool/show（释义：线程池/查看）,threadpool/update（释义：线程池/更新）, thresholdstrategy（释义：预警策略/预警策略）,thresholdstrategy/add（释义：预警策略/添加）, thresholdstrategy/delete（释义：预警策略/删除）, thresholdstrategy/show（释义：预警策略/查看）, thresholdstrategy/update（释义：预警策略/更新）, trustedauthority（释义：可信授权/可信授权）, trustedauthority/downloadfile（释义：可信授权/下载文件）, trustedauthority/show（释义：可信授权/查看）, trustedauthority/update（释义：可信授权/更新）, trustedbehaviordetails（释义：可信行为详情/可信行为详情）,trustedbehaviordetails/add（释义：可信行为详情/添加）, trustedbehaviordetails/delete（释义：可信行为详情/删除）, trustedbehaviordetails/show（释义：可信行为详情/查看）,trustedbehaviordetails/start（释义：可信行为详情/应用）, trustedbehaviormodel（释义：可信行为模型/可信行为模型）, trustedbehaviormodel/add（释义：可信行为模型/添加）,trustedbehaviormodel/delete（释义：可信行为模型/删除）, trustedbehaviormodel/forcestop（释义：可信行为模型/停止采集）, trustedbehaviormodel/show（释义：可信行为模型/查看）,trustedbehaviormodel/start（释义：可信行为模型/应用）, trustedbehaviormodel/stop（释义：可信行为模型/停止应用）, trustedfiles（释义：可信文件/可信文件）, trustedfiles/show（释义：可信文件/查看）, trustedpolicy（释义：可信策略/可信策略）, trustedpolicy/add（释义：可信策略/添加）, trustedpolicy/delete（释义：可信策略/删除）, trustedpolicy/show（释义：可信策略/查看）,trustedprocess（释义：可信进程/可信进程）, trustedprocess/add（释义：可信进程/添加）,trustedprocess/delete（释义：可信进程/删除）, trustedprocess/show（释义：可信进程/查看）,upgrade（释义：产品升级/产品升级）, upgrade/add（释义：产品升级/升级）, upgrade/delete（释义：产品升级/删除）, upgrade/downloadfile（释义：产品升级/下载文件）, upgrade/show（释义：产品升级/发布说明）, user（释义：管理员/管理员）, user/add（释义：管理员/添加）,user/delete（释义：管理员/删除）, user/show（释义：管理员/查看）, user/update（释义：管理员/更新）, webflux（释义：WebFlux 应用/WebFlux 应用）, webflux/add（释义：WebFlux 应用/添加）, webflux/delete（释义：WebFlux 应用/删除）, webflux/show（释义：WebFlux 应用/查看）, webflux/start（释义：WebFlux 应用/启动）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：隐藏 TongWeb 的模块接口，隐藏后相应的接口将关闭访问权限，命令行、REST、JMX等都没有访问权限。
+
+# 4.36.4.1.2. extendedCharset
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：用于扩展字符集，设置的字符集可在TongWeb编码配置处选择，配置多个字符集以英文逗号分隔。
+
+# 4.36.4.1.3. extendedHttpMethod
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：用于扩展HTTP方法，设置的HTTP方法可在TongWeb通道-支持HTTP方法中选择，配置多个HTTP方法以英文逗号分隔。
+
+# 4.36.4.1.4. customDisplayName
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：定制模块和字段在页面上的显示名称，格式示例：模块名称、模块名称.字段名称。注意：定制模块名称后需要刷新页面以使得页面功能菜单上的名称更新。
+
+# 4.36.5. 支持的监视项
+无。
+
+# 4.37. 证书导入
+导入证书。
+
+# 4.37.1. 模块名
+gmImportCert 
+
+# 4.37.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>导入CA证书。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>delete</td><td>删除pfx证书，注意：这里删除不可恢复，请谨慎操作！对应{tongweb.home}/pfx目录下的文件。</td></tr></table>
+
+# 4.37.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>证书名称</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>2</td><td>fileFrom</td><td>证书来源</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>fromUpload</td><td>上传证书</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>zipFile</td><td>证书目录</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>time</td><td>生成时间</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr></table>
+
+# 4.37.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：证书名称。
+2. fileFrom
+◦ 取值范围：fromUpload（释义：/上传文件）, fromServer（释义：/服务器文件）
+◦ 默认值：fromServer
+◦ 说明：证书可以从客户端上传，也可以从服务器端指定的位置读取。注：出于安全考虑，TongWeb出厂设置禁用了文件上传功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。
+3. fromUpload
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom $\mid =$ fromUpload
+◦ 说明：上传一个证书文件到服务器，文件须是 *.zip的文件。
+4. zipFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom=fromServer
+◦ 说明：证书目录。
+5. time
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：生成时间
+
+# 4.37.5. 支持的监视项
+无。
+
+# 4.38. 证书请求
+生成SM2签名证书请求。
+
+# 4.38.1. 模块名
+gmcertrequest 
+
+# 4.38.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>使用gmssl工具生成签名密钥对。</td></tr><tr><td>show</td><td>查看该密钥对的公钥。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>downloadlist</td><td>获取签名密钥对的公钥，即SM2签名证书请求，p10文件。</td></tr><tr><td>delete</td><td>删除签名密钥对，注意：这里删除不可恢复，请谨慎操作！对应{tongweb.home}/crt目录下的文件。</td></tr></table>
+
+# 4.38.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名字</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>organization</td><td>组织</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>st</td><td>省市</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>pubKey</td><td>公钥</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>5</td><td>time</td><td>生成时间</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr></table>
+
+# 4.38.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：名字。
+2. organization
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：组织。
+3. st
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：省市
+4. pubKey
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：公钥
+5. time
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：生成时间
+
+# 4.38.5. 支持的监视项
+无。
+
+# 4.39. 安全自检
+进行各种自检行为，并生成相应的自检报告。
+
+# 4.39.1. 模块名
+gmselfinspect 
+
+# 4.39.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>进行各种自检行为，并生成相应的自检报告。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.39.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>自检结果</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>2</td><td>timeOut</td><td>超时时间</td><td>数值类型</td><td>否</td><td>是</td><td>否</td></tr><tr><td>3</td><td>type</td><td>自检类型</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>4</td><td>random</td><td>随机数自检</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>5</td><td>sm4</td><td>SM4算法自检</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>6</td><td>sm3</td><td>SM3算法自检</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>7</td><td>sm2</td><td>SM2算法自检</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>8</td><td>software</td><td>软件完整性自检</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.39.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：查看本次自检的结果。
+2. timeOut
+◦ 取值范围：大小限制10到1000000000
+◦ 默认值：600
+◦ 说明：当收集数据需要的时间过长时，则自动终止后续的收集任务，终止后，已收集完成的实例数据依然可用，单位是秒。
+3. type
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：查看本次自检的类型，分为上电自检、周期自检、条件自检。
+4. random
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：通过
+◦ 说明：确保密码运算所需的随机数来源真实且不可预测。
+5. sm4
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：通过
+◦ 说明：验证对称密码算法SM4的加密与解密功能是否正确。
+6. sm3
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：通过
+◦ 说明：验证杂凑算法SM3能否正确计算出数据的摘要值。
+7. sm2
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：通过
+◦ 说明：验证非对称密码算法SM2的签名与验签、加密与解密功能是否正常。
+8. software
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：通过
+◦ 说明：需要使用SM2签名算法，在软件发版之前计算软件安装包的签名值。
+
+# 4.39.5. 支持的监视项
+无。
+
+# 4.40. 可信CA
+可信CA管理。
+
+# 4.40.1. 模块名
+gmtrustedca 
+
+# 4.40.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>导入CA证书，用于验证CA证书是否可信。</td></tr><tr><td>show</td><td>查看证书信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>delete</td><td>删除CA证书，注意：这里删除不可恢复，请谨慎操作！对应{tongweb.home}/ca目录下的文件。</td></tr></table>
+
+# 4.40.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>CA证书名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>time</td><td>导入时间</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>3</td><td>calinfo</td><td>CA证书</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.40.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：CA证书名称。
+2. time
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：导入时间
+3. caInfo
+◦ 取值范围：字符串长度限制0个到1000000000个
+◦ 默认值：无。
+◦ 说明：CA证书。
+
+# 4.40.5. 支持的监视项
+无。
+
+# 4.41. 首页
+查看 TongWeb 应用服务器的产品和授权信息。
+
+# 4.41.1. 模块名
+home 
+
+# 4.41.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>home</td><td>查看TongWeb应用服务器的产品和授权信息。</td></tr><tr><td>monitor</td><td>获取该组件的运行状态信息，该信息可反映组件的健康情况。</td></tr></table>
+
+# 4.41.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>TW_Product_Name</td><td>授权产品</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>2</td><td>TW Version_Number</td><td>授权版本</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>3</td><td>TW_Edition</td><td>版本类型</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>4</td><td>consumer_name</td><td>授权客户</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>5</td><td>license_type</td><td>授权类型</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>6</td><td>end_date</td><td>授权期限</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>7</td><td>TW_Max_Node</td><td>授权节点数</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>8</td><td>bindip</td><td>授权绑定IP</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>9</td><td>BindMac</td><td>授权绑定MAC</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>10</td><td>fileFrom</td><td>文件来源</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>fromServer</td><td>服务器文件</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>fromUpload</td><td>上传授权</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>licenseDir</td><td>授权文件目录</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>pushToLicenseCenter</td><td>推送到授权中心</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.41.4. 参数补充说明
+1. TW_Product_Name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权可适用的产品名称。
+2. TW_Version_Number 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权可适用的产品版本号。
+3. TW_Edition 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权可适用的产品版本类型。
+4. consumer_name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：授权给的客户信息。
+5. license_type 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权的使用类型。
+6. end_date
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权的到期时间。
+7. TW_Max_Node
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：授权集中管理可管理的最大节点数。
+8. bindip
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权绑定的服务器IP范围。
+9. BindMac
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权绑定的服务器MAC。
+10. fileFrom
+◦ 取值范围：fromUpload（释义：/上传文件）, fromServer（释义：/服务器文件）
+◦ 默认值：无。
+◦ 说明：授权文件可以从客户端上传，也可以从服务器端指定的位置读取。注：出于安全考虑，TongWeb 出厂设置禁用了文件上传功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。
+11. fromServer
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom=fromServer
+◦ 说明：指定服务器上授权文件的位置。
+12. fromUpload
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom=fromUpload
+◦ 说明：上传一个授权文件到服务器。
+13. licenseDir
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定授权文件的存放目录。若是相对路径，则是相对于 TongWeb 的安装目录，即${tongweb.home}。注：为空表示使用 TongWeb 的安装目录，如果指定的目录不存在，则会继续使用 TongWeb 的安装目录。
+14. pushToLicenseCenter
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否将更新的授权文件推送到授权中心，以自动下发至其它 TongWeb。注：各 TongWeb（含“默认实例”） 需在“全局配置”模块打开“启用授权中心”，并选择相同的授权中心。未打开“启用授权中心”时该功能无效。
+
+# 4.41.5. 支持的监视项
+1. 监视项：productName
+◦ 语义：产品名称
+◦ 说明：产品的完整名称。
+◦ 是波动类型：否
+2. 监视项：productNumber
+◦ 语义：产品版本
+◦ 说明：产品的版本信息以及补丁号信息。如果产品安装了补丁，则补丁号会出现在版本信息之后（如.P1），未出现则表示未安装任何补丁。
+◦ 是波动类型：否
+3. 监视项：runningMode
+◦ 语义：运行模式
+◦ 说明：TongWeb 的运行模式表示其当前实例所能提供的能力范围，它由产品包和授权文件（license.dat）共同决定。通常，安装（解压缩）后的 TongWeb 是一个可提供全能力的版本，此时它的运行模式可由授权文件进行变换，授权为企业版则能提供全部能力，授权为轻量版则主要提供Web 能力等，具体可参考产品手册。对于由版本生成工具生成的轻量版等类型的版本，则其运行模式只能是对应的轻量版等类型，而无法通过授权文件进行变换。
+◦ 是波动类型：否
+4. 监视项：pkg
+◦ 语义：命名空间
+◦ 说明：当前 TongWeb 的包命名空间。
+◦ 是波动类型：否
+5. 监视项：tongwebBase
+◦ 语义：实例目录
+◦ 说明：服务器实例目录信息。
+◦ 是波动类型：否
+6. 监视项：tongwebHome
+◦ 语义：安装目录
+◦ 说明：产品的安装目录信息。
+◦ 是波动类型：否
+7. 监视项：javaHome
+◦ 语义：Java环境
+◦ 说明：服务器实例使用的 Java 路径信息。
+◦ 是波动类型：否
+8. 监视项：buildTime
+◦ 语义：构建日期
+◦ 说明：服务器构建的日期。
+◦ 是波动类型：否
+
+# 4.42. 虚拟主机
+虚拟主机是一个逻辑组件，其设计目的是对应用进行分组管理。虚拟主机上可以配置一系列的资源，部署在其上的应用共享这些资源。除 admin 通道（管理端口）外，其它任何通道均可以访问到虚拟主机。控制台部署在 admin 虚拟主机上。
+
+# 4.42.1. 模块名
+host 
+
+# 4.42.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个虚拟主机。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.42.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>service>container>host
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>主机名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>aliases</td><td>别名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>refRealm</td><td>默认安全域</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>refSessionHa</td><td>会话服务器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>addValve</td><td>自定义 Valve</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>customErrorPage</td><td>自定义错误页面</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>useJsonReport</td><td>使用 Json 报告</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>ssoEnabled</td><td>单点登录</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>sessionShareEnabled</td><td>Session 共享</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>rewriteEnabled</td><td>启用 URL 重写</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>rewriteConfigFile</td><td>URL 重写规则文件</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.42.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：虚拟主机的名称，可作为访问该虚拟主机的域名。注意：避免使用 IP 地址；若使用 IP 地址，则通过此 IP 地址就只能访问此虚拟主机下的应用，可能导致控制台无法访问。
+2. aliases
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：虚拟主机的别名，别名和主机名一样可作为访问该虚拟主机的域名。多个别名以英文逗号分隔。注意：避免使用 IP 地址，若使用 IP 地址，则通过此 IP 就只能访问此虚拟主机下的应用，可能导致控制台无法访问。
+3. refRealm
+◦ 取值范围：“安全域”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：此处设置的安全域可作用于所有部署在此虚拟主机上的应用，其优先级低于应用自身设置的安全域。若此虚拟主机同时开启了“单点登录（SSO）”，则优先级高于应用设置的安全域。
+4. refSessionHa
+◦ 取值范围：“会话服务器”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：选择应用要连接的会话服务器，将应用的 Session 存储到会话服务器。此处设置的会话服务器可作用于所有部署在此虚拟主机上的应用，其优先级低于应用自身设置的会话服务器。若此虚拟主机同时开启了“Session 共享”，则优先级高于应用设置的会话服务器。
+5. addValve
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：自定义 Valve 的全类名，自定义的 Valve 会添加到虚拟主机的 pipeline（valve 链）里，访问应用时执行自定义的操作。自定义的 Valve 需继承 com.tongweb.server.valves.ValveBase 类（所在jar： $\$ 1$ {tongweb.home}/version*/tongweb-web.jar）；在重写 invoke 方法时，需要确保调用“getNext().invoke(request, response)”；在重写其它方法时，需要确保调用对应的 super 方法。多个自定义 Valve 需以英文逗号分隔。注：需在 TongWeb 启动之前，将包含自定义 Valve 的 jar 文件放置到 ${tongweb.base}/lib 下。
+6. customErrorPage
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：自定义错误页面，数据格式为 code=path，其中 code 指定错误状态码，path 指定自定义错误页面的绝对路径，也可以是相对于 TongWeb 安装目录或域目录的相对路径，多个自定义错误页面需以英文逗号分隔。
+7. useJsonReport
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启此选项后，任何导致 HTTP 错误状态码的请求都将收到一个包含错误信息的 JSON 数据格式的响应。若未开启，服务器将继续使用默认的 HTML 数据格式的页面响应。
+8. ssoEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否开启单点登录，默认关闭。开启后，同一虚拟主机下使用相同安全域的应用可以实现多点登录，即登录一次访问多个应用。注：若要启用单点登录功能，则需要首先设置默认安全域。
+9. sessionShareEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否开启应用间的 Session 共享功能。开启后，同一虚拟主机下的应用可以实现 Session 数据共享。
+10. rewriteEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：支持 URL 重写和请求转发，能够在请求到达 Servlet 容器之前对 URL 进行修改，类似于Apache HTTP 服务器中的 mod_rewrite 模块。
+11. rewriteConfigFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：rewriteEnabled=true
+◦ 说明：指定 URL 重写功能使用的规则文件。
+
+# 4.42.5. 支持的监视项
+无。
+
+# 4.43. 一键巡检
+收集所有受管 TongWeb 的运行状态数据，并生成相应的巡检报告。安全基线配置可以在 [实例管理] 中的 [安全管理] 模块下的 [巡检基线] 部分进行设置。
+
+# 4.43.1. 模块名
+inspect 
+
+# 4.43.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>开始收集所有受管TongWeb的运行状态数据，并生成相应的巡检报告。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>previewfile</td><td>在线预览巡检报告的页面。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.43.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>巡检结果</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>2</td><td>timeOut</td><td>超时时间</td><td>数值类型</td><td>否</td><td>是</td><td>否</td></tr></table>
+
+# 4.43.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：查看本次巡检的结果。
+2. timeOut
+◦ 取值范围：大小限制10到1000000000
+◦ 默认值：600
+◦ 说明：当收集数据需要的时间过长时，则自动终止后续的收集任务，终止后，已收集完成的实例数据依然可用，单位是秒。
+
+# 4.43.5. 支持的监视项
+无。
+
+# 4.44. 巡检基线
+配置系统需要巡检的具体项目，以确保生产系统安全合规。
+
+# 4.44.1. 模块名
+inspectionbaseline 
+
+# 4.44.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.44.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>enabled</td><td>启用基线检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>preventStartup</td><td>阻止启动</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>checkJvmHeapThreshold</td><td>JVM堆内存检查(MB)</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>checkDiskSpaceThreshold</td><td>磁盘空间检查(GB)</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>checkHotDeployment</td><td>热部署检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>checkAccessLog</td><td>访问日志检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>checkAppSecurity</td><td>应用安全检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>checkChangePwd</td><td>默认密码检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>checkConfigProtection</td><td>文件防篡改检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>checkConsoleClose</td><td>控制台暴露检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>checkEnableCrawlerSessionManager</td><td>反爬虫检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>checkErrorPage</td><td>错误页面检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>checkFileUpload</td><td>文件上传检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>checkFilterRemoteHost</td><td>客户端拦截检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>checkFilterTime</td><td>访问时段检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>checkInstallDir</td><td>安装用户检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>checkOtp</td><td>动态密码检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>18</td><td>checkPort</td><td>防火墙策略检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>19</td><td>checkResponseHeader</td><td>协议头检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>20</td><td>checkSecureStop</td><td>启停安全检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>checkSSL</td><td>SSL配置检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>22</td><td>checkTrustedIP</td><td>信任IP检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>23</td><td>checkUseJavaSerializer</td><td>序列化安全检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>24</td><td>checkXFF</td><td>XFF检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>25</td><td>checkMaxPartCount</td><td>检查文件上传最大个数</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>26</td><td>checkMaxPartHeaderSize</td><td>检查文件上传最大请求头大小</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>27</td><td>checkSerializableWhitelist</td><td>检查序列化白名单</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>28</td><td>enabledStatusCheck</td><td>启用状态信息检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>29</td><td>checkAppStatus</td><td>应用检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>30</td><td>checkAppDataSourceStatus</td><td>应用数据源检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>31</td><td>checkConnectorStatus</td><td>通道检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>32</td><td>checkDataSourceStatus</td><td>数据源检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>33</td><td>checkEjbConnectionStatus</td><td>EJB w3协议检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>34</td><td>checkHomeStatus</td><td>首页检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>35</td><td>checkJcaConnectionPoolStat us</td><td>JCA 连接池检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>36</td><td>checkJtaStatus</td><td>JTA 事务检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>37</td><td>checkJvmStatus</td><td>JVM检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>38</td><td>checkOperatingSystemStat u s</td><td>操作系统检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>39</td><td>checkServerLogStatus</td><td>系统日志检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>40</td><td>checkThreadPoolStatus</td><td>线程池检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>41</td><td>enabledSystemCheck</td><td>启用系统信息检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>42</td><td>checkServerLogs</td><td>Server日志检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>43</td><td>checkSystemProcessStatus</td><td>系统进程检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>44</td><td>checkFileOpenStatus</td><td>文件打开检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>45</td><td>checkNetworkConnectionSta tus</td><td>网络连接检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>46</td><td>checkJavaThreadStack</td><td>Java线程堆栈检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>47</td><td>enabledAlertCheck</td><td>启用预警信息检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>48</td><td>checkHeapDumpAlert</td><td>堆转储文件检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>49</td><td>checkJvmFatalErrorAlert</td><td>JVM致命错误日志检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>50</td><td>checkAlertSnapshot</td><td>快照检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>51</td><td>enabledPythonScripts</td><td>启用Python脚本检查</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>52</td><td>pythonScriptsDir</td><td>Python脚本目录</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>53</td><td>pythonScriptTimeout</td><td>脚本执行超时时间(秒)</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.44.4. 参数补充说明
+1. enabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否启用此基线检查，启用后，每次启动 TongWeb 都会按照此基线配置项进行系统检查，并输出检查日志。
+2. preventStartup
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enabled=true
+◦ 说明：当“强制基线”类型的检查项目检查不通过时，自动终止系统启动。注：标红色（*）的为“强制基线”类型。
+3. checkJvmHeapThreshold
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1024
+◦ 生效条件：enabled=true
+◦ 说明：检查-Xmx参数是否小于阈值。
+4. checkDiskSpaceThreshold 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：20
+◦ 生效条件：enabled=true
+◦ 说明：检查磁盘剩余空间是否小于阈值。
+5. checkHotDeployment 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：检查是否禁用热部署功能。
+6. checkAccessLog 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查访问日志开启状态。
+7. checkAppSecurity 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查访问日志开启状态。
+8. checkChangePwd 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查默认密码已修改。
+9. checkConfigProtection 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否启用关键配置文件防篡改检测功能。
+10. checkConsoleClose 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查控制台访问已禁用。
+
+# 4.44.4. 参数补充说明
+11. checkEnableCrawlerSessionManager
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查反爬虫配置。
+12. checkErrorPage
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查自定义错误页面配置。
+13. checkFileUpload
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查远程文件上传已禁用。
+14. checkFilterRemoteHost
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查客户端拦截配置。
+15. checkFilterTime
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查禁用时间段配置。
+16. checkInstallDir
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查以普通用户安装。
+17. checkOtp 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查动态密码已启用。
+18. checkPort 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查控制台端口未暴露。
+19. checkResponseHeader 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查协议头安全配置。
+20. checkSecureStop 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查启停安全配置。
+
+# 4.44.4. 参数补充说明
+21. checkSSL 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查SSL已启用。
+22. checkTrustedIP 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查信任IP列表配置。
+23. checkUseJavaSerializer 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查序列化安全配置。
+24. checkXFF
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查X-Forwarded-For配置。
+25. checkMaxPartCount
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查文件上传最大个数的配置。该配置属于通道属性，用于限制单个HTTP请求中允许的最大文件上传数量。
+26. checkMaxPartHeaderSize
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查文件上传最大请求头大小的配置。该配置属于通道属性，用于限制文件上传请求头的最大字节数。
+27. checkSerializationWhitelist
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabled=true
+◦ 说明：是否检查序列化白名单的安全配置。
+28. enabledStatusCheck
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：是否启用状态检查功能。启用后，系统将按照配置监控应用、数据源、通道等组件的运行状态。
+29. checkAppStatus
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledStatusCheck=true
+◦ 说明：是否检查应用状态。该配置用于监控Java EE/Jakarta EE应用程序的运行状态。
+30. checkAppDataSourceStatus
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledStatusCheck=true
+◦ 说明：是否检查应用数据源状态。该配置用于监控应用自行创建和管理的数据源使用情况。
+
+# 4.44.4. 参数补充说明
+31. checkConnectorStatus
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledStatusCheck=true
+◦ 说明：是否检查通道状态。该配置用于监控网络通道的连接状态和请求处理能力。
+32. checkDataSourceStatus
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledStatusCheck=true
+◦ 说明：是否检查数据源状态。该配置用于监控TongWeb提供的数据源连接池运行状态。
+33. checkEjbConnectionStatus
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledStatusCheck=true
+◦ 说明：是否检查EJB w3协议状态。该配置用于监控远程EJB服务的专用协议连接状态。
+34. checkHomeStatus
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledStatusCheck=true
+◦ 说明：是否检查首页状态。该配置用于监控TongWeb服务器主页的可访问性。
+35. checkJcaConnectionPoolStatus
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledStatusCheck=true
+◦ 说明：是否检查JCA连接池状态。该配置用于监控企业信息系统连接池的资源使用情况。
+36. checkJtaStatus
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledStatusCheck=true
+◦ 说明：是否检查JTA事务状态。该配置用于监控分布式事务的处理状态和超时情况。
+37. checkJvmStatus
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledStatusCheck=true
+◦ 说明：是否检查JVM状态。该配置用于监控Java虚拟机的内存使用和运行状态。
+38. checkOperatingSystemStatus
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledStatusCheck=true
+◦ 说明：是否检查操作系统状态。该配置用于监控底层操作系统的基本运行信息。
+39. checkServerLogStatus
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledStatusCheck=true
+◦ 说明：是否检查系统日志状态。该配置用于监控TongWeb服务器日志的记录状态。
+40. checkThreadPoolStatus
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledStatusCheck=true
+◦ 说明：是否检查线程池状态。该配置用于监控服务器管理的线程池资源使用情况。
+
+# 4.44.4. 参数补充说明
+41. enabledSystemCheck
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：是否启用系统检查功能。启用后，系统将监控服务器日志、系统进程、网络连接等系统级信息。
+42. checkServerLogs
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledSystemCheck=true
+◦ 说明：是否检查服务器日志。该配置用于监控和分析服务器运行日志。
+43. checkSystemProcessStatus 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledSystemCheck=true
+◦ 说明：是否检查系统进程状态（top命令）。该配置用于监控系统资源使用情况。
+44. checkFileOpenStatus 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledSystemCheck=true
+◦ 说明：是否检查文件打开状态（lsof命令）。该配置用于监控系统打开的文件和网络连接。
+45. checkNetworkConnectionStatus 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledSystemCheck=true
+◦ 说明：是否检查网络连接状态（netstat命令）。该配置用于监控网络连接和端口状态。
+46. checkJavaThreadStack 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledSystemCheck=true
+◦ 说明：是否检查Java线程堆栈（jstack命令）。该配置用于分析Java应用程序的线程状态。
+47. enabledAlertCheck 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：是否启用预警检查功能。启用后，系统将监控堆转储、JVM致命错误等预警信息，并在异常时生成快照。
+48. checkHeapDumpAlert 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledAlertCheck=true
+◦ 说明：是否检查堆转储文件预警。该配置用于监控JVM堆内存溢出时的自动转储文件生成。
+49. checkJvmFatalErrorAlert
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledAlertCheck=true
+◦ 说明：是否检查JVM致命错误日志预警。该配置用于监控JVM运行时发生的致命错误日志记录。
+
+# 4.44.4. 参数补充说明
+50. checkAlertSnapshot
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：enabledAlertCheck=true
+◦ 说明：是否检查预警快照。该配置用于在系统异常时自动生成系统状态快照用于问题分析。
+51. enabledPythonScripts
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否启用Python脚本检查功能。启用后，系统将执行指定目录下的Python脚本，并将其返回的JSON结果集成到巡检报告中。注意：需要系统已安装Python并正确设置环境变量。
+52. pythonScriptsDir
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：scripts/inspect
+◦ 生效条件：enabledPythonScripts=true
+◦ 说明：Python脚本文件所在目录路径。支持绝对路径和相对路径。相对路径将基于${tongweb_base}/data 目录解析。注意：单个Python脚本文件大小不应超过10MB。
+53. pythonScriptTimeout
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：30
+◦ 生效条件：enabledPythonScripts=true
+◦ 说明：Python脚本执行的超时时间，单位为秒。如果脚本执行超过此时间，将被强制终止。
+
+# 4.44.5. 支持的监视项
+无。
+
+# 4.45. 实例
+TongWeb 实例即 TongWeb 的运行进程，是运行 TongWeb 的最小单位。TongWeb 实例主要负责用户应用的部署和运行。一个节点上可以管理多个实例，多个实例可形成一个集群。在部署结构上，实例对应的是TongWeb 的 domain1 域之外的其它域。注：集中管理工具本身包含了一个默认实例，它的本质是一个节点，即在部署结构上，它对应的是 TongWeb 的 domain1 域，通常 domain1 域用于管理，因此不建议在默
+认实例上部署应用。
+
+# 4.45.1. 模块名
+instance 
+
+# 4.45.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>start</td><td>启动操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否启动成功。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>stop</td><td>停止操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否停止成功。</td></tr><tr><td>forcestop</td><td>对于长时间难以停止成功或者停止过程被意外阻塞的情况，可以选择强制停止进程，强制停止通常是以强制杀死进程的方式来实现。</td></tr><tr><td>restartupgrade</td><td>重启升级操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否启动成功。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr><tr><td>remove</td><td>从当前列表删除此记录。注：移除记录操作仅在所属节点被删除或无法启动的情况下受支持，请谨慎操作，移除后不可恢复。</td></tr><tr><td>gc</td><td>对当前运行实例执行重启操作。</td></tr></table>
+
+# 4.45.3. 支持的参数
+持久化位置：conf/console.xml:console>instances>instance
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>2</td><td>changeToName</td><td>重命名</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>3</td><td>running</td><td>运行中</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>4</td><td>autostart</td><td>宕机重启</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>maxretrycount</td><td>最大重试次数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>startwithnode</td><td>自启动</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>alias</td><td>别名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>node</td><td>所在节点</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>9</td><td>instanceTemplate</td><td>实例模板</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>10</td><td>installationPath</td><td>指定安装目录</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>11</td><td>cluster</td><td>所属集群</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>12</td><td>latest</td><td>是否最新</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>13</td><td>updateTime</td><td>最后更新时间</td><td>数值类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>14</td><td>version</td><td>实例版本</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>15</td><td>needUpgrade</td><td>待升级</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>16</td><td>appPort</td><td>应用端口</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>needConsolePort</td><td>创建管理端口</td><td>布尔类型</td><td>否</td><td>是</td><td>否</td></tr><tr><td>18</td><td>port</td><td>管理端口</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.45.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制1个到150个
+◦ 默认值：无。
+◦ 说明：唯一标识。
+2. changeToName
+◦ 取值范围：字符串长度限制1个到150个
+◦ 默认值：无。
+◦ 说明：将名称更改为此值。注：修改名称的时候不要修改其他属性。
+3. running
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：了解该组件的运行状态。
+4. autostart
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：异常宕机（如：被kill）后是否自动重启。
+5. maxretrycount
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：autostart=true
+◦ 说明：启用异常宕机（如：被kill）后尝试自动重启的次数上限。若设置为0，则表示自动重启的次数不受限制。
+6. startwithnode
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：指定该实例是否跟随其所在节点启动而启动。若其所在节点设置了“开机自启”，则通过这种方式可以实现该实例的开机自启。
+7. alias
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：用来标识当前实例的备注，实例过多时方便通过别名进行模糊查询。
+8. node
+◦ 取值范围：“节点”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：实例所在的节点。
+9. instanceTemplate
+◦ 取值范围：“实例模板”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：选取一个实例模板，新创建的实例配置使用此模板的配置。
+10. installationPath
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：可指定一个绝对目录（若目录不存在，TongWeb 将会自动创建），以将实例安装到此目录。此项不必填，若未指定，则默认安装到 ${tongweb.base}/domains 目录下。
+
+# 4.45.4. 参数补充说明
+11. cluster
+◦ 取值范围：“集群”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：实例所在的集群。
+12. latest
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：cluster!=&cluster!=null
+◦ 说明：是否集群中最新的实例
+13. updatetime
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：无。
+◦ 生效条件：cluster!=&cluster!=null
+◦ 说明：集群中实例的最后的更新时间
+14. version
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此实例正在使用的 TongWeb 版本。
+15. needUpgrade
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：此实例正在使用的 TongWeb 是否可以升级到一个更新的版本。
+16. appPort
+◦ 取值范围：大小限制1到65535
+◦ 默认值：无。
+◦ 说明：访问应用所使用的端口，为空时系统自动生成。
+17. needConsolePort
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：关闭后，在创建实例时将不会创建管理端口，此实例将无法支持远程管理功能。
+18. port
+◦ 取值范围：大小限制1到65535
+◦ 默认值：无。
+◦ 生效条件：needConsolePort=true
+◦ 说明：实例的管理端口，为空时系统自动生成。
+
+# 4.45.5. 支持的监视项
+无。
+
+# 4.46. 实例模板
+选择一个实例（实例所在节点处于运行中），将它的配置制作成模板，创建实例时可以引用模板，用于复用配置。
+
+# 4.46.1. 模块名
+instancetemplate 
+
+# 4.46.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.46.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>模板名称</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>2</td><td>instance</td><td>基础实例</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>3</td><td>createDate</td><td>创建日期</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.46.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：该实例模板的唯一标识。
+2. instance 
+◦ 取值范围：“实例”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：选择需要设置为模板的实例。
+3. createDate 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：创建此模板的日期和时间。
+
+# 4.46.5. 支持的监视项
+无。
+
+# 4.47. JavaMail 资源
+通过创建 JavaMail 资源，TongWeb 会创建 JavaMail 会话，并将 JavaMail 资源中设置的属性设置给JavaMail 会话。然后使用 JavaMail 会话应用可以进行收发邮件、回复邮件、转发邮件等操作。
+
+# 4.47.1. 模块名
+javamail 
+
+# 4.47.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.47.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>Resources>Resource
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>aliases</td><td>绑定 JNDI 名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>smtpHost</td><td>邮件服务器地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>smtpPort</td><td>邮件服务器端口</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>from</td><td>发件邮箱</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>6</td><td>user</td><td>登录用户名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>7</td><td>password</td><td>登录密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>8</td><td>debug</td><td>打印日志</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>otherProperties</td><td>其他属性</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.47.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：JavaMail 资源的名称。
+2. aliases
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：对象的别名会被用作其绑定到 JNDI 资源树上的名字，一个对象可以逗号分隔指定多个别名。
+3. smtpHost
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：smtp.163.com
+◦ 说明：邮件服务器地址，默认为 smtp.163.com。
+4. smtpPort
+◦ 取值范围：大小限制1到65535
+◦ 默认值：25
+◦ 说明：邮件服务器发送端口，默认为 25。
+5. from
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：邮件的 From 属性，连接邮件服务器后默认的邮件发送者的邮箱，必须是登录验证后的邮箱地址。若登录用户名使用的是邮箱地址，则该属性可以设置为相同的内容，发送邮件时则不用再设置邮件的 From 属性（使用匿名显示）。建议填写，否则容易发邮件失败。
+6. user
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：连接邮件服务器时使用的默认用户名，用于登录验证邮件服务器。建议填写，否则容易发邮件失败。
+7. password
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 说明：连接邮件服务器时使用的默认密码，用于登录验证邮件服务器。建议填写，否则容易发邮件失败。
+8. debug
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否打印详细日志信息。
+9. otherProperties
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：属性键值对，格式 key=value，多个属性以英文逗号分隔，不符合规范的属性无法生效。
+
+# 4.47.5. 支持的监视项
+无。
+
+# 4.48. JCA 托管对象
+JCA 托管对象资源封装了适配器应用中的托管对象(ra.xml中定义的adminobject)。
+
+# 4.48.1. 模块名
+jcaadminobject 
+
+# 4.48.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.48.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>Resources>Resource
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>托管对象名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>aliases</td><td>绑定 JNDI 名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>ResourceAdapter</td><td>资源适配器</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>resourceType</td><td>资源类型</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>otherProperties</td><td>其他属性</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.48.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：托管对象资源的名称。
+2. aliases
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：对象的别名会被用作其绑定到 JNDI 资源树上的名字，一个对象可以逗号分隔指定多个别名。
+3. ResourceAdapter
+◦ 取值范围：“应用”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：已部署的资源适配器的名称，rar类型的Connector应用，用于和外部企业信息系统EIS连接。
+4. resourceType
+◦ 取值范围：字符串长度限制0个到255个
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：资源类型，取决于资源适配器的 ra.xml。
+5. otherProperties
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：适配器提供的特有的属性键值对，格式 key=value，多个属性以逗号分隔。
+
+# 4.48.5. 支持的监视项
+无。
+
+# 4.49. JCA 连接池
+JCA 提供了一个 TongWeb 和企业信息系统(EIS)连接的标准Java解决方案。通过构造一个基于 JCA 规范的Connector 应用，并将其部署到 TongWeb，来实现 EIS 与 TongWeb 的集成。JCA 连接池是一组用于特定EIS 的可重复使用的连接。
+
+# 4.49.1. 模块名
+jcaconnectionpool 
+
+# 4.49.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>monitor</td><td>获取该组件的运行状态信息，该信息可反映组件的健康情况。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.49.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>Resources>Resource
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>连接池名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>aliases</td><td>绑定 JNDI 名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>ResourceAdapter</td><td>资源适配器</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>connectionDefinition</td><td>连接定义</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>minSize</td><td>最小连接数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>maxSize</td><td>最大连接数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>blockingTimeoutMillseconds</td><td>等待超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>idleTimeoutMinutes</td><td>空闲超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>selectOneAssumeMatch</td><td>连接匹配</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>otherProperties</td><td>其他属性</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.49.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：JCA 连接池的名称。
+2. aliases
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：对象的别名会被用作其绑定到 JNDI 资源树上的名字，一个对象可以逗号分隔指定多个别名。
+3. ResourceAdapter
+◦ 取值范围：“应用”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：已部署的资源适配器的名称，rar 类型的 Connector 应用，用于和外部企业信息系统（Enterprise Information Systems，EIS）连接。
+4. connectionDefinition
+◦ 取值范围：字符串长度限制0个到255个
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：javax.jms.ConnectionFactory
+◦ 说明：连接池的连接接口定义，取决于资源适配器的 ra.xml。
+5. minSize
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：10
+◦ 说明：连接池的初始化连接数。
+6. maxSize
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：100
+◦ 说明：连接池的最大连接数。
+7. blockingTimeoutMilliseconds
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：60
+◦ 说明：从连接池中获取连接的最长等待时间（单位：毫秒）。
+8. idleTimeoutMinutes 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：10
+◦ 说明：连接的空闲超时时间（单位：分钟）。
+9. selectOneAssumeMatch 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：获取连接时由资源适配器进行匹配。
+10. otherProperties 
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：适配器提供的特有的属性键值对，格式 key=value，多个属性以英文逗号分隔。
+
+# 4.49.5. 支持的监视项
+1. 监视项：active
+◦ 语义：活跃连接数
+◦ 说明：连接池中的活跃连接数。
+◦ 是波动类型：是
+2. 监视项：size
+◦ 语义：总连接数
+◦ 说明：连接池中的总连接数。
+◦ 是波动类型：是
+
+# 4.50. Jdbc 模板
+Jdbc模板是用来组装“数据源”模块所需要的 JDBC URL 的便捷方式，使用Jdbc模板可省去输入JDBC的URL、驱动类等信息，由TongWeb根据输入的数据库服务器IP、端口、数据库名等信息自动组装这些信息。建立的Jdbc模板可为“数据源”模块的“数据库连接方式”增加可选项。
+
+# 4.50.1. 模块名
+jdbcurltemplate 
+
+# 4.50.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.50.3. 支持的参数
+持久化位置：conf/console.xml:console>jdbcurltemplates>jdbcurltemplate
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>模板名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>ipv4</td><td>IPv4 版本</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>driver</td><td>驱动类</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>url</td><td>连接 URL</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.50.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置此 Jdbc 模板的名称，为便于识别该模板，请尽量避开与“数据源”模块的“数据库连接方式”重名。
+2. ipv4
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：指定该模板包含的 IP 地址的版本信息（IPv4 或者 IPv6），开启时表示 IPv4 地址，否则是IPv6。
+3. driver
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：连接数据库的驱动类的全名称。
+4. url 
+◦ 取值范围：字符串长度限制0个到1000个
+◦ 默认值：无。
+◦ 说明：连接数据库的 JDBC URL，其中的 IP、端口以及数据库名请用 %s 替代，示例：jdbc:mysql://%s:%s/%s。
+
+# 4.50.5. 支持的监视项
+无。
+
+# 4.51. 远程 JMX
+开启远程 JMX 后，客户端可以通过标准的 java jmx rmi 协议来远程管理 TongWeb 实例，包括资源创建和监视等。
+
+# 4.51.1. 模块名
+jmx 
+
+# 4.51.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.51.3. 支持的参数
+持久化位置：conf/console.xml:console>jmx
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>enabled</td><td>启用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>ip</td><td>服务IP</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>port</td><td>端口</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>supportJConsole</td><td>支持 JConsole</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>useSsl</td><td>开启 SSL</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>enabledCipherSuites</td><td>启用密码套件</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>enabledProtocols</td><td>启用协议</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>keystoreFile</td><td>证书路径</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>9</td><td>keystorePass</td><td>私钥库密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>10</td><td>sslNeedClientAuth</td><td>客户端认证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>truststoreFile</td><td>信任证书路径</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>12</td><td>truststorePass</td><td>信任库密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.51.4. 参数补充说明
+1. enabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：功能开关，配置是否开启 TongWeb 的 JMX 接口服务。
+2. ip
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：0.0.0.0
+◦ 生效条件：enabled=true
+◦ 说明：指定 JMX 监听服务绑定的 IP 地址。在设置了[安全策略]-[其他]-[RMI 服务主机名]属性后，此属性需要与其保持一致。
+3. port
+◦ 取值范围：大小限制1到65535
+◦ 默认值：7200
+◦ 生效条件：enabled=true
+◦ 说明：指定 JMX 监听服务绑定的端口。
+4. supportJConsole
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enabled=true
+◦ 说明：支持在关闭动态密码，使用 jconsole 等 JMX 客户端工具连接到 TongWeb JVM。注：开启了该功能，表示您已经接受了 TongWeb 产品的 “最终用户许可协议”。
+5. useSsl
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enabled=true
+◦ 说明：开启后，使用 TLS 加密网络数据。
+6. enabledCipherSuites
+◦ 取值范围：字符串长度限制0个到65536个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&useSsl=true
+◦ 说明：密码套件决定了 SSL/TLS 通信过程中使用的加密算法，可根据不同的业务需求设置使用不同的加密算法，以英文逗号分隔可设置等多个。注：不设置表示不限制。
+
+# 4.51.4. 参数补充说明
+7. enabledProtocols
+◦ 取值范围：TLSv1.3（释义：/TLSv1.3）, TLSv1.2（释义：/TLSv1.2）, TLSv1.1（释义：/TLSv1.1）,TLSv1（释义：/TLSv1）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：TLSv1.2
+◦ 生效条件：enabled=true&useSsl=true
+◦ 说明：指定启用的 SSL/TLS 协议，不指定将根据运行环境自动配置。
+8. keystoreFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&useSsl=true
+◦ 说明：存放服务器证书 keystore 文件的路径。 证书支持的类型：JKS， PKCS11 或 PKCS12。
+9. keystorePass
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&useSsl=true
+◦ 说明：指定 keystore 证书的密码。
+10. sslNeedClientAuth
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enabled=true&useSsl=true
+◦ 说明：true：必须有客户端证书才可以访问；false：不验证是否有客户端证书。
+11. truststoreFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&useSsl=true&sslNeedClientAuth=true
+◦ 说明：存放服务器证书 truststore 文件的路径。 证书支持的类型：JKS，PKCS11 或 PKCS12。
+12. truststorePass
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&useSsl=true&sslNeedClientAuth=true
+◦ 说明：指定 truststore 证书的密码。
+
+# 4.51.5. 支持的监视项
+无。
+
+# 4.52. JNDI 树
+JNDI(Java Naming and Directory Interface) 是一个为应用程序设计的 API，为开发人员提供了查找和访问各种命名资源和目录服务的通用、统一的接口。
+
+# 4.52.1. 模块名
+jndi 
+
+# 4.52.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>tree</td><td>以树状结构展示组件数据或界面。</td></tr></table>
+
+# 4.52.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr></table>
+
+# 4.52.4. 参数补充说明
+
+# 4.52.5. 支持的监视项
+1. 监视项：name
+◦ 语义：对象名
+◦ 说明：节点的对象名。
+◦ 是波动类型：否
+2. 监视项：treeName
+◦ 语义：类型
+◦ 说明：树的类型。
+◦ 是波动类型：否
+3. 监视项：treeData
+◦ 语义：数据
+◦ 说明：树的数据。
+◦ 是波动类型：否
+4. 监视项：className
+◦ 语义：对象类型
+◦ 说明：JNDI树节点的对象类型。
+◦ 是波动类型：否
+5. 监视项：jndiPath
+◦ 语义：JNDI 路径
+◦ 说明：JNDI树节点的路径。
+◦ 是波动类型：否
+6. 监视项：interfaces
+◦ 语义：对象接口
+◦ 说明：JNDI树节点的对象接口。
+◦ 是波动类型：否
+7. 监视项：value
+◦ 语义：对象值信息
+◦ 说明：JNDI树节点的对象值信息。
+◦ 是波动类型：否
+
+# 4.53. JNDI 资源
+创建特定的资源对象，并将其绑定到 TongWeb 的 JNDI 资源树上。
+
+# 4.53.1. 模块名
+jndiresource 
+
+# 4.53.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.53.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>Resources>Resource
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>aliases</td><td>绑定 JNDI 名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>factoryClass</td><td>工厂类</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>resourceType</td><td>资源类型</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>otherProperties</td><td>其它属性</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>klasspath</td><td>jar 包位置</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.53.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：唯一标识符，将资源绑定到 JNDI 上的名称。
+2. aliases
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：对象的别名会被用作其绑定到 JNDI 资源树上的名字，一个对象可以逗号分隔指定多个别名。
+3. factoryClass
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定创建资源对象的工厂类全名称，该工厂类须实现 javax.naming.spi.ObjectFactory 接口，编程时，将该接口的 getObjectInstance 方法的第一个参数强转为 javax.naming.Reference 类型，以此可获取到“资源类型”和“其它属性”的配置参数。若不设置则使用工厂类com.tongweb.naming.factory.GeneralBeanFactory。
+4. resourceType
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定要绑定的资源对象的类全名称，如：java.lang.Object。
+5. otherProperties
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：指定创建资源对象时需要的其它属性，格式 key=value，多个属性以英文逗号分隔。
+6. classpath
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置工厂类所在的 Jar 文件的绝对路径，多个路径以英文逗号分隔，如果在启动之前（注：启动后再放无效）已经将文件放置到了 ${tongweb.base}/lib 下，则可以不设置。
+
+# 4.53.5. 支持的监视项
+无。
+
+# 4.54. JTA 事务
+配置 JTA 事务相关属性，如事务超时时间等。
+
+# 4.54.1. 模块名
+jta 
+
+# 4.54.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>monitor</td><td>获取该组件的运行状态信息，该信息可反映组件的健康情况。</td></tr></table>
+
+# 4.54.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>ServiceJar>ServiceProvider
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>defaultTransactionTimeout</td><td>默认事务超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>allowNonXaDS</td><td>允许非XA事务分支</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>tmJoinEnabled</td><td>合并事务分支</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.54.4. 参数补充说明
+1. defaultTransactionTimeout 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：600
+◦ 说明：如果没有在应用程序里显示地指定 JTA 事务超时时间，那么 JTA 事务将使用此默认超时时间（单位：秒）。
+2. allowNonXaDS 
+◦ 取值范围：0（释义：/0）, 1（释义：/1）, 2（释义：/2）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：1
+◦ 说明：在同一个 JTA 事务里，允许加入非 XA 事务分支的个数；0 表示不允许，1 表示最多允许一个，2 表示不限制。
+3. tmJoinEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：当多个事务分支指向同一个数据库时，是否需要根据数据库驱动的探测状态归并入一个分支。
+
+# 4.54.5. 支持的监视项
+1. 监视项：totalCommits
+◦ 语义：提交事务数
+◦ 说明：JTA 事务的总提交数。其值为 -1 时，表示未开启该项监视
+◦ 是波动类型：是
+2. 监视项：totalRollbacks
+◦ 语义：回滚事务数
+◦ 说明：JTA 事务的总回滚数。其值为 -1 时，表示未开启该项监视
+◦ 是波动类型：是
+3. 监视项：activeCount
+◦ 语义：活跃事务数
+◦ 说明：当前开启的 JTA 事务数。其值为 -1 时，表示未开启该项监视
+◦ 是波动类型：是
+
+# 4.55. JVM
+描述 Java 虚拟机（JVM）的版本、厂商等基本信息，以及Java进程的堆内存、非堆内存等使用情况。
+
+# 4.55.1. 模块名
+jvm 
+
+# 4.55.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>monitor</td><td>获取该组件的运行状态信息，该信息可反映组件的健康情况。</td></tr><tr><td>gc</td><td>触发 Jvm 的垃圾回收（GC）机制。</td></tr></table>
+
+# 4.55.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr></table>
+
+# 4.55.4. 支持的监视项
+1. 监视项：SpecName
+◦ 语义：Java 规范名称
+◦ 说明：此虚拟机支持的 Java 语言规范名称。
+◦ 是波动类型：否
+2. 监视项：SpecVersion
+◦ 语义：Java 规范版本
+◦ 说明：此虚拟机支持的 Java 语言规范版本。
+◦ 是波动类型：否
+3. 监视项：VmName
+◦ 语义：虚拟机软件名
+◦ 说明：此虚拟机软件的名称。
+◦ 是波动类型：否
+4. 监视项：VmVersion
+◦ 语义：虚拟机软件版本
+◦ 说明：此虚拟机软件的版本号。
+◦ 是波动类型：否
+5. 监视项：VmVendor
+◦ 语义：虚拟机供应商
+◦ 说明：此虚拟机软件的供应商。
+◦ 是波动类型：否
+6. 监视项：Name
+◦ 语义：进程信息
+◦ 说明：当前运行服务的操作系统PID。
+◦ 是波动类型：否
+7. 监视项：StartTime
+◦ 语义：启动时间
+◦ 说明：Java 虚拟机的启动时间。
+◦ 是波动类型：否
+8. 监视项：BootClassPath
+◦ 语义：引导类路径
+◦ 说明：引导类加载器用来搜索类文件的引导类路径。
+◦ 是波动类型：否
+9. 监视项：ClassPath
+◦ 语义：系统类路径
+◦ 说明：系统类加载器用来搜索类文件的Java类路径。
+◦ 是波动类型：否
+10. 监视项：LibraryPath
+◦ 语义：本地库路径
+◦ 说明：Java库路径中的多个路径由要监视的 Java 虚拟机平台的路径分隔符分隔。
+◦ 是波动类型：否
+
+# 4.55.4. 支持的监视项
+11. 监视项：InputArguments
+◦ 语义：启动参数
+◦ 说明：传递给 Java 虚拟机的输入参数。
+◦ 是波动类型：否
+12. 监视项：heapCommitted
+◦ 语义：最大堆内存（MB）
+◦ 说明：可使用的最大堆内存，单位MB。
+◦ 是波动类型：否
+13. 监视项：threadCount
+◦ 语义：JVM 线程总数
+◦ 说明：当前活动线程的数量，包括守护线程和非守护线程。
+◦ 是波动类型：是
+14. 监视项：deadlockedThreadCount
+◦ 语义：死锁线程数
+◦ 说明：死锁等待对象监视器或同步器的线程数。
+◦ 是波动类型：是
+15. 监视项：heapUsed
+◦ 语义：使用中堆内存（MB）
+◦ 说明：正在使用的堆内存的大小，单位MB。
+◦ 是波动类型：是
+16. 监视项：nonHeapUsed
+◦ 语义：使用中非堆内存（MB）
+◦ 说明：正在使用的非堆内存的大小，单位MB。
+◦ 是波动类型：是
+17. 监视项：collectionCount
+◦ 语义：收集总数
+◦ 说明：垃圾收集发生的次数。
+◦ 是波动类型：是
+18. 监视项：collectionTime
+◦ 语义：GC时间(毫秒)
+◦ 说明：垃圾收集的累积时间（以毫秒为单位）。
+◦ 是波动类型：是
+
+# 4.56. JVM 配置
+配置运行 TongWeb 应用服务器的 JVM 属性。
+
+# 4.56.1. 模块名
+jvmconfig 
+
+# 4.56.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.56.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>java-config>start-args>arg
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>Xms</td><td>初始堆内存</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>Xmx</td><td>最大堆内存</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>Xmn</td><td>新生代大小</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>NewRatio</td><td>老年代比率</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>SurvivorRatio</td><td>Eden区比率</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>MetospaceSize</td><td>初始元空间</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>MaxMetospaceSize</td><td>最大元空间</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>Xss</td><td>线程栈大小</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>MaxDirectMemorySize</td><td>堆外内存</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>useGC</td><td>垃圾回收器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>ParallelGCTreads</td><td>并行收集线程数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>MaxGCPauseMillis</td><td>最大暂停时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>GCTimeRatio</td><td>回收时间占比</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>gcLogEnabled</td><td>记录GC日志</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>PrintGCDetails</td><td>记录细节</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>PrintGCApplicationStoppedTime</td><td>记录系统停顿时间</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>PrintGCApplicationConcurrentTime</td><td>记录系统执行时间</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>18</td><td>PrintHeapAtGC</td><td>记录堆信息</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>19</td><td>gcLog</td><td>GC日志文件</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>20</td><td>HeapDumpOnOutOfMemoryError</td><td>开启堆转储</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>HeapDumpPath</td><td>堆转储文件</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>22</td><td>LogVMOutput</td><td>记录 JVM日志</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>23</td><td>LogFile</td><td>JVM日志文件</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>24</td><td>JAVA_HOME</td><td>Java路径</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>25</td><td>envs</td><td>环境变量</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>26</td><td>preferIPv4Stack</td><td>首选IPv4</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.56.4. 参数补充说明
+1. Xms
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置初始堆内存大小 (-Xms)。
+2. Xmx
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置最大堆内存大小 (-Xmx)。
+3. Xmn
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置新生代大小 (-Xmn)。
+4. NewRatio
+◦ 取值范围：大小限制1到100
+◦ 默认值：无。
+◦ 生效条件：Xmn=
+◦ 说明：设置新生代和老年代的大小比率，通俗地讲即老年代比新生代的倍数 (-XX:NewRatio)。
+5. SurvivorRatio
+◦ 取值范围：大小限制1到100
+◦ 默认值：无。
+◦ 说明：设置新生代中 Eden 区域和 Survivor 区域（From 幸存区或 To 幸存区）的比率 (-XX:SurvivorRatio)。
+6. MetaspaceSize
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置初始元空间的大小 (-XX:MetaspaceSize)。
+7. MaxMetaspaceSize
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置最大元空间的大小 (-XX:MaxMetaspaceSize)。
+8. Xss
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置线程栈大小的最大值 (-Xss)。
+9. MaxDirectMemorySize
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置最大堆外内存，当 Direct ByteBuffer 分配的堆外内存达到该大小后，即触发 Full GC (-XX:MaxDirectMemorySize)。
+10. useGC
+◦ 取值范围：（释义：/JVM 默认）, UseSerialGC（释义：/串行）, UseParallelGC（释义：/并行）,UseConcMarkSweepGC（释义：/并发）, UseG1GC（释义：/G1）, UseZGC（释义：/ZGC）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：设置 JVM 回收内存使用的垃圾回收器。
+
+# 4.56.4. 参数补充说明
+11. ParallelGCThreads
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：无。
+◦ 生效条件：useGC=UseParallelGC\|useGC=UseConcMarkSweepGC
+◦ 说明：设置并行收集器收集时使用的CPU数，即并行收集线程数 (-XX:ParallelGCThreads)。
+12. MaxGCPauseMillis
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：无。
+◦ 生效条件：useGC=UseParallelGC
+◦ 说明：每次 GC 最大的停顿毫秒数，VM 将调整 Java 堆大小和其他与 GC 相关的参数，以使 GC 引起的暂停时间短于该毫秒，尽可能地保证内存回收花费时间不超过设定值（-XX:MaxGCPauseMillis
+）。 
+13. GCTimeRatio 
+◦ 取值范围：大小限制1到100
+◦ 默认值：无。
+◦ 生效条件：useGC=UseParallelGC
+◦ 说明：设置垃圾回收时间占程序运行时间的百分比 (-XX:GCTimeRatio)。
+14. gcLogEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：设置是否记录 JVM 的 GC 日志。
+15. PrintGCDetails 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：gcLogEnabled=true
+◦ 说明：设置是否记录 GC 的详细信息 (-XX:+PrintGCDetails)。
+16. PrintGCApplicationStoppedTime 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：gcLogEnabled=true
+◦ 说明：是否在 GC 日志中记录系统停顿时间。仅适用于 java8 (-XX:+PrintGCApplicationStoppedTime)。
+17. PrintGCApplicationConcurrentTime 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：gcLogEnabled=true
+◦ 说明：是否在 GC 日志中记录系统执行时间。仅适用于 java8 (-XX:+PrintGCApplicationConcurrentTime)。
+18. PrintHeapAtGC 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：gcLogEnabled=true
+◦ 说明：是否在 GC 日志中记录堆信息，仅适用于java8 (-XX:+PrintHeapAtGC)。
+19. gcLog 
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：logs/gc/gc.log
+◦ 生效条件：gcLogEnabled=true
+◦ 说明：设置 GC 日志的存储位置。注：路径可以是绝对路径，也可以是相对于 TongWeb 域目录的相对路径，同时可使用 $\$ 1$ {TW_TimeStamp} 变量添加 TongWeb 启动时间戳 (-Xlog)。
+20. HeapDumpOnOutOfMemoryError 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：当 JVM 发生 OOM 时，自动生成 DUMP 文件，文件位置由【堆转储文件】选项指定 (-XX:+HeapDumpOnOutOfMemoryError)。
+
+# 4.56.4. 参数补充说明
+21. HeapDumpPath 
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：logs/heap_${TW_TimeStamp}.hprof
+◦ 生效条件：HeapDumpOnOutOfMemoryError=true
+◦ 说明：设置 JVM 发生 OOM 时，自动生成 DUMP 文件的路径。注：路径可以是绝对路径，也可以是相对于 TongWeb 域目录的相对路径，同时可使用 ${TW_TimeStamp} 变量添加 TongWeb 启动时间戳 (-XX:HeapDumpPath)。
+22. LogVMOutput 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：设置是否记录 JVM 日志 (-XX:+LogVMOutput)。
+23. LogFile 
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：logs/jvm/jvm.log
+◦ 生效条件：LogVMOutput=true
+◦ 说明：设置 JVM 日志的存储位置。注：路径可以是绝对路径，也可以是相对于 TongWeb 域目录的相对路径，同时可使用 $\$ 1$ {TW_TimeStamp} 变量添加 TongWeb 启动时间戳 (-XX:LogFile)。此外，还可以使用 %t 占位符来实现时间戳，并且支持其他 JVM 规范的占位符，例如 $\% p$ (进程 ID)等。
+24. JAVA_HOME 
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：设置运行 TongWeb 所需要的 Java 路径。
+25. envs 
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：设置应用程序所需要的环境变量。
+26. preferIPv4Stack 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在支持 IPv4 映射地址的 IPv6 网络协议栈中，首选使用 IPv4 协议栈 (-Djava.net.preferIPv4Stack)。
+
+# 4.56.5. 支持的监视项
+无。
+
+# 4.57. 密码安全
+加固系统密钥的安全性。
+
+# 4.57.1. 模块名
+
+# 4.57.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.57.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>key
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>inPrivate</td><td>无痕密钥</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>encryptAlg</td><td>全局加密算法</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.57.4. 参数补充说明
+1. inPrivate 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：启用无痕密钥后，TongWeb 的密钥将不会以任何形式在文件系统上存储，以减少密钥泄漏的
+风险。首次启用无痕密钥，需要重启 TongWeb，并在启动时输入任意的启动密码，该启动密码必需妥善保管，并在后续每次启动 TongWeb 时都要输入相同的启动密码。注：1.无痕密钥功能仅支持以 startserver 脚本启动的方式，并且目前不能支持集中管理；2.无痕密钥的开启和关闭，会引起之前已经存储的密码解密错误，此时需要进行密码重置：首先停止 TongWeb，然后删除${tongweb.base}/data/secure/secure，再启动 TongWeb，若还有具体模块（如数据源）设置过密码也需单独重置。
+2. encryptAlg
+◦ 取值范围：字符串长度限制0个到255个
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：DESede
+◦ 说明：切换全局有效的加密算法，后续创建数据源的数据库连接密码、通道的证书密码等将采用此算法进行加密存储。注意：此处切换算法，不会改变已加密的密码，若需要更新已加密的密码，请在对应的密码修改页面重新输入明文密码后保存，以使得新算法生效。
+
+# 4.57.5. 支持的监视项
+无。
+
+# 4.58. 证书管理
+管理 TongWeb 建立 SSL 通道时可选用的证书文件。
+
+# 4.58.1. 模块名
+keystore 
+
+# 4.58.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>将证书文件导入到TongWeb进行管理。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>downloadlist</td><td>获取可导出的证书文件列表。注：出于安全考虑，TongWeb出厂设置禁用了文件导出功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.58.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>keystores>keystore
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>2</td><td>caType</td><td>类别</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>storeType</td><td>格式</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>fileFrom</td><td>文件来源</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>path</td><td>证书路径</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>6</td><td>fromUpload</td><td>上传文件</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>7</td><td>keystorePass</td><td>证书密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>8</td><td>alias</td><td>别名</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>9</td><td>algorithm</td><td>算法</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>10</td><td>keysize</td><td>密钥位大小</td><td>数值类型</td><td>否</td><td>否</td><td>是</td></tr><tr><td>11</td><td>startDate</td><td>生效时间</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>12</td><td>endDate</td><td>失效时间</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>13</td><td>subject</td><td>证书主体</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>14</td><td>issuer</td><td>颁发者</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr></table>
+
+# 4.58.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：证书的唯一标识。
+2. caType 
+◦ 取值范围：general（释义：/普通）, gm（释义：/国密）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：general
+◦ 说明：指定证书的类别。
+3. storeType
+◦ 取值范围：PKCS12（释义：/PKCS12）, JKS（释义：/JKS）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：PKCS12
+◦ 说明：此证书的数据格式。
+4. fileFrom
+◦ 取值范围：fromUpload（释义：/上传文件）, fromServer（释义：/服务器文件）
+◦ 默认值：fromServer
+◦ 说明：证书文件可以从客户端上传，也可以从服务器端指定的位置读取。注：出于安全考虑，TongWeb 出厂设置禁用了文件上传功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。
+5. path
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom=fromServer
+◦ 说明：服务器上证书文件的路径。
+6. fromUpload
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom=fromUpload
+◦ 说明：上传一个证书文件到服务器。
+7. keystorePass
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定证书的密码。
+8. alias
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：证书中默认生效条目的别名。
+9. algorithm
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：证书中默认生效条目的签名算法。
+10. keysize
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：-1
+◦ 说明：证书中默认生效条目的密钥位大小。
+
+# 4.58.4. 参数补充说明
+11. startDate
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：证书中证书的生效时间。
+12. endDate
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：证书中证书的失效时间。
+13. subject
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：证书的使用者信息。
+14. issuer
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：证书的颁发者信息。
+
+# 4.58.5. 支持的监视项
+无。
+
+# 4.59. 公共类库
+公共类库可以是 *.jar 或 *.classs 文件集合，用以管理可被应用加载的公共资源。
+
+# 4.59.1. 模块名
+lib 
+
+# 4.59.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.59.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>libs>lib
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>类库名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>description</td><td>描述</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>libraries</td><td>类库路径</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.59.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：类库名称可用于识别该类库的内容、用途等，方便管理。
+2. description 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：提供该类库的内容、用途等方面的信息。
+3. libraries 
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：指定该类库包含的 jar/class 文件在服务器上的位置，可进行文件上传，上传的文件会保存到${tongweb.base}/data/upload。注：出于安全考虑，TongWeb 出厂设置禁用了文件上传功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。
+
+# 4.59.5. 支持的监视项
+无。
+
+# 4.60. 产品授权
+管理 TongWeb 服务器的授权许可信息。
+
+# 4.60.1. 模块名
+license 
+
+# 4.60.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.60.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>TW_Product_Name</td><td>授权产品</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>2</td><td>TW Version Number</td><td>授权版本</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>3</td><td>TW_Edition</td><td>版本类型</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>4</td><td>consumer_name</td><td>授权客户</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>5</td><td>license_type</td><td>授权类型</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>6</td><td>end_date</td><td>授权期限</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>7</td><td>TW_Max_Node</td><td>授权节点数</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>8</td><td>bindip</td><td>授权绑定IP</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>9</td><td>BindMac</td><td>授权绑定MAC</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>10</td><td>fileFrom</td><td>文件来源</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>fromServer</td><td>服务器文件</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>12</td><td>fromUpload</td><td>上传授权</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>13</td><td>licenseDir</td><td>授权文件目录</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>pushToLicenseCenter</td><td>推送到授权中心</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.60.4. 参数补充说明
+1. TW_Product_Name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权可适用的产品名称。
+2. TW_Version_Number
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权可适用的产品版本号。
+3. TW_Edition
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权可适用的产品版本类型。
+4. consumer_name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：授权给的客户信息。
+5. license_type
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权的使用类型。
+6. end_date
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权的到期时间。
+7. TW_Max_Node
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：授权集中管理可管理的最大节点数。
+8. bindip
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权绑定的服务器IP范围。
+
+# 4.60.4. 参数补充说明
+9. BindMac
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此授权绑定的服务器MAC。
+10. fileFrom
+◦ 取值范围：fromUpload（释义：/上传文件）, fromServer（释义：/服务器文件）
+◦ 默认值：无。
+◦ 说明：授权文件可以从客户端上传，也可以从服务器端指定的位置读取。注：出于安全考虑，TongWeb 出厂设置禁用了文件上传功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。
+11. fromServer 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom=fromServer
+◦ 说明：指定服务器上授权文件的位置。
+12. fromUpload 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom=fromUpload
+◦ 说明：上传一个授权文件到服务器。
+13. licenseDir 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定授权文件的存放目录。若是相对路径，则是相对于 TongWeb 的安装目录，即${tongweb.home}。注：为空表示使用 TongWeb 的安装目录，如果指定的目录不存在，则会继续使用 TongWeb 的安装目录。
+14. pushToLicenseCenter 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否将更新的授权文件推送到授权中心，以自动下发至其它 TongWeb。注：各 TongWeb（含“默认实例”） 需在“全局配置”模块打开“启用授权中心”，并选择相同的授权中心。未打开“启用授权中心”时该功能无效。
+
+# 4.60.5. 支持的监视项
+无。
+
+# 4.61. 负载均衡器
+负载均衡器可以将业务请求均衡地转发到 TongWeb 实例上进行处理，可以促使多个 TongWeb 实例同时对外提供服务，以实现更大的并发性支持，同时，借助负载均衡器还可以实现 TongWeb 实例的故障转移、会话高可用等能力支持。
+
+# 4.61.1. 模块名
+loadbalanceserver 
+4.61.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>access</td><td>查看访问 THS 控制台的 URL。</td></tr><tr><td>start</td><td>启动操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否启动成功。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>stop</td><td>停止操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否停止成功。</td></tr><tr><td>forcestop</td><td>对于长时间难以停止成功或者停止过程被意外阻塞的情况，可以选择强制停止进程，强制停止通常是以强制杀死进程的方式来实现。</td></tr><tr><td>restartupgrade</td><td>在尽量不中断业务处理的情况下，重新加载负载均衡器相关服务。平滑重启有时候也被称作优雅重启。</td></tr><tr><td>startconsole</td><td>启动 THS 控制台。注：该操作仅会向 THS 发送启动指令，不会检测其启动状态，启动成功与否也不能保证。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr><tr><td>remove</td><td>从当前列表删除此记录。注：移除记录操作仅在所属节点被删除或无法启动的情况下受支持，请谨慎操作，移除后不可恢复。</td></tr></table>
+
+# 4.61.3. 支持的参数
+持久化位置：conf/console.xml:console>load-balance-servers>load-balance-server
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>2</td><td>changeToName</td><td>重命名</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>3</td><td>running</td><td>运行中</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>4</td><td>autostart</td><td>宕机重启</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>maxretrycount</td><td>最大重试次数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>startwithnode</td><td>自启动</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>type</td><td>类型</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>8</td><td>thsConsoleAddress</td><td>THS 控制台地址</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>node</td><td>所在节点</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>10</td><td>installationPath</td><td>安装路径</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.61.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制1个到150个
+◦ 默认值：无。
+◦ 说明：唯一标识。
+2. changeToName
+◦ 取值范围：字符串长度限制1个到150个
+◦ 默认值：无。
+◦ 说明：将名称更改为此值。注：修改名称的时候不要修改其他属性。
+3. running
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：了解该组件的运行状态。
+4. autostart
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：异常宕机（如：被kill）后是否自动重启。
+5. maxretrycount
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：autostart=true
+◦ 说明：启用异常宕机（如：被kill）后尝试自动重启的次数上限。若设置为0，则表示自动重启的次数不受限制。
+6. startwithnode
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：指定该负载均衡器是否跟随其所在节点启动而启动。若在其所在节点设置了“开机自启”，则可以通过这种方式实现负载均衡器的开机自启。
+7. type
+◦ 取值范围：THS（释义：/THS）, Nginx（释义：/Nginx）, Apache（释义：/Apache）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：THS
+◦ 说明：负载均衡器类型。支持THS6、Apache2.2、Nginx1.20。
+8. thsConsoleAddress
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：type=THS
+◦ 说明：访问 THS 控制台的地址。
+9. node
+◦ 取值范围：“节点”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：负载均衡器所在的节点。
+10. installationPath
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：负载均衡器的安装路径，被集群使用时不支持修改。
+
+# 4.61.5. 支持的监视项
+无。
+
+# 4.62. ES 推送
+将 TongWeb 的运行日志推送到远端日志存储服务器（如 Elasticsearch）上，以便于统一管理。开启本功能后，TongWeb 的日志除了在本地文件存储之外，还会推送到指定的日志存储服务器。注：当无法连接到日志服务器时，日志推送将会失败，并且目前 TongWeb 不会进行补充推送。
+
+# 4.62.1. 模块名
+logpush 
+
+# 4.62.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.62.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>logpush
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>enabled</td><td>启用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>pushAddress</td><td>推送地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>index</td><td>索引</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>username</td><td>用户名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>password</td><td>密码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.62.4. 参数补充说明
+1. enabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：设置是否要启用 TongWeb 的日志推送功能。
+2. pushAddress 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：设置连接远程日志服务器的 url（支持的协议头信息为 http:// 或 https://），通常是一个REST 接口（如 Elasticsearch 提供的 REST 接口）。
+3. index
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：服务器存放日志数据的索引。
+4. username
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：指定连接远程日志服务器的身份信息。
+5. password
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：指定连接远程日志服务器的认证信息。
+
+# 4.62.5. 支持的监视项
+无。
+
+# 4.63. 消息驱动 Bean
+配置消息驱动 Bean。
+
+# 4.63.1. 模块名
+mdb 
+
+# 4.63.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.63.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>ServiceJar>ServiceProvider
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>Pool</td><td>使用实例池</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>AccessTimeout</td><td>等待超时（秒）</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>CloseTimeout</td><td>关闭超时时间（分钟）</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>InstanceLimit</td><td>实例数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.63.4. 参数补充说明
+1. Pool 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否使用实例池。
+2. AccessTimeout 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：5
+◦ 生效条件：Pool=true
+◦ 说明：从池中获取实例等待的超时时间。
+3. CloseTimeout 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：5
+◦ 生效条件：Pool=true
+◦ 说明：关闭池操作的超时时间。
+4. InstanceLimit 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：10
+◦ 说明：消息驱动 Bean 的实例数。
+
+# 4.63.5. 支持的监视项
+无。
+
+# 4.64. 迁移配置
+应用迁移过程中的全局配置。
+
+# 4.64.1. 模块名
+migrationconfiguration 
+
+# 4.64.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.64.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>allowMultiPort</td><td>允许多端口迁移</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.64.4. 参数补充说明
+1. allowMultiPort 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：在应用迁移过程中，若原应用服务器TongWeb7存在多个端口，是否允许其迁移。
+
+# 4.64.5. 支持的监视项
+无。
+
+# 4.65. 模式切换
+模式切换。
+
+# 4.65.1. 模块名
+modeswitch 
+
+# 4.65.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.65.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>mode</td><td>模式</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.65.4. 参数补充说明
+1. mode 
+◦ 取值范围：DEBUG（释义：/DEBUG）, WORK（释义：/WORK）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：DEBUG
+◦ 说明：模式。
+
+# 4.65.5. 支持的监视项
+无。
+
+# 4.66. 消息服务器
+消息服务器作为网络的节点，专门用来存储、转发网络上的数据、信息等。
+
+# 4.66.1. 模块名
+mqserver 
+
+# 4.66.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>start</td><td>启动操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否启动成功。</td></tr><tr><td>stop</td><td>停止操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否停止成功。</td></tr><tr><td>forcstop</td><td>对于长时间难以停止成功或者停止过程被意外阻塞的情况，可以选择强制停止进程，强制停止通常是以强制杀死进程的方式来实现。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr><tr><td>remove</td><td>从当前列表删除此记录。注：移除记录操作仅在所属节点被删除或无法启动的情况下受支持，请谨慎操作，移除后不可恢复。</td></tr></table>
+
+# 4.66.3. 支持的参数
+持久化位置：conf/console.xml:console>mq-servers>mq-server
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>2</td><td>changeToName</td><td>重命名</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>3</td><td>running</td><td>运行中</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>4</td><td>maxretrycount</td><td>最大重试次数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>startwithnode</td><td>自启动</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>node</td><td>所在节点</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>7</td><td>port</td><td>端口</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.66.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制1个到150个
+◦ 默认值：无。
+◦ 说明：唯一标识。
+2. changeToName
+◦ 取值范围：字符串长度限制1个到150个
+◦ 默认值：无。
+◦ 说明：将名称更改为此值。注：修改名称的时候不要修改其他属性。
+3. running
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：了解该组件的运行状态。
+4. maxretrycount
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：autostart $\Xi$ true
+◦ 说明：启用异常宕机（如：被kill）后尝试自动重启的次数上限。若设置为0，则表示自动重启的次数不受限制。
+5. startwithnode
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：指定该消息服务器是否跟随其所在节点启动而启动。若其所在节点设置了“开机自启”，则通过这种方式可以实现该消息服务器的开机自启。
+6. node
+◦ 取值范围：“节点”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：消息服务器所在的节点
+7. port
+◦ 取值范围：大小限制1到65535
+◦ 默认值：7676
+◦ 说明：消息服务器的端口。
+
+# 4.66.5. 支持的监视项
+无。
+
+# 4.67. 节点
+节点是对物理环境的抽象，是 TongWeb 集中管理得以实施的基础设施，一台物理设备（准确的说是一个IP）只需要安装一个节点即可，在节点之上可以构建集群、实例、会话服务器、负载均衡器等逻辑组件。在逻辑上，节点只做管理使用，不会参与用户应用的部署和运行（应用由 TongWeb 实例管理），在部署结构上，节点对应的是 TongWeb 的 domain1 这个域。
+
+# 4.67.1. 模块名
+node 
+
+# 4.67.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>start</td><td>启动操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否启动成功。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>stop</td><td>停止操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否停止成功。</td></tr><tr><td>forcestop</td><td>对于长时间难以停止成功或者停止过程被意外阻塞的情况，可以选择强制停止进程，强制停止通常是以强制杀死进程的方式来实现。</td></tr><tr><td>restartupgrade</td><td>重启升级操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否启动成功。</td></tr><tr><td>updateLic</td><td>更新授权文件。</td></tr><tr><td>delete</td><td>将该节点从集中管理列表中移除。移除后，将无法再对其进行管理，但其相关的物理文件不会被删除。</td></tr></table>
+
+# 4.67.3. 支持的参数
+持久化位置：conf/console.xml:console>nodes>node
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>2</td><td>changeToName</td><td>重命名</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>3</td><td>running</td><td>运行中</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>4</td><td>maxretrycount</td><td>最大重试次数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>ip</td><td>IP</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>6</td><td>port</td><td>管理端口</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>7</td><td>instanceCount</td><td>实例数量</td><td>数值类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>8</td><td>loadBalanceServerCount</td><td>负载均衡器数量</td><td>数值类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>9</td><td>sessionServerCount</td><td>会话服务器数量</td><td>数值类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>10</td><td>clusterCount</td><td>集群数量</td><td>数值类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>11</td><td>nodeCreationType</td><td>注册方式</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>12</td><td>autostart</td><td>开机自启</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>sshPort</td><td>SSH端口</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>14</td><td>sshUserName</td><td>SSH用户名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>15</td><td>passwordType</td><td>认证方式</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>sshPassword</td><td>SSH 密码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>certificates</td><td>密钥字符串</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>18</td><td>keyPairType</td><td>密钥对类型</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>19</td><td>installationPath</td><td>安装路径</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>20</td><td>javaHome</td><td>JAVA HOME</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>version</td><td>节点版本</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>22</td><td>needUpgrade</td><td>待升级</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>23</td><td>needUpdateLic</td><td>待更新授权</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>24</td><td>remoteKey</td><td>传输密钥</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>25</td><td>synchronizeData</td><td>同步集中管理配置</td><td>布尔类型</td><td>否</td><td>是</td><td>否</td></tr><tr><td>26</td><td>autoRegisterId</td><td>服务器标识</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.67.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制1个到150个
+◦ 默认值：无。
+◦ 说明：唯一标识。
+2. changeToName
+◦ 取值范围：字符串长度限制1个到150个
+◦ 默认值：无。
+◦ 说明：将名称更改为此值。注：修改名称的时候不要修改其他属性。
+3. running
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：了解该组件的运行状态。
+4. maxretrycount
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：autostart=true
+◦ 说明：启用异常宕机（如：被kill）后尝试自动重启的次数上限。若设置为0，则表示自动重启的次数不受限制。
+5. ip
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：连接节点的 IP 地址。
+6. port
+◦ 取值范围：大小限制1到65535
+◦ 默认值：9060
+◦ 说明：节点的管理端口。
+7. instanceCount
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0
+◦ 说明：节点中包含的实例数量。
+8. loadBalanceServerCount
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0
+◦ 说明：节点中包含的负载均衡器数量。
+9. sessionServerCount
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0
+◦ 说明：节点中包含的会话服务器数量。
+10. clusterCount
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0
+◦ 说明：使用此节点的集群数量。
+
+# 4.67.4. 参数补充说明
+11. nodeCreationType
+◦ 取值范围：SSH（释义：/SSH）, MANUAL（释义：/手动）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：SSH
+◦ 说明：标识本节点的注册方式。注：SSH 方式主要适用于 Linux 平台。
+12. autostart
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：nodeCreationType=SSH
+◦ 说明：设置开机后是否自动启动该节点。
+13. sshPort
+◦ 取值范围：大小限制1到65535
+◦ 默认值：22
+◦ 生效条件：nodeCreationType=SSH
+◦ 说明：连接节点的 IP 地址的ssh服务使用的端口。
+14. sshUserName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：nodeCreationType=SSH
+◦ 说明：SSH 登录使用的用户名。
+15. passwordType
+◦ 取值范围：PASSWORD（释义：/密码）, CERTIFICATES（释义：/证书）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：PASSWORD
+◦ 生效条件：nodeCreationType=SSH
+◦ 说明：密码或者证书。
+16. sshPassword
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：passwordType PASSWORD&nodeCreationType=SSH
+◦ 说明：SSH 登录使用的密码
+17. certificates
+◦ 取值范围：字符串长度限制0个到3000个
+◦ 默认值：无。
+◦ 生效条件：passwordType $: = 1$ CERTIFICATES&nodeCreationType=SSH
+◦ 说明：证书密钥字符串
+18. keyPairType
+◦ 取值范围：ssh-rsa（释义：/ssh-rsa）, ssh-dss（释义：/ssh-dss）, ssh-ed25519（释义：/ssh-ed25519）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：ssh-rsa
+◦ 生效条件：passwordType CERTIFICATES&nodeCreationType=SSH
+◦ 说明：证书密钥对类型
+19. installationPath
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：nodeCreationType=SSH
+◦ 说明：TongWeb 安装路径，即 $\$ 1$ {tongweb.home}。当路径不存在时，系统自动创建，不支持修改。
+当“注册方式”选择为 “SSH” 类型时，必填，且必须是空目录；手动节点可以自动获得。
+
+# 4.67.4. 参数补充说明
+20. javaHome 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：nodeCreationType=SSH
+◦ 说明：节点的 JAVA HOME。
+21. version 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此节点正在使用的 TongWeb 版本。
+22. needUpgrade 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：此节点正在使用的 TongWeb 是否可以升级到一个更新的版本。
+23. needUpdateLic 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：此节点正在使用的 TongWeb 是否需要更新授权文件。
+24. remoteKey 
+◦ 取值范围：字符串长度限制0个到2000个
+◦ 默认值：无。
+◦ 生效条件：nodeCreationType=MANUAL
+◦ 说明：设置传输过程中的敏感数据加密的密钥。注：需从目标节点默认实例的“全局配置”>“集中管理”的“传输密钥”参数中获取。
+25. synchronizeData 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：nodeCreationType=MANUAL
+◦ 说明：开启后，将此手动节点集中管理的配置同步至当前集中管理，包括节点、集群、实例、负载均衡器、消息服务器和TongDataGrid的配置。
+26. autoRegisterId 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：nodeCreationType=REGISTERED
+◦ 说明：注册至集中管理的节点名称。为空时，自动生成。
+
+# 4.67.5. 支持的监视项
+无。
+
+# 4.68. 系统通知
+通知用于给管理员提供关于TongWeb需要重启、授权到期等方面的提示信息。当有系统配置属性改变，服务器需要重新启动才能生效时，系统会给出一条通知，其“详情”一般表示具体的发送变化的属性名，以及其变化前后的值。若变化的属性有多个，则会以分号分隔来表示。此外，属性发生变化后，若再次编辑将其恢复为启动之初的值，则重启TongWeb通知会取消。
+
+# 4.68.1. 模块名
+notice 
+
+# 4.68.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr></table>
+
+# 4.68.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>模块</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>model</td><td>名称</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>msg</td><td>消息</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>detail</td><td>细节</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.68.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：发出该通知的组件名。
+2. model 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：发出该通知的模块信息。
+3. msg
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：通知的概要信息。
+4. detail
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：通知的细节信息。
+
+# 4.68.5. 支持的监视项
+无。
+
+# 4.69. 操作系统
+操作系统的基本信息。
+
+# 4.69.1. 模块名
+operatingsystem 
+
+# 4.69.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>monitor</td><td>获取该组件的运行状态信息，该信息可反映组件的健康情况。</td></tr></table>
+
+# 4.69.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr></table>
+
+# 4.69.4. 参数补充说明
+
+# 4.69.5. 支持的监视项
+1. 监视项：Name
+◦ 语义：名称
+◦ 说明：操作系统名称。
+◦ 是波动类型：否
+2. 监视项：Version
+◦ 语义：版本
+◦ 说明：操作系统的版本号。
+◦ 是波动类型：否
+3. 监视项：Arch
+◦ 语义：架构
+◦ 说明：操作系统所基于的硬件架构。
+◦ 是波动类型：否
+4. 监视项：AvailableProcessors
+◦ 语义：CPU 个数
+◦ 说明：虚拟机可用的处理器数量。
+◦ 是波动类型：否
+5. 监视项：cpuUsage
+◦ 语义：CPU 使用率
+◦ 说明：表示系统当前的 CPU 总体使用率，单位：百分比，范围在 $0 \sim 1 0 0$ 之间。
+◦ 是波动类型：是
+6. 监视项：memoryUsage
+◦ 语义：内存使用率
+◦ 说明：表示系统当前的内存总体使用率，单位：百分比，范围在 $0 \sim 1 0 0$ 之间。
+
+# 4.69.5. 支持的监视项
+◦ 是波动类型：是
+7. 监视项：diskUsage
+◦ 语义：硬盘使用率
+◦ 说明：表示系统当前的硬盘总体使用率，单位：百分比，范围在 $0 \sim 1 0 0$ 之间。
+◦ 是波动类型：是
+8. 监视项：TotalPhysicalMemorySize
+◦ 语义：总内存（GB）
+◦ 说明：操作系统的总内存，单位GB。
+◦ 是波动类型：否
+9. 监视项：FreePhysicalMemorySize
+◦ 语义：空闲内存（GB）
+◦ 说明：操作系统的空闲内存，单位GB。
+◦ 是波动类型：是
+10. 监视项：TotalSwapSpaceSize
+◦ 语义：总交换空间（GB）
+◦ 说明：操作系统的总交换空间，单位GB。
+◦ 是波动类型：否
+11. 监视项：FreeSwapSpaceSize
+◦ 语义：空闲交换空间（GB）
+◦ 说明：操作系统的空闲交换空间，单位GB。
+◦ 是波动类型：是
+12. 监视项：CommittedVirtualMemorySize
+◦ 语义：当前虚拟内存（GB）
+◦ 说明：操作系统的当前虚拟内存，单位GB。
+◦ 是波动类型：是
+13. 监视项：fileTotalSpace
+◦ 语义：硬盘总量（GB）
+◦ 说明：TongWeb 所在的硬盘总空间大小，单位GB。
+◦ 是波动类型：否
+14. 监视项：fileFreeSpace
+◦ 语义：硬盘剩余（GB）
+◦ 说明：TongWeb 所在的硬盘剩余空间，单位GB。
+◦ 是波动类型：是
+
+# 4.70. 脚本录制
+录制您在控制台上所进行的操作步骤，以方便在另外一个 TongWeb 上自动地回放执行相同的操作。录制的脚本文件会保存为 commandstool、curl、postman 三种格式，存储在 $\$ 1$ {tongweb.base}/data/script-recording 目录内。注意：1. 脚本录制仅对当前登录的会话有效，请在操作完成后及时点击本次录制记录的“完成” 按钮，以生成脚本文件，否则可能导致录制内容丢失。2.只有写入类型的操作，如资源的创建和修改，会被记录到脚本，信息查看监视类型的操作不会被记录，若整个录制过程没有可记录的内容，则不会生成录制记录。 3. 在回放执行脚本前，需首先修改脚本中的访问地址和用户密码参数，对于其它包含路径的参数，则需要将其中的单引号改为双引号，并将其中的“\”分隔符改为“/” 。
+
+# 4.70.1. 模块名
+operationrecording 
+
+# 4.70.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>finish</td><td>完成录制，将录制的脚本存储到 \$\{tongweb.base\}/data/script-recording 目录，不同的类型以子目录分开存放。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.70.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>datetime</td><td>录制日期</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>3</td><td>finished</td><td>已完成</td><td>布尔类型</td><td>否</td><td>否</td><td>是</td></tr></table>
+
+# 4.70.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：本次脚本录制的名称。
+2. datetime
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：本次脚本录制的日期。
+3. finished
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：标记本次录制是否已完成。
+
+# 4.70.5. 支持的监视项
+无。
+
+# 4.71. OSGi 应用
+管理安装在 OSGi 服务中的 OSGi 应用。
+
+# 4.71.1. 模块名
+osgibundle 
+
+# 4.71.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>start</td><td>启动这个应用，使其可以对外提供服务。</td></tr><tr><td>stop</td><td>停止这个应用，即关闭其对外提供的服务。停止操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否停止成功。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.71.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>osgi>apps>app
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>应用名</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>2</td><td>fileFrom</td><td>文件来源</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>3</td><td>fromServer</td><td>应用位置</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>4</td><td>fromUpload</td><td>上传文件</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>5</td><td>state</td><td>状态</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.71.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：表示 OSGi 应用的名称。
+2. fileFrom
+◦ 取值范围：fromUpload（释义：/上传文件）, fromServer（释义：/服务器文件）
+◦ 默认值：fromServer
+◦ 说明：应用文件可以从客户端上传，也可以从服务器端指定的位置读取。注：出于安全考虑，TongWeb 出厂设置禁用了文件上传功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。
+3. fromServer
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom=fromServer
+◦ 说明：指定服务器上应用文件的位置，须是 *.jar 类型的文件。
+4. fromUpload
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom=fromUpload
+◦ 说明：上传一个应用文件到服务器，须是 *.jar 类型的文件。
+5. state
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：应用当前的运行状态。
+
+# 4.71.5. 支持的监视项
+无。
+
+# 4.72. OSGi 服务
+OSGI（Open Service Gateway Initiative），即开放服务网关协议，是由 OSGI Alliance 组织制定的 Java 模块化规范。TongWeb 提供了 OSGi R7 规范的实现。
+
+# 4.72.1. 模块名
+osgiservice 
+
+# 4.72.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.72.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>osgi
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>osgiEnabled</td><td>启用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>deployDir</td><td>部署目录</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>autoDeploy</td><td>自动部署</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>autoDeployPeriod</td><td>自动部署周期</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.72.4. 参数补充说明
+1. osgiEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启该功能后，TongWeb 将运行一个 OSGi 容器，用以部署 OSGi Bundle。
+2. deployDir
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：deployment-osgi
+◦ 生效条件：osgiEnabled=true
+◦ 说明：设置 OSGi Bundle 的部署目录，部署的 OSGi Bundle 将会保存到该目录下。注：出于安全考虑，TongWeb 不会自动创建该目录，请确保该目录是存在且可读可写的。
+3. autoDeploy
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：osgiEnabled=true
+◦ 说明：开启该功能后，只需要将 OSGi Bundle 拷贝到部署目录下，即会自动部署该 Bundle。
+4. autoDeployPeriod
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：2
+◦ 生效条件：osgiEnabled=true&autoDeploy=true
+◦ 说明：设置每隔多久（单位：秒）扫描一次部署目录，检查是否有新的文件、更新的文件或删除的文件，以进行对应 Bundle 的部署、更新或卸载操作。
+
+# 4.72.5. 支持的监视项
+无。
+
+# 4.73. OTLP 支持
+OTLP 是一个用于传输跟踪和度量数据的开放标准协议，TongWeb 开启支持 OTLP，可将其自身监视数据以约定的格式输出。注：要使用本功能，请先参考“支持列表”里关于“OTLP”的使用说明，下载必需的 jar 包等。
+
+# 4.73.1. 模块名
+otlp 
+
+# 4.73.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.73.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>otlp
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>enabled</td><td>启用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>monitor</td><td>组合监视</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>endpointAddress</td><td>接收数据的地址</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>interval</td><td>推送间隔（秒）</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.73.4. 参数补充说明
+1. enabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：启用后，TongWeb 可向外提供其监视功能的度量数据，方便用户实现统一监控。
+2. monitor
+◦ 取值范围：“组合监视”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：指定一个组合监视，用以限定需要监视的系统指标范围。
+3. endpointAddress
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：http://localhost:4317
+◦ 生效条件：enabled=true
+◦ 说明：将监控数据推送到支持 OTLP 地址。
+4. interval
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1
+◦ 生效条件：enabled=true
+◦ 说明：设置每间隔多少秒推送一次数据。
+
+# 4.73.5. 支持的监视项
+无。
+
+# 4.74. 概览
+监视概览用于展示系统整体的健康状况，其主要用途是观测系统的性能瓶颈。当使用网页端接入时，如果某系统资源的性能负荷达到 $80 \%$ ，其对应的网页上的指示器将变为红色以给出警示。
+
+# 4.74.1. 模块名
+overview 
+
+# 4.74.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>server</td><td>获取TongWeb组件健康情况数据。</td></tr><tr><td>os</td><td>获取操作系统健康情况数据。</td></tr></table>
+
+# 4.74.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr></table>
+
+
+# 4.74.4. 支持的监视项
+无。
+
+# 4.75. 修改密码
+用于修改当前登录用户的密码。
+
+# 4.75.1. 模块名
+password 
+
+# 4.75.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>key</td><td>刷新动态密码有利于密钥的安全性。</td></tr><tr><td>validate</td><td>验证并刷新动态密码。</td></tr></table>
+
+# 4.75.3. 支持的参数
+持久化位置：conf/console.xml:console>auth>users>user
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>changePwd</td><td>修改密码</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>originalPassword</td><td>原始密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>newPassword</td><td>新密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>confirmPassword</td><td>确认密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>enableOtp</td><td>动态密码</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>enable2FA</td><td>双因子认证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.75.4. 参数补充说明
+1. changePwd
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：标记需要修改用户登录系统的密码。
+2. originalPassword
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：changePwd=true
+◦ 说明：登录系统的原始密码。
+3. newPassword
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：changePwd=true
+◦ 说明：用于登录系统的新密码。
+4. confirmPassword
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：changePwd=true
+◦ 说明：确认用于登录系统的新密码。
+5. enableOtp
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：用户开启动态密码，在登录系统时，输入动态密码，可免输入账户密码。
+6. enable2FA
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enableOtp $=$ true
+◦ 说明：开启双因子认证后，在登录系统时，系统会同时验证管理员的账户密码和动态密码。
+
+# 4.75.5. 支持的监视项
+无。
+
+# 4.76. 进程安全
+进程安全。
+
+# 4.76.1. 模块名
+processsecurity 
+
+# 4.76.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.76.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>policyName</td><td>策略名称</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>initiator</td><td>发起方</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>target</td><td>目标(类型值)</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>action</td><td>动作</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.76.4. 参数补充说明
+1. policyName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：策略名称。
+2. initiator
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：发起方。
+3. target
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：目标(类型\\|值)。
+4. action
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：动作。
+
+# 4.76.5. 支持的监视项
+无。
+
+# 4.77. Prometheus 服务
+Prometheus 是一个系统和服务监控系统。它以给定的时间间隔从配置的目标收集度量，计算规则表达式，显示结果，并在观察到指定的条件时触发警报。
+
+# 4.77.1. 模块名
+prometheus 
+
+# 4.77.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.77.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>prometheus
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>enabled</td><td>启用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>monitor</td><td>组合监视</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>monitorRegisteredInstances</td><td>监视注册实例</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>reportMode</td><td>上报方式</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>address</td><td>监听地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>6</td><td>port</td><td>监听端口</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>7</td><td>context</td><td>metrics地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>8</td><td>authType</td><td>认证类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>userName</td><td>用户名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>10</td><td>password</td><td>密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>11</td><td>pushGatewayAddress</td><td>PushGateway 地址</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>interval</td><td>推送间隔</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.77.4. 参数补充说明
+1. enabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：启用后，TongWeb 会主动或被动为 Prometheus 提供度量数据，方便通过 Prometheus 实现统一监控。
+2. monitor
+◦ 取值范围：“组合监视”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：指定一个组合监视，用以限定需要监视的系统指标范围。为空时，表示监视所有受管实例的系统默认指标。
+3. monitorRegisteredInstances
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enabled=true&monitor=
+◦ 说明：启用后，注册实例会主动或被动为 Prometheus 提供度量数据，并推送注册实例的信息，从而方便通过 Prometheus 实现统一监控。
+4. reportMode
+◦ 取值范围：pull（释义：/拉取）, push（释义：/推送）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：push
+◦ 生效条件：enabled=true
+◦ 说明：数据上报支持拉取和推送两种方式。拉取方式由 Prometheus 主动发送请求拉取数据，默认地址：http://{ip}:{port}/metrics；推送方式由 TongWeb 定时将数据推送到指定的 PushGateway 端，再由 Prometheus 发送请求拉取数据。
+5. address
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：127.0.0.1
+◦ 生效条件：enabled=true&reportMode=pull
+◦ 说明：为接收 Prometheus 的拉取请求，TongWeb 会开启一个本地监听服务，在这里指定监听服务的 IP。
+6. port
+◦ 取值范围：大小限制1到65535
+◦ 默认值：30188
+◦ 生效条件：enabled=true&reportMode=pull
+◦ 说明：为接收 Prometheus 的拉取请求，TongWeb 会开启一个本地监听服务，在这里指定监听服务的端口。
+
+# 4.77.4. 参数补充说明
+7. context
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：/metrics
+◦ 生效条件：enabled=true&reportMode=pull
+◦ 说明：为接收 Prometheus 的拉取请求，TongWeb 会开启一个本地监听服务，在这里指定监听服务的 metrics 路径。可根据需要以逗号分隔设置多个。
+8. authType
+◦ 取值范围：none（释义：/无）, basic（释义：/基础认证）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：none
+◦ 生效条件：enabled=true&reportMode=pull
+◦ 说明：设置数据拉取时的安全认证方式。
+9. userName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&reportMode pull&authType=basic
+◦ 说明：接收 Prometheus 的拉取请求时需要认证的用户名。
+10. password
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&reportMode=pull&authType=basic
+◦ 说明：接收 Prometheus 的拉取请求时需要认证的密码。
+11. pushGatewayAddress
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：127.0.0.1:9091
+◦ 生效条件：enabled=true&reportMode=push
+◦ 说明：推送到 PushGateway 的地址。
+12. interval
+◦ 取值范围：大小限制2到1000000000
+◦ 默认值：5
+◦ 生效条件：enabled=true&reportMode=push
+◦ 说明：设置每间隔多少秒推送一次数据。
+
+# 4.77.5. 支持的监视项
+无。
+
+# 4.78. 安全域
+安全域是服务器定义和强制执行通用安全策略的范围，是存储用户和组信息及其关联的安全凭证的系统信息库。安全域可以配置到虚拟主机上，表示该虚拟主机上部署的所有应用都能使用此安全域。安全域也可以直接配置到应用上，表示该应用使用此安全域而忽略应用的虚拟主机的安全域。
+
+# 4.78.1. 模块名
+realm 
+
+# 4.78.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.78.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>realms>realm
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>lockOut</td><td>失败锁定</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>failureCount</td><td>失败锁定次数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>lockOutTime</td><td>锁定时长</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>cacheSize</td><td>最大缓存数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>cacheRemovalWarningTime</td><td>最小缓存时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>type</td><td>安全域类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>data Source Name</td><td>数据源名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>9</td><td>user Table</td><td>用户表</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>10</td><td>userNameCol</td><td>用户名列</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>11</td><td>user Cred Col</td><td>用户密码列</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>12</td><td>user RoleTable</td><td>角色表</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>13</td><td>roleNameCol</td><td>角色名列</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>14</td><td>ip</td><td>LDAP 服务器 IP</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>15</td><td>port</td><td>LDAP 服务器端口</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>16</td><td>connectionName</td><td>用户名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>connectionPassword</td><td>连接密码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>18</td><td>user Base</td><td>用户基本域</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>19</td><td>uid</td><td>用户属性的名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>20</td><td>user RoleName</td><td>用户角色属性名称</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>roleBase</td><td>角色基本域</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>22</td><td>-roleName</td><td>角色属性的名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>23</td><td>roleSearch</td><td>角色对应用户属性</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>24</td><td>login Module Name</td><td>LoginModule 实现类</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>25</td><td>userClassNames</td><td>用户 Principal 实现类</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>26</td><td>roleClassNames</td><td>角色 Principal 实现类</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>27</td><td>controlFlag</td><td>控制标志</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>28</td><td>options</td><td>JAAS 参数</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.78.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：安全域的名称。
+2. lockOut
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：用户连续认证失败后被锁定。
+3. failureCount
+◦ 取值范围：大小限制1到5
+◦ 默认值：5
+◦ 生效条件：lockOut=true
+◦ 说明：用户连续认证失败后被锁定的次数。
+4. lockOutTime
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：300
+◦ 生效条件：lockOut=true
+◦ 说明：用户在多次认证失败后被锁定的时间（秒）。
+5. cacheSize
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1000
+◦ 生效条件：lockOut=true
+◦ 说明：缓存中保留的认证失败的用户数量。
+6. cacheRemovalWarningTime
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：3600
+◦ 生效条件：lockOut=true
+◦ 说明：若一个用户被锁定超过这个时间（以秒为单位），且此时缓存达到了最大缓存数，则该用户可能会被解除锁定，此时会记录一条警告日志。
+7. type
+◦ 取值范围：FILE（释义：/FILE）, DATA_SOURCE（释义：/DATA_SOURCE）, LDAP（释义：/LDAP）, JAAS（释义：/JAAS）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：FILE
+◦ 说明：FILE 类型从本地文件读取用户和角色，文件位于 $\$ 1$ {tongweb.base}/conf/realms 目录下；DATA_SOURCE 是通过指定的数据源从数据库中读取用户和角色。
+8. dataSourceName
+◦ 取值范围：“数据源”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：type DATA_SOURCE
+◦ 说明：从数据库中读取用户及角色所采用的数据源，安全域类型为 DATA_SOURCE 时，该属性有效。
+9. userTable
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：type $\varprojlim 2$ DATA_SOURCE
+◦ 说明：保存用户数据的表，安全域类型为 DATA_SOURCE 时，该属性有效。
+10. userNameCol
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：type DATA_SOURCE
+◦ 说明：用户表中存放用户姓名的列，安全域类型为 DATA_SOURCE 时，该属性有效。
+
+# 4.78.4. 参数补充说明
+11. userCredCol
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：type DATA_SOURCE
+◦ 说明：用户表中保存用户密码的列，安全域类型为 DATA_SOURCE 时，该属性有效。
+12. userRoleTable
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：type $\varprojlim 2$ DATA_SOURCE
+◦ 说明：保存用户和角色之间关系的表，安全域类型为 DATA_SOURCE 时，该属性有效。
+13. roleNameCol
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：type DATA_SOURCE
+◦ 说明：在用户角色表中命名一个角色的列，安全域类型为 DATA_SOURCE 时，该属性有效。
+14. ip
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：127.0.0.1
+◦ 生效条件：type=LDAP
+◦ 说明：指定 LDAP 服务器的 IP 地址。
+15. port
+◦ 取值范围：大小限制1到65535
+◦ 默认值：389
+◦ 生效条件：type=LDAP
+◦ 说明：指定 LDAP 服务器的监听端口。
+16. connectionName 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：type=LDAP
+◦ 说明：连接 LDAP 服务的用户名。
+17. connectionPassword 
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：type=LDAP
+◦ 说明：连接 LDAP 服务的密码。
+18. userBase 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：ou=people,dc $=$ mycompany,dc=com
+◦ 生效条件：type=LDAP
+◦ 说明：指定在 LDAP 服务中查找用户的元素，如：ou=people,dc=mycompany,dc=com。
+19. uid 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：uid
+◦ 生效条件：type=LDAP
+◦ 说明：指定在 LDAP 服务中用户属性的名称，如：uid。
+20. userRoleName 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：type=LDAP
+◦ 说明：当用户中定义了代表角色的属性时需要填写，如：memberOf。
+
+# 4.78.4. 参数补充说明
+21. roleBase 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：ou=groups,dc $\Bumpeq$ mycompany,dc=com
+◦ 生效条件：type=LDAP
+◦ 说明：指定在 LDAP 服务中查找角色的元素，如：ou=groups,dc=mycompany,dc=com。
+22. roleName 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：cn
+◦ 生效条件：type=LDAP
+◦ 说明：指定在 LDAP 服务中角色属性的名称，如：cn。
+23. roleSearch 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：uniqueMember
+◦ 生效条件：type=LDAP
+◦ 说明：指定在 LDAP 服务中角色对应的用户属性名称，如：uniqueMember。
+24. loginModuleName 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：type=JAAS
+◦ 说明：指定应用程序使用的 JAAS 登录模块全类名，需要实现 javax.security.auth.spi.LoginModule接口。在 TongWeb 启动之前（注：启动后再放无效）需要将 jar 文件放置到 $\$ 1$ {tongweb.base}/lib下。
+25. userClassNames 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：type=JAAS
+◦ 说明：指定用于表示用户的 java.security.Principal 实现类类名，以英文逗号分隔可设置多个，若设置多个，则以第一个作为 javax.servlet.http.HttpServletRequest.getUserPrincipal() 的返回值。在TongWeb 启动之前（注：启动后再放无效）需要将 jar 文件放置到 $\$ 1$ {tongweb.base}/lib 下。
+26. roleClassNames 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：type=JAAS
+◦ 说明：指定用于表示角色的 java.security.Principal 实现类类名。在 TongWeb 启动之前（注：启动后再放无效）需要将 jar 文件放置到 $\$ 1$ {tongweb.base}/lib 下。
+27. controlFlag 
+◦ 取值范围：required（释义：/required）, requisite（释义：/requisite）, sufficient（释义：/sufficient）, optional（释义：/optional）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：required
+◦ 生效条件：type=JAAS
+◦ 说明：设置 JAAS 登录模块的控制标志。
+28. options 
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 生效条件：type=JAAS
+◦ 说明：设置 JAAS 登录模块的附加参数。
+
+# 4.78.5. 支持的监视项
+无。
+
+# 4.79. 安全域用户
+管理安全域中的用户，此管理仅适用于FILE安全域。需要注意：用户信息的变更需要重新应用安全域以生效。
+
+# 4.79.1. 模块名
+realmuser 
+
+# 4.79.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.79.3. 支持的参数
+持久化位置：conf/realms/security-realm.xml:users>user
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>clientCert</td><td>是客户端证书用户</td><td>布尔类型</td><td>否</td><td>是</td><td>否</td></tr><tr><td>2</td><td>name</td><td>用户名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>password</td><td>密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>roles</td><td>角色</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>realmfile</td><td>安全域</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.79.4. 参数补充说明
+1. clientCert 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：若应用设置了 SSL 客户端认证，则需要在此处指定该用户为客户端证书用户，以在应用权限验证时获取客户端证书的角色。
+2. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：用户的登录名，若是客户端证书用户，需遵循格式： $\mathsf { C N } = ?$ , OU=?, $\scriptstyle { \mathsf { O } } = ?$ , ${ \mathsf { L } } = ?$ , ST=?, ${ \mathsf { C } } { = } ?$ ；若在“全局配置”>“服务器”中设置了“证书解析类”，则须遵循对应的格式要求。
+3. password
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：clientCert=false
+◦ 说明：用户的登录密码。
+4. roles
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：用户的角色，多个角色以英文逗号分隔。
+5. realmfile
+◦ 取值范围：“安全域”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：所属的安全域名称。
+
+# 4.79.5. 支持的监视项
+无。
+
+# 4.80. 注册中心
+注册中心可用于注册和发现 TongWeb 实例服务，也可用于存储和共享 TongWeb 实例配置。用于注册和发现 TongWeb 实例服务时，需在 TongWeb 实例通过“全局配置”模块打开“启用服务注册中心”，即可将实例服务注册到所选服务注册中心的服务器上，然后在 TongWeb “集中管理”的“服务发现”模块管理该实例。用于存储和共享 TongWeb 实例配置时，需在 TongWeb 实例的“全局配置”模块，打开“启用配置注册中心”，当多个 TongWeb 实例选择使用了相同的“配置注册中心”时（不必需“启用服务注册中心”），它们将共享彼此的配置参数，此时，管理变更其中任何一个实例的参数，都将自动同步到其它实例。
+
+# 4.80.1. 模块名
+registry 
+
+# 4.80.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.80.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>registrys>registry
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>registryServerType</td><td>服务提供商</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>address</td><td>服务地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>aclToken</td><td>ACL 认证 Token</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>username</td><td>用户名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>password</td><td>密码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>apolloPortalUrl</td><td>Apollo 门户地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>8</td><td>apolloToken</td><td>开放 API Token</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>9</td><td>appld</td><td>应用标识</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>10</td><td>clusterName</td><td>集群名称</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>namespaceName</td><td>命名空间名称</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>env</td><td>环境</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>13</td><td>apolloOperator</td><td>Apollo 操作用户</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>14</td><td>registryName</td><td>标识符</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>15</td><td>refLib</td><td>添加类库</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.80.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：该组件的唯一标识。
+2. registryServerType
+◦ 取值范围：TongNCS（释义：/TongNCS）, Nacos（释义：/Nacos）, Etcd（释义：/Etcd）,ZooKeeper（释义：/ZooKeeper）, Consul（释义：/Consul）, Apollo（释义：/Apollo）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：TongNCS
+◦ 说明：指定提供该服务的产品类型。注意：当选择 ZooKeeper 时，请先在 Zookeeper 所在服务器手动创建 TongWeb 的节点 “TongWeb”，并启用所有权限；若不创建 TongWeb 节点，系统会自动创建但不会设置权限，需要手动启用所有权限。当选择 Nacos 或 TongNCS 时，若 Nacos 或 TongNCS后台管理控制台看不到 TongWeb 相关数据，可手动在后台管理控制台创建 TongWeb 的命名空间“TongWeb”
+3. address
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：registryServerType!=Apollo
+◦ 说明：指定服务器的连接地址。
+4. aclToken
+◦ 取值范围：字符串长度限制0个到36个
+◦ 默认值：无。
+◦ 生效条件：registryServerType=Consul
+◦ 说明：Consul 通过 ACL（Access Control List）机制进行身份验证和授权。
+5. username
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：registryServerType!=Apollo
+◦ 说明：连接服务器所需要的用户名。
+6. password
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：registryServerType!=Apollo
+◦ 说明：连接服务器所需要的认证密码。
+7. apolloPortalUrl
+◦ 取值范围：字符串长度限制0个到36个
+◦ 默认值：无。
+◦ 生效条件：registryServerType $\mathbf { \varepsilon } = \mathbf { \varepsilon } _ { - }$ Apollo
+◦ 说明：这是 Apollo 配置中心 Web 管理界面的服务地址。在通过 OpenAPI 进行操作时，需要指定此地址来连接到正确的 Portal 服务。通常格式为 http://{portal-service-ip}:{port}，其中默认端口常为8070。
+
+# 4.80.4. 参数补充说明
+8. apolloToken
+◦ 取值范围：字符串长度限制0个到100个
+◦ 默认值：无。
+◦ 生效条件：registryServerType=Apollo
+◦ 说明：调用 Apollo OpenAPI 时所需的认证令牌。它用于在程序（而非浏览器）中安全地访问 Apollo的管理接口，例如读取配置、创建发布等。
+9. appId
+◦ 取值范围：字符串长度限制0个到36个
+◦ 默认值：无。
+◦ 生效条件：registryServerType=Apollo
+◦ 说明：Apollo 中项目的唯一身份标识，在 Apollo 门户中创建项目时设定。Apollo 客户端会根据这个ID 来确定要拉取哪个应用的配置。此参数必须与 Apollo 门户上配置的完全一致。
+10. clusterName
+◦ 取值范围：字符串长度限制0个到30个
+◦ 默认值：default
+◦ 生效条件：registryServerType=Apollo
+◦ 说明：用于在同一个环境中对应用实例进行逻辑分组。例如，您可以按数据中心（cluster1, cluster2）或按应用版本进行分集群配置。默认为 default，如果无需分集群管理，使用默认值即可。
+11. namespaceName
+◦ 取值范围：字符串长度限制0个到30个
+◦ 默认值：application
+◦ 生效条件：registryServerType=Apollo
+◦ 说明：Apollo 配置的组织单元，相当于一个配置文件或配置模块。默认的命名空间是 application。您可以创建多个命名空间（如 redis.properties, message.yml）来对配置进行分门别类的管理。公共命名空间需要指定全名（如 FX.apollo），私有命名空间直接写名称即可。
+12. env
+◦ 取值范围：字符串长度限制0个到36个
+◦ 默认值：无。
+◦ 生效条件：registryServerType=Apollo
+◦ 说明：指定您希望从哪个 Apollo 环境（如开发、测试、生产）获取配置。常见值有：DEV（开发）,FAT（测试）, UAT（用户验收测试）, PRO（生产）。此参数决定了配置的来源环境。
+13. apolloOperator
+◦ 取值范围：字符串长度限制0个到50个
+◦ 默认值：无。
+◦ 生效条件：registryServerType=Apollo
+◦ 说明：Apollo 中用于标识操作来源的标记，通常是一个用户名或系统标识。
+14. registryName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置唯一标识符。
+15. refLib
+◦ 取值范围：“公共类库”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：附加依赖库。若没有类库可选，可在“公共类库”中，添加公共类库。
+
+# 4.80.5. 支持的监视项
+无。
+
+# 4.81. 远程 JMX
+开启远程 JMX 后，客户端可以通过标准的 java jmx rmi 协议来远程访问 TongWeb 实例，获取资源的详细信息。
+
+# 4.81.1. 模块名
+remotejmx 
+
+# 4.81.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.81.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>remote-jmx
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>enabled</td><td>启用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>ip</td><td>服务IP</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>port</td><td>端口</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>useAuthentication</td><td>开启认证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>user</td><td>访问用户</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>6</td><td>password</td><td>密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>7</td><td>useSsl</td><td>开启SSL</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>enabledCipherSuites</td><td>启用密码套件</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>enabledProtocols</td><td>启用协议</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>keystoreFile</td><td>证书路径</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>11</td><td>keystorePass</td><td>私钥库密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>12</td><td>sslNeedClientAuth</td><td>客户端认证</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>truststoreFile</td><td>信任证书路径</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>14</td><td>truststorePass</td><td>信任库密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.81.4. 参数补充说明
+1. enabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：功能开关，配置是否开启 TongWeb 的 JMX 接口服务。
+2. ip
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：0.0.0.0
+◦ 生效条件：enabled=true
+◦ 说明：指定 JMX 监听服务绑定的 IP 地址。在设置了[安全策略]-[其他]-[RMI 服务主机名]属性后，此属性需要与其保持一致.
+3. port
+◦ 取值范围：大小限制1到65535
+◦ 默认值：7200
+◦ 生效条件：enabled=true
+◦ 说明：指定 JMX 监听服务绑定的端口。
+4. useAuthentication
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enabled=true
+◦ 说明：是否启用身份认证。
+5. user
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&useAuthentication=true
+◦ 说明：设置远程 JMX 接入的认证名称。
+6. password
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&useAuthentication=true
+◦ 说明：设置远程 JMX 接入的认证密码。
+7. useSsl
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enabled=true
+◦ 说明：开启后，使用 TLS 加密网络数据。
+
+# 4.81.4. 参数补充说明
+8. enabledCipherSuites
+◦ 取值范围：字符串长度限制0个到65536个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&useSsl=true
+◦ 说明：密码套件决定了 SSL/TLS 通信过程中使用的加密算法，可根据不同的业务需求设置使用不同的加密算法，以英文逗号分隔可设置等多个。注：不设置表示不限制。
+9. enabledProtocols
+◦ 取值范围：TLSv1.3（释义：/TLSv1.3）, TLSv1.2（释义：/TLSv1.2）, TLSv1.1（释义：/TLSv1.1）,TLSv1（释义：/TLSv1）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：TLSv1.2
+◦ 生效条件：enabled=true&useSsl=true
+◦ 说明：指定启用的 SSL/TLS 协议，不指定将根据运行环境自动配置。
+10. keystoreFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&useSsl=true
+◦ 说明：存放服务器证书 keystore 文件的路径。 证书支持的类型：JKS， PKCS11 或 PKCS12。
+11. keystorePass
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&useSsl=true
+◦ 说明：指定 keystore 证书的密码。
+12. sslNeedClientAuth
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enabled=true&useSsl=true
+◦ 说明：true：必须有客户端证书才可以访问；false：不验证是否有客户端证书。
+13. truststoreFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&useSsl=true&sslNeedClientAuth=true
+◦ 说明：存放服务器证书 truststore 文件的路径。 证书支持的类型：JKS，PKCS11 或 PKCS12。
+14. truststorePass
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：enabled=true&useSsl=true&sslNeedClientAuth=true
+◦ 说明：指定 truststore 证书的密码。
+
+# 4.81.5. 支持的监视项
+无。
+
+# 4.82. 访问日志明细
+记录业务请求的处理情况，包括处理时间、数据、端口、处理结果等信息。
+
+# 4.82.1. 模块名
+requestlog 
+
+# 4.82.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>weblog</td><td>请求日志</td></tr></table>
+
+# 4.82.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>startTime</td><td>起始时间</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>endTime</td><td>结束时间</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>dateAndTime</td><td>时间</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>clientIp</td><td>客户端IP</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>method</td><td>请求方法</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>protocol</td><td>协议</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>:httpCode</td><td>Http状态码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>requestURI</td><td>请求地址</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>byteSent</td><td>发送字节数</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>sessionId</td><td>会话ID</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>threadName</td><td>线程名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>host</td><td>客户端域名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>port</td><td>本地端口</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>appName</td><td>应用名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.82.4. 参数补充说明
+1. startTime 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：起始时间。
+2. endTime 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：结束时间。
+3. dateAndTime 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：时间。
+4. clientIp 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：客户端IP。
+5. method 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：请求方法。
+6. protocol 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：协议。
+7. httpCode 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：Http 状态码。
+
+# 4.82.4. 参数补充说明
+8. requestURI 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：请求地址。
+9. byteSent 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：发送字节数。
+10. sessionId 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：会话ID。
+11. threadName 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：线程名。
+12. host
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：域名。
+13. port
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：本地端口。
+14. appName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：应用名。
+
+# 4.82.5. 支持的监视项
+无。
+
+# 4.83. 角色
+管理登录和操作服务器的系统管理员角色。
+
+# 4.83.1. 模块名
+role 
+
+# 4.83.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.83.3. 支持的参数
+持久化位置：conf/console.xml:console>auth>roles>role
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>info</td><td>描述</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>uris</td><td>权限</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>builtin</td><td>内置角色</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>5</td><td>active</td><td>是否激活</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.83.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：该角色的唯一标识。
+2. info
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：该角色的描述说明信息。
+
+# 4.83.4. 参数补充说明
+3. uris
+◦ 取值范围：accesslog（释义：访问日志配置/访问日志配置）, accesslog/downloadfile（释义：访问日志配置/下载文件）, accesslog/show（释义：访问日志配置/查看）, accesslog/update（释义：访问日志配置/更新）, accesslog/weblog（释义：访问日志配置/在线日志）, advanced（释义：进阶使用/进阶使用）, advanced/show（释义：进阶使用/查看）, app（释义：应用/应用）, app/access（释义：应用/链接）, app/add（释义：应用/添加）, app/delete（释义：应用/卸载）,app/monitor（释义：应用/监视）, app/show（释义：应用/查看）, app/start（释义：应用/启动）,app/stop（释义：应用/停止）, app/update（释义：应用/更新）, appbackup（释义：应用备份/应用备份）, appbackup/add（释义：应用备份/添加）, appbackup/delete（释义：应用备份/删除）,appbackup/downloadfile（释义：应用备份/下载文件）, appbackup/recover（释义：应用备份/恢复）, appbackup/show（释义：应用备份/配置信息）, appbackup/update（释义：应用备份/更新）, appdatasource（释义：应用数据源/应用数据源）, appdatasource/monitor（释义：应用数据源/监视）, appdatasource/show（释义：应用数据源/查看）, appmigration（释义：应用迁移/应用迁移）, appmigration/show（释义：应用迁移/查看）, appmigration/update（释义：应用迁移/迁移）, apprecycle（释义：应用回收/应用回收）, apprecycle/cleanup（释义：应用回收/清空回收站, apprecycle/delete（释义：应用回收/删除）, apprecycle/downloadfile（释义：应用回收/下载文件）, apprecycle/recover（释义：应用回收/恢复）, apprecycle/show（释义：应用回收/配置信息）, apptemplate（释义：应用模板/应用模板）, apptemplate/add（释义：应用模板/添加）,apptemplate/delete（释义：应用模板/删除）, apptemplate/show（释义：应用模板/查看）,apptemplate/update（释义：应用模板/更新）, appupdate（释义：应用增量/应用增量）,appupdate/add（释义：应用增量/添加）, appupdate/delete（释义：应用增量/回退）,appupdate/show（释义：应用增量/查看）, auditlist（释义：审计列表/审计列表）, auditlist/add（释义：审计列表/添加）, auditlist/delete（释义：审计列表/删除）, auditlist/update（释义：审计列表/更新）, blockedthread（释义：阻塞线程/阻塞线程）, blockedthread/forcestop（释义：阻塞线程/强停）, blockedthread/show（释义：阻塞线程/查看）, busythread（释义：忙碌线程/忙碌线程）, busythread/show（释义：忙碌线程/查看）, centralizedconfig（释义：集中配置/集中配置）,centralizedconfig/monitor（释义：集中配置/监视）, centralizedconfig/show（释义：集中配置/查看）, centralizedconfig/update（释义：集中配置/更新）, classconflict（释义：类冲突检测/类冲突检测）, classconflict/add（释义：类冲突检测/开始检测）, classconflict/delete（释义：类冲突检测/删除）, classconflict/downloadfile（释义：类冲突检测/下载文件）, classconflict/previewfile（释义：类冲突检测/预览）, classconflict/show（释义：类冲突检测/查看）, classloaded（释义：类资源分析/类资源分析）, classloaded/find（释义：类资源分析/查找）, classloaded/show（释义：类资源分析/查看）, classloaded/update（释义：类资源分析/更新）, classloaderstruct（释义：类加载结构/类加载结构）, classloaderstruct/tree（释义：类加载结构/树）, cloudcluster（释义：注册实例集群/注册实例集群）, cloudcluster/show（释义：注册实例集群/查看）, cluster（释义：集群/集群）, cluster/access（释义：集群/链接）, cluster/add（释义：集群/添加）, cluster/delete（释义：集群/删除）, cluster/forcestop（释义：集群/强停）, cluster/gc（释义：集群/重启）,cluster/restartupgrade（释义：集群/升级）, cluster/show（释义：集群/查看）, cluster/start（释义：集群/启动）, cluster/stop（释义：集群/停止）, cluster/update（释义：集群/更新）,combinedmonitor（释义：组合监视/组合监视）, combinedmonitor/add（释义：组合监视/添加）,combinedmonitor/delete（释义：组合监视/删除）, combinedmonitor/monitor（释义：组合监视/监视）, combinedmonitor/show（释义：组合监视/查看）, combinedmonitor/update（释义：组合监视/更新）, connector（释义：通道/通道）, connector/add（释义：通道/添加）,connector/delete（释义：通道/删除）, connector/monitor（释义：通道/监视）, connector/show（释义：通道/查看）, connector/start（释义：通道/启动）, connector/stop（释义：通道/停止）,connector/update（释义：通道/更新）, consolesecurity（释义：控制台安全/控制台安全）,consolesecurity/show（释义：控制台安全/查看）, consolesecurity/update（释义：控制台安全/更新）, daemonmonitor（释义：守护监视/守护监视）, daemonmonitor/add（释义：守护监视/添加）, daemonmonitor/delete（释义：守护监视/删除）, daemonmonitor/downloadfile（释义：守护监视/下载文件）, daemonmonitor/monitor（释义：守护监视/监视）, daemonmonitor/show（释义：守护监视/查看）, daemonmonitor/update（释义：守护监视/更新）, datasource（释义：数据源/数据源）, datasource/add（释义：数据源/添加）, datasource/delete（释义：数据源/删除）,datasource/monitor（释义：数据源/监视）, datasource/show（释义：数据源/查看）,datasource/start（释义：数据源/启动）, datasource/stop（释义：数据源/停止）,datasource/update（释义：数据源/更新）, datasource/validate（释义：数据源/测试）,datasourcetemplate（释义：数据源模板/数据源模板）, datasourcetemplate/add（释义：数据源模板/添加）, datasourcetemplate/delete（释义：数据源模板/删除）, datasourcetemplate/show（释义：数据源模板/查看）, datasourcetemplate/update（释义：数据源模板/更新）,dbconnection（释义：数据库连接/数据库连接）, dbconnection/cleanup（释义：数据库连接/回收）, dbconnection/show（释义：数据库连接/查看）, deadlockedthread（释义：死锁线程/死锁线程）, deadlockedthread/forcestop（释义：死锁线程/强停）, deadlockedthread/show（释义：死锁线程/查看）, encryptor（释义：加密工具/加密工具）, encryptor/update（释义：加密工具/加密）,failoverdatasource（释义：数据源集群/数据源集群）, failoverdatasource/add（释义：数据源集群/添加）, failoverdatasource/delete（释义：数据源集群/删除）, failoverdatasource/show（释义：数据源集群/查看）, failoverdatasource/update（释义：数据源集群/更新）,failoverdatasource/validate（释义：数据源集群/测试）, feature（释义：页面定制/页面定制）,feature/show（释义：页面定制/查看）, feature/update（释义：页面定制/更新）, gmImportCert（释义：证书导入/证书导入）, gmImportCert/add（释义：证书导入/导入）, gmImportCert/delete（释义：证书导入/删除）, gmcertrequest（释义：证书请求/证书请求）, gmcertrequest/add（释义：证书请求/生成）, gmcertrequest/delete（释义：证书请求/删除）,
+gmcertrequest/downloadfile（释义：证书请求/下载文件）, gmcertrequest/show（释义：证书请求/查看公钥）, gmselfinspect（释义：安全自检/安全自检）, gmselfinspect/add（释义：安全自检/安全自检）, gmselfinspect/delete（释义：安全自检/删除）, gmselfinspect/show（释义：安全自检/查看）, gmtrustedca（释义：可信CA/可信CA）, gmtrustedca/add（释义：可信CA/导入）,gmtrustedca/delete（释义：可信CA/删除）, gmtrustedca/show（释义：可信CA/查看证书）,home（释义：首页/首页）, home/monitor（释义：首页/监视）, host（释义：虚拟主机/虚拟主机）, host/add（释义：虚拟主机/添加）, host/delete（释义：虚拟主机/删除）, host/show（释义：虚拟主机/查看）, host/update（释义：虚拟主机/更新）, inspect（释义：一键巡检/一键巡检）,inspect/add（释义：一键巡检/开始巡检）, inspect/delete（释义：一键巡检/删除）,
+inspect/downloadfile（释义：一键巡检/下载文件）, inspect/previewfile（释义：一键巡检/预览）,inspect/show（释义：一键巡检/查看）, inspectionbaseline（释义：巡检基线/巡检基线）,inspectionbaseline/show（释义：巡检基线/查看）, inspectionbaseline/update（释义：巡检基线/更新）, instance（释义：实例/实例）, instance/add（释义：实例/添加）, instance/delete（释义：实例/删除）, instance/downloadfile（释义：实例/下载文件）, instance/forcestop（释义：实例/强停）, instance/gc（释义：实例/重启）, instance/remove（释义：实例/移除记录）,
+instance/restartupgrade（释义：实例/重启升级）, instance/show（释义：实例/查看）,
+instance/start（释义：实例/启动）, instance/stop（释义：实例/停止）, instance/update（释义：实例/更新）, instancetemplate（释义：实例模板/实例模板）, instancetemplate/add（释义：实例模板/添加）, instancetemplate/delete（释义：实例模板/删除）, instancetemplate/downloadfile（释义：实例模板/下载文件）, instancetemplate/show（释义：实例模板/查看）, jdbcurltemplate（释义：Jdbc 模板/Jdbc 模板）, jdbcurltemplate/add（释义：Jdbc 模板/添加）,
+jdbcurltemplate/delete（释义：Jdbc 模板/删除）, jdbcurltemplate/show（释义：Jdbc 模板/查看）, jdbcurltemplate/update（释义：Jdbc 模板/更新）, jmx（释义：远程 JMX/远程 JMX）,jmx/show（释义：远程 JMX/查看）, jmx/update（释义：远程 JMX/更新）, jndi（释义：JNDI树/JNDI 树）, jndi/tree（释义：JNDI 树/树）, jndiresource（释义：JNDI 资源/JNDI 资源）,
+jndiresource/add（释义：JNDI 资源/添加）, jndiresource/delete（释义：JNDI 资源/删除）,jndiresource/show（释义：JNDI 资源/查看）, jndiresource/update（释义：JNDI 资源/更新）, jvm（释义：JVM/JVM）, jvm/gc（释义：JVM/垃圾回收）, jvm/monitor（释义：JVM/监视）,
+jvmconfig（释义：JVM 配置/JVM 配置）, jvmconfig/show（释义：JVM 配置/查看）,jvmconfig/update（释义：JVM 配置/更新）, key（释义：密码安全/密码安全）, key/show（释义：密码安全/查看）, key/update（释义：密码安全/更新）, keystore（释义：证书管理/证书管理）,keystore/add（释义：证书管理/导入）, keystore/delete（释义：证书管理/删除）,
+keystore/downloadfile（释义：证书管理/下载文件）, keystore/show（释义：证书管理/查看）,keystore/update（释义：证书管理/更新）, lib（释义：公共类库/公共类库）, lib/add（释义：公共类库/添加）, lib/delete（释义：公共类库/删除）, lib/show（释义：公共类库/查看）, lib/update（释义：公共类库/更新）, license（释义：产品授权/产品授权）, license/show（释义：产品授权/查看）, license/update（释义：产品授权/更新）, loadbalanceserver（释义：负载均衡器/负载均衡器）,loadbalanceserver/access（释义：负载均衡器/THS控制台）, loadbalanceserver/add（释义：负载均衡器/添加）, loadbalanceserver/delete（释义：负载均衡器/删除）,
+loadbalanceserver/downloadfile（释义：负载均衡器/下载文件）, loadbalanceserver/forcestop（释义：负载均衡器/强停）, loadbalanceserver/remove（释义：负载均衡器/移除记录）,
+loadbalanceserver/restartupgrade（释义：负载均衡器/平滑重启）, loadbalanceserver/show（释义：负载均衡器/查看）, loadbalanceserver/start（释义：负载均衡器/启动）,
+loadbalanceserver/startconsole（释义：负载均衡器/启动THS控制台）, loadbalanceserver/stop（释义：负载均衡器/停止）, loadbalanceserver/update（释义：负载均衡器/更新）, logpush（释义：ES 推送/ES 推送）, logpush/show（释义：ES 推送/查看）, logpush/update（释义：ES 推送/更新）, migrationconfiguration（释义：迁移配置/迁移配置）, migrationconfiguration/show（释义：迁移配置/查看）, migrationconfiguration/update（释义：迁移配置/更新）, modeswitch（释义：模式切换/模式切换）, modeswitch/show（释义：模式切换/查看）, modeswitch/update（释义：模式切换/更新）, node（释义：节点/节点）, node/add（释义：节点/添加）, node/delete（释义：节点/移除）, node/downloadfile（释义：节点/下载文件）, node/forcestop（释义：节点/强停）,node/restartupgrade（释义：节点/重启升级）, node/show（释义：节点/查看）, node/start（释义：节点/启动）, node/stop（释义：节点/停止）, node/update（释义：节点/更新）,
+node/updateLic（释义：节点/更新授权）, notice（释义：系统通知/系统通知）, notice/show（释义：系统通知/查看）, operatingsystem（释义：操作系统/操作系统）, operatingsystem/monitor（释义：操作系统/监视）, operationrecording（释义：脚本录制/脚本录制）,
+operationrecording/add（释义：脚本录制/添加）, operationrecording/delete（释义：脚本录制/删除）, operationrecording/downloadfile（释义：脚本录制/下载文件）,
+operationrecording/finish（释义：脚本录制/完成）, operationrecording/show（释义：脚本录制/查看）, otlp（释义：OTLP 支持/OTLP 支持）, otlp/show（释义：OTLP 支持/查看）, otlp/update（释义：OTLP 支持/更新）, overview（释义：概览/概览）, overview/os（释义：概览/操作系统负荷）, overview/server（释义：概览/TongWeb 负荷）, processsecurity（释义：进程安全/进程安全）, processsecurity/add（释义：进程安全/添加）, processsecurity/delete（释义：进程安全/删除）, processsecurity/show（释义：进程安全/查看）, processsecurity/update（释义：进程安全/更新）, prometheus（释义：Prometheus 服务/Prometheus 服务）, prometheus/show（释义
+：Prometheus 服务/查看）, prometheus/update（释义：Prometheus 服务/更新）, realm（释义：安全域/安全域）, realm/add（释义：安全域/添加）, realm/delete（释义：安全域/删除）,realm/show（释义：安全域/查看）, realm/update（释义：安全域/更新）, realmuser（释义：安全域用户/安全域用户）, realmuser/add（释义：安全域用户/添加）, realmuser/delete（释义：安全域用户/删除）, realmuser/show（释义：安全域用户/查看）, realmuser/update（释义：安全域用户/更新）, registry（释义：注册中心/注册中心）, registry/add（释义：注册中心/添加）,
+registry/delete（释义：注册中心/删除）, registry/show（释义：注册中心/查看）, registry/update（释义：注册中心/更新）, remotejmx（释义：远程 JMX/远程 JMX）, remotejmx/show（释义：远程 JMX/查看）, remotejmx/update（释义：远程 JMX/更新）, requestlog（释义：访问日志明细/访问日志明细）, requestlog/show（释义：访问日志明细/查看）, requestlog/weblog（释义：访问日志明细/请求日志）, security（释义：安全策略/安全策略）, security/show（释义：安全策略/查看）, security/update（释义：安全策略/更新）, server（释义：全局配置/全局配置）,
+server/downloadfile（释义：全局配置/下载文件）, server/show（释义：全局配置/查看）,server/update（释义：全局配置/更新）, serverlog（释义：系统日志/系统日志）,
+serverlog/downloadfile（释义：系统日志/下载文件）, serverlog/monitor（释义：系统日志/监视）, serverlog/show（释义：系统日志/查看）, serverlog/update（释义：系统日志/更新）,
+serverlog/weblog（释义：系统日志/在线日志）, servicediscovery（释义：注册实例/注册实例）,
+servicediscovery/show（释义：注册实例/查看）, sessionha（释义：会话服务器/会话服务器）,
+sessionha/add（释义：会话服务器/添加）, sessionha/delete（释义：会话服务器/删除）,
+sessionha/show（释义：会话服务器/查看）, sessionha/update（释义：会话服务器/更新）,
+sessionha/validate（释义：会话服务器/测试）, sms（释义：短信服务/短信服务）, sms/add（释义
+：短信服务/添加）, sms/delete（释义：短信服务/删除）, sms/show（释义：短信服务/查看）,sms/update（释义：短信服务/更新）, snapshotfile（释义：快照文件/快照文件）,
+snapshotfile/add（释义：快照文件/打快照）, snapshotfile/delete（释义：快照文件/删除）,
+snapshotfile/downloadfile（释义：快照文件/下载文件）, snapshotfile/show（释义：快照文件/查看）, snapshottemplate（释义：采集模板/采集模板）, snapshottemplate/add（释义：采集模板/
+添加）, snapshottemplate/delete（释义：采集模板/删除）, snapshottemplate/show（释义：采集模板/查看）, snapshottemplate/update（释义：采集模板/更新）, snmp（释义：SNMP 服
+务/SNMP 服务）, snmp/show（释义：SNMP 服务/查看）, snmp/update（释义：SNMP 服务/更新）, startpolicy（释义：启动策略/启动策略）, startpolicy/show（释义：启动策略/查看）,
+startpolicy/update（释义：启动策略/更新）, startupargs（释义：启动参数/启动参数）
+startupargs/add（释义：启动参数/添加）, startupargs/delete（释义：启动参数/删除）,
+startupargs/show（释义：启动参数/查看）, startupargs/update（释义：启动参数/更新）,
+staticmetrics（释义：静态度量/静态度量）, staticmetrics/add（释义：静态度量/添加）,
+staticmetrics/delete（释义：静态度量/删除）, staticmetrics/show（释义：静态度量/查看）,
+support（释义：支持列表/支持列表）, support/downloadfile（释义：支持列表/下载文件）,
+support/show（释义：支持列表/查看）, syslog（释义：Syslog 推送/Syslog 推送）, syslog/show（
+释义：Syslog 推送/查看）, syslog/update（释义：Syslog 推送/更新）, threadpool（释义：线程池/线程池）, threadpool/add（释义：线程池/添加）, threadpool/delete（释义：线程池/删除）,
+threadpool/monitor（释义：线程池/监视）, threadpool/show（释义：线程池/查看）,
+threadpool/update（释义：线程池/更新）, thresholdstrategy（释义：预警策略/预警策略）,thresholdstrategy/add（释义：预警策略/添加）, thresholdstrategy/delete（释义：预警策略/删除）, thresholdstrategy/show（释义：预警策略/查看）, thresholdstrategy/update（释义：预警策略/更新）, trustedauthority（释义：可信授权/可信授权）, trustedauthority/downloadfile（释义：可信授权/下载文件）, trustedauthority/show（释义：可信授权/查看）, trustedauthority/update（释义：可信授权/更新）, trustedbehaviordetails（释义：可信行为详情/可信行为详情）,trustedbehaviordetails/add（释义：可信行为详情/添加）, trustedbehaviordetails/delete（释义：可信行为详情/删除）, trustedbehaviordetails/show（释义：可信行为详情/查看）,trustedbehaviordetails/start（释义：可信行为详情/应用）, trustedbehaviormodel（释义：可信行为模型/可信行为模型）, trustedbehaviormodel/add（释义：可信行为模型/添加）,trustedbehaviormodel/delete（释义：可信行为模型/删除）, trustedbehaviormodel/forcestop（释义：可信行为模型/停止采集）, trustedbehaviormodel/show（释义：可信行为模型/查看）,trustedbehaviormodel/start（释义：可信行为模型/应用）, trustedbehaviormodel/stop（释义：可信行为模型/停止应用）, trustedfiles（释义：可信文件/可信文件）, trustedfiles/show（释义：可信文件/查看）, trustedpolicy（释义：可信策略/可信策略）, trustedpolicy/add（释义：可信策略/添加）, trustedpolicy/delete（释义：可信策略/删除）, trustedpolicy/show（释义：可信策略/查看）,trustedprocess（释义：可信进程/可信进程）, trustedprocess/add（释义：可信进程/添加）,trustedprocess/delete（释义：可信进程/删除）, trustedprocess/show（释义：可信进程/查看）,upgrade（释义：产品升级/产品升级）, upgrade/add（释义：产品升级/升级）, upgrade/delete（释义：产品升级/删除）, upgrade/downloadfile（释义：产品升级/下载文件）, upgrade/show（释义：产品升级/发布说明）, user（释义：管理员/管理员）, user/add（释义：管理员/添加）,user/delete（释义：管理员/删除）, user/show（释义：管理员/查看）, user/update（释义：管理员/更新）, webflux（释义：WebFlux 应用/WebFlux 应用）, webflux/add（释义：WebFlux 应用/添加）, webflux/delete（释义：WebFlux 应用/删除）, webflux/show（释义：WebFlux 应用/查看）, webflux/start（释义：WebFlux 应用/启动）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：角色的权限表示具有该角色的用户可以访问的资源（URI）集合。
+
+# 4.83.4. 参数补充说明
+4. builtIn
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否是内置角色，内置角色为三员安全模型设定的角色，包括：系统管理员、安全保密管理员、安全审计员。
+5. active
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：是否激活该角色，激活后，拥有该角色的用户将可以访问该角色对应的资源，否则用户将无法访问对应的资源。
+
+# 4.83.5. 支持的监视项
+无。
+
+# 4.84. 安全策略
+配置系统全局的安全策略。
+
+# 4.84.1. 模块名
+security 
+
+# 4.84.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.84.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>security
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>configProtection</td><td>服务器主配置文件防篡改</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>fileProtectionPattern</td><td>应用防篡改文件后缀</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>filterRemoteHost</td><td>客户端主机名拦截</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>allowHost</td><td>允许的主机名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>denyHost</td><td>拒绝的主机名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>filterRemoteAddr</td><td>客户端IP拦截</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>allowAddr</td><td>允许的IP</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>denyAddr</td><td>拒绝的IP</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>denySdos</td><td>SDOS 攻击拦截</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>sdosTimeThreshold</td><td>SDOS 探测阈值(秒)</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>sdosCountThreshold</td><td>SDOS 次数阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>sdosUnblockPeriod</td><td>解除阻止周期(小时)</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>hostHeaderFilter</td><td>Host Header 拦截</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>allowHostHeader</td><td>允许的 Host</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>denyHostHeader</td><td>拒绝的 Host</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>refererFilter</td><td>referer 拦截</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>allowReferer</td><td>允许的 referer</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>18</td><td>denyReferer</td><td>拒绝的 referer</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>19</td><td>responseHeader</td><td>响应头防护</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>20</td><td>antiClickJackingEnabled</td><td>X-Frame-Options</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>antiClickJackingOption</td><td>X-Frame策略</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>22</td><td>antiClickJackingUri</td><td>指定来源</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>23</td><td>hstsEnabled</td><td>Strict-Transport-Security</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>24</td><td>blockContentTypeSniffingEnabled</td><td>X-Content-Type-Options</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>25</td><td>xssProtectionEnabled</td><td>X-XSS-Protection</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>26</td><td>XForwardedFor</td><td>解析 XFF 头</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>27</td><td>internalProxies</td><td>内部代理</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>28</td><td>trustedProxies</td><td>信任的代理</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>29</td><td>protocolHeader</td><td>协议信息请求头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>30</td><td>hostHeader</td><td>获取主机的请求头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>31</td><td>changeLocalName</td><td>替换本地主机</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>32</td><td>portHeader</td><td>获取端口的请求头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>33</td><td>changeLocalPort</td><td>替换本地端口</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>34</td><td>httpServerPort</td><td>缺省 http 端口</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>35</td><td>httpsServerPort</td><td>缺省 https 端口</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>36</td><td>enableCrawlerSessionManager</td><td>反爬虫管理</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>37</td><td>sessionInactiveInterval</td><td>爬虫会话超时时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>38</td><td>crawlerlps</td><td>识别爬虫 IP</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>39</td><td>singleSession</td><td>启用单会话</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>40</td><td>crawlerUserAgents</td><td>识别爬虫 User-Agent</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>41</td><td>filterTime</td><td>禁用时间段</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>42</td><td>filterTimeBegin</td><td>开始时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>43</td><td>filterTimeEnd</td><td>结束时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>44</td><td>repeat</td><td>重复规则</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>45</td><td>enabledRejectSystemExit</td><td>System退出检测</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>46</td><td>rejectSystemExit</td><td>禁止 System 退出</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>47</td><td>rejectStart</td><td>启动限制</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>48</td><td>checkedOsUsers</td><td>禁止用户</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>49</td><td>minimumUmask</td><td>最小 Umask</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>50</td><td>secureStop</td><td>安全停止</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>51</td><td>startdTimeout</td><td>后台启动超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>52</td><td>startdDiscardTimeout</td><td>后台启动放弃超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>53</td><td>useJavaSerializer</td><td>Java原生序列化</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>54</td><td>whitelist</td><td>白名单</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>55</td><td>rmiServerHostname</td><td>RMI 服务主机名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.84.4. 参数补充说明
+. configProtection
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：开启后，禁止在 TongWeb 运行期间对主配置文件 tongweb.xml、console.xml、default-web.xml 等进行修改。若被意外篡改，则自动进行恢复。
+2. fileProtectionPattern
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定应用的防止篡改的文件的后缀。在应用部署后，对应用的所有原始文件进行周期性（由服务器“全局配置”>“定时任务周期”指定）的检测。当发现文件被篡改后，尝试恢复到原文件。配置防篡改文件后缀，表示开启该功能；不配置，则不开启。防篡改文件后缀格式为 .html, .png, .jpg 等，多个后缀以英文逗号分隔。注意：同时开启热加载和防篡改功能，可能存在冲突，建议不要同时开启。
+3. filterRemoteHost
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：出于安全等考虑，拦截特定主机名的客户端请求，请求被拦截后将得到 403 响应码。注：本机访问不受限制。
+4. allowHost
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：localhost
+◦ 生效条件：filterRemoteHost=true
+◦ 说明：指定允许的主机名，其值可为具体的主机名称或匹配主机名称的正则表达式。注：需要通道允许 DNS 反向查找。
+5. denyHost
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：filterRemoteHost=true
+◦ 说明：指定拒绝的主机名，其值可为具体的主机名称或匹配主机名称的正则表达式。注：需要通道允许 DNS 反向查找，拒绝的主机名拦截优先于允许的主机名。
+6. filterRemoteAddr
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：出于安全等考虑，拦截特定 IP 的客户端请求，请求被拦截后将得到 403 响应码。注：本机访问不受限制。
+7. allowAddr
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：127.0.0.1
+◦ 生效条件：filterRemoteAdd $\Bumpeq$ true
+◦ 说明：指定允许的 IP，其值可为具体的 IP、匹配 IP 的正则表达式或通配符 IP（如：168.1.2.*，168.1.4.5-168.1.4.99）。
+8. denyAddr
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：filterRemoteAddr=true
+◦ 说明：指定拒绝的IP，其值可为具体的 IP、匹配 IP 的正则表达式或通配符 IP（如：168.1.2.*，168.1.4.5-168.1.4.99）。注：拒绝的 IP 拦截优先于允许的 IP。
+9. denySdos
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：检测并拦截 SDOS 攻击。
+10. sdosTimeThreshold
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1
+◦ 生效条件：denySdos=true
+◦ 说明：当一个请求的处理时间超过此 SDOS 探测阈值时，则将该请求判定为 SDOS 攻击。
+
+# 4.84.4. 参数补充说明
+11. sdosCountThreshold
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：3
+◦ 生效条件：denySdos=true
+◦ 说明：当一个客户端（通常是浏览器）发出的请求被判定为 SDOS 攻击的次数超过此 SDOS 次数阈值，则阻止该客户端 IP 地址的一切请求。
+12. sdosUnblockPeriod
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：12
+◦ 生效条件：denySdos=true
+◦ 说明：被阻止的客户端 IP 将在一个周期后自动解除。
+13. hostHeaderFilter
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启 Host Header 拦截后，将会从请求头“Host”中解析主机名和 IP 地址，只有符合规则的请求才可以访问本主机。注：本机访问不受限制。
+14. allowHostHeader
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：hostHeaderFilter=true
+◦ 说明：支持正则表达式，依照此规则对 Host 中的主机进行校验，如192.168.1.([0-9]*):9060\\|www.tw.com；未设置此规则，表示不进行该校验。注：“允许的 Host”校验的优先级低于“拒绝的 Host”。
+15. denyHostHeader
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：hostHeaderFilter=true
+◦ 说明：支持正则表达式，依照此规则对 Host 中的主机进行校验，如192.168.1.([0-9]*):9060；未设置此规则，表示不进行该校验。注：“允许的 Host”校验的优先级低于“拒绝的 Host”。
+16. refererFilter
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启 referer 拦截后，将会从请求头“referer”中解析主机名和IP地址。只有符合规则的请求才可以访问本主机。注：本机访问不受限制。
+17. allowReferer
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：refererFilter=true
+◦ 说明：指定允许访问本主机的域名或者 IP，支持正则表达式。依照此规则对 referer 中的主机进行校验。未设置此规则，表示不进行该校验。注：“允许的 referer”校验的优先级低于“拒绝的 referer”。
+18. denyReferer
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：refererFilter=true
+◦ 说明：指定不允许访问本主机的域名或者 IP，支持正则表达式。依照此规则对 referer 中的主机进行校验。未设置此规则，表示不进行该校验。注：“允许的 referer”校验的优先级低于“拒绝的referer”。
+19. responseHeader
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：可对响应头添加特定的消息，以通知浏览器进行必要的安全操作。
+20. antiClickJackingEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：responseHeader $" = "$ true
+◦ 说明：站点可以通过确保网站没有被嵌入到别人的站点里面，从而避免 点击劫持攻击。
+
+# 4.84.4. 参数补充说明
+21. antiClickJackingOption
+◦ 取值范围：DENY（释义：/DENY）, SAMEORIGIN（释义：/SAMEORIGIN）, ALLOW-FROM（释义：/ALLOW-FROM）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：SAMEORIGIN
+◦ 生效条件：responseHeader $\Bumpeq$ true&antiClickJackingEnabled=true
+◦ 说明：DENY：页面不允许在frame中展示；SAMEORLGIN：页面可以在相同域名页面的frame中展示；ALLOW-FROM：页面可以在指定来源的 frame 中展示。
+22. antiClickJackingUri 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：responseHeader $\bf \tilde { = }$ true&antiClickJackingOption=ALLOW-FROM
+◦ 说明：页面可以在指定来源的 frame 中展示，示例: http://ip:port 或者 http://ip:*。注：若是多个地址，需要使用空格隔开。
+23. hstsEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：responseHeader $\Bumpeq$ true
+◦ 说明：通知浏览器，网站禁止使用 HTTP 方式加载，浏览器应该自动把所有尝试使用 HTTP 的请求自动替换为 HTTPS 请求。
+24. blockContentTypeSniffingEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：responseHeader $\Bumpeq$ true
+◦ 说明：禁止浏览器的类型猜测行为。
+25. xssProtectionEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：responseHeader $\Bumpeq$ true
+◦ 说明：当检测到跨站脚本攻击 (XSS)时，浏览器将停止加载页面。
+26. XForwardedFor 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：X-Forwarded-For（XFF）是用来识别通过 HTTP 代理或负载均衡方式连接到 Web 服务器的客户端最原始的 IP 地址的 HTTP 请求头字段。开启该功能后，将基于代理或负载均衡器的请求头 X-Forwarded-For 来获得连接的原始 IP 地址。
+27. internalProxies 
+◦ 取值范围：字符串长度限制0个到500个
+◦ 默认值：10\.\d{1,3}\.\d{1,3}\.\d{1,3}\|192\.168\.\d{1,3}\.\d{1,3}\|169\.254\.\d{1,3}\.\d{1,3}\|168\.1\.\d{1, 3}\.\d{1,3}\|127\.\d{1,3}\.\d{1,3}\.\d{1,3}\|172\.1[6-9]{1}\.\d{1,3}\.\d{1,3}\|172\.2[0- 9]{1}\.\d{1,3}\.\d{1,3}\|172\.3[0-1]{1}\.\d{1,3}\.\d{1,3}\|0:0:0:0:0:0:0:1\|::1 
+◦ 生效条件：XForwardedFor=true
+◦ 说明：匹配内部代理的 IP 地址的正则表达式。若它们出现在 remoteIpHeader 标头中，则它们将被信任并且不会出现在 proxiesHeader 标头中。
+28. trustedProxies
+◦ 取值范围：字符串长度限制0个到500个
+◦ 默认值：无。
+◦ 生效条件：XForwardedFor=true
+◦ 说明：匹配受信任代理的 IP 地址的正则表达式。若它们出现在 remoteIpHeader 标头中，则它们将被信任并出现在 proxiesHeader 标头中。
+29. protocolHeader
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：X-Forwarded-Proto
+◦ 生效条件：XForwardedFor=true
+◦ 说明：包含协议信息的 HTTP 标头，通常命名为 X-Forwarded-Proto。若为空，则不会替换Request 的 scheme、secure、主机名和端口。
+30. hostHeader
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：XForwardedFor=true&protocolHeader!=
+◦ 说明：从这个请求头取值，用以覆盖 Request.getServerName() 的返回值。若开启了“替换本地主机”，则同时覆盖 Request.getLocalName() 的返回值。
+
+# 4.84.4. 参数补充说明
+31. changeLocalName
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：XForwardedFor=true
+◦ 说明：若开启，则从“获取主机的请求头”中取值，用以覆盖 Request.getLocalName() 的返回值。
+32. portHeader
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：XForwardedFor=true&protocolHeader!=
+◦ 说明：从这个请求头取值，用以覆盖 Request.getServerPort() 的返回值。若开启了“替换本地端口”，则同时覆盖 Request.getLocalPort() 的返回值。对于 http 协议，若没有从“获取端口的请求头”中获取到值，则使用“缺省 http 端口”。
+33. changeLocalPort
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：XForwardedFor=true&protocolHeader!=
+◦ 说明：若开启，则从“获取端口的请求头”中取值，用以覆盖 Request.getLocalPort() 的返回值。对于http 协议，若没有从“获取端口的请求头”中获取到值，则使用“缺省 http 端口”。
+34. httpServerPort
+◦ 取值范围：大小限制1到65535
+◦ 默认值：80
+◦ 生效条件：XForwardedFor=true&protocolHeader!=
+◦ 说明：对于 http 协议，若没有从“获取端口的请求头”中获取到值，则使用该缺省值。
+35. httpsServerPort
+◦ 取值范围：大小限制1到65535
+◦ 默认值：443
+◦ 生效条件：XForwardedFor=true&protocolHeader!=
+◦ 说明：对于 https 协议，若没有从“获取端口的请求头”中获取到值，则使用该缺省值。
+36. enableCrawlerSessionManager
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：Web 爬虫在爬取站点时会触发数千个会话的创建，这可能会导致大量内存消耗。此功能确保爬虫与单个会话相关联 - 就像普通用户一样 - 无论他们是否在请求中提供会话令牌。
+37. sessionInactiveInterval
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1800
+◦ 生效条件：enableCrawlerSessionManager=true
+◦ 说明：指定爬虫会话的会话超时（单位：秒），通常应小于用户会话时间。
+38. crawlerIps
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enableCrawlerSessionManager=true
+◦ 说明：设置匹配 IP 的正则表达式或通配符 IP（如：168.1.2.*，168.1.4.5-168.1.4.99）来识别爬虫会话。
+39. singleSession
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enableCrawlerSessionManager=true
+◦ 说明：启用单会话功能，开启后，每个IP只会创建一个会话。
+40. crawlerUserAgents
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：.[bB]ot.\|.Yahoo! Slurp.\|.Feedfetcher-Google.
+◦ 生效条件：enableCrawlerSessionManager=true
+◦ 说明：设置匹配 User-Agent 的正则表达式来识别爬虫。
+
+# 4.84.4. 参数补充说明
+41. filterTime
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：设置禁止外部访问本服务器的时间段。注：本机访问不受限制。
+42. filterTimeBegin
+◦ 取值范围：大小限制0到24
+◦ 默认值：0
+◦ 生效条件：filterTime=true
+◦ 说明：指定的拦截规则在每日的该时间点（小时，24小时制）开始生效。
+43. filterTimeEnd
+◦ 取值范围：大小限制0到24
+◦ 默认值：24
+◦ 生效条件：filterTime=true
+◦ 说明：指定的拦截规则在每日的该时间点（小时，24小时制）结束生效。
+44. repeat
+◦ 取值范围：1（释义：/周日）, 2（释义：/周一）, 3（释义：/周二）, 4（释义：/周三）, 5（释义：/周四）, 6（释义：/周五）, 7（释义：/周六）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 生效条件：filterTime=true
+◦ 说明：设置此拦截规则重复生效的规则。
+45. enabledRejectSystemExit
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：探测通过 System.exit()、Runtime.exit()、Runtime.halt() 以及 $\mathsf { C t r l + C }$ 等方式停止 TongWeb服务的行为，并记录相关的调用堆栈。
+46. rejectSystemExit
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：enabledRejectSystemExit=true
+◦ 说明：当 System 退出被检测到时，是否阻止该行为。注：使用停止脚本停止 TongWeb 的行为不受影响。
+47. rejectStart
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：对 TongWeb 的启动进行权限验证，验证通过后可正常启动 TongWeb，否则启动将会终止。
+48. checkedOsUsers
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：root
+◦ 生效条件：rejectStart=true
+◦ 说明：指定不允许启动 TongWeb 的操作系统用户列表，多个用户以英文逗号分隔。
+49. minimumUmask
+◦ 取值范围：字符串长度限制4个到4个
+◦ 默认值：无。
+◦ 生效条件：rejectStart=true
+◦ 说明：指定须为运行 TongWeb 的操作系统用户配置的最小 umask。若配置了该参数，则 TongWeb会在启动之前去环境变量（参数名为"tongweb_UMASK"）或 -D 参数（参数名为"tongweb_UMASK"）里检查操作系统用户的 umask（若两处都设置则以 -D 参数为准），只有当其值与最小 umask 值作按位与操作得出的值仍为最小 umask 值时才允许启动。注：该配置格式为八进制，须是一个合法的 umask 值。
+50. secureStop
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在调用 TongWeb 的停止脚本时进行密码验证，输入正确的系统管理员密码才可以停止TongWeb 服务。
+
+# 4.84.4. 参数补充说明
+51. startdTimeout
+◦ 取值范围：大小限制60到1000000000
+◦ 默认值：60
+◦ 说明：在使用 startd 脚本启动 TongWeb 时，若 startd 脚本的执行超过此时长后仍未结束，则会主动终止并立即退出，此后 TongWeb 进程可能仍在后台继续启动，请注意检查日志以获悉最终启动结果。
+52. startdDiscardTimeout
+◦ 取值范围：大小限制20到1000000000
+◦ 默认值：20
+◦ 说明：在使用 startd 脚本启动 TongWeb 时，若因为端口冲突等原因最终不可能启动成功，通过设置此超时阈值，可及早终止等待。
+53. useJavaSerializer
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否使用 Java 原生的序列化工具，即 ObjectOutputStream/ObjectInputStream API。在遇到序列化相关问题时，可尝试打开该功能，打开后可能会影响集中管理、远程 EJB 等场景的性能。
+注：使用集中管理时，所有实例应该一起设置，或都打开，或都保持关闭。
+54. whitelist
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置允许使用序列化和反序列化的 Java 类，其格式为 Java 类的全名称（包名加类名）或全名称的前缀部分（通常是包名）加通配符“”，以英文逗号分隔可设置多个，如
+java.lang.,com.tongweb.*。注：该配置会影响 ejb 或其它需要序列化处理的功能，请在设置后进行充分的测试和验证。
+55. rmiServerHostname
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置提供 RMI 服务的主机名，该主机名将被返回给 RMI 客户端用于访问远程对象。该参数最终会设置到 JVM 参数 -Djava.rmi.server.hostname 上，效果与之相同。
+
+# 4.84.5. 支持的监视项
+无。
+
+# 4.85. 全局配置
+管理 TongWeb 应用服务器的全局属性。
+
+# 4.85.1. 模块名
+server 
+
+# 4.85.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr></table>
+
+# 4.85.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>instanceVersion</td><td>切换实例版本</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>reversePkg</td><td>切换命名空间</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>replaceWithEnv</td><td>从环境变量配置</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>globalp</td><td>全局IP</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>liteMode</td><td>轻量模式</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>webserviceEnabled</td><td>启用WebService</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>compatibleWithJBoss</td><td>兼容JBoss</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>jpaEnabled</td><td>启用JPA</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>tokenizerEnabled</td><td>启用Validator</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>jtaEnabled</td><td>启用JTA</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>supportedVendors</td><td>厂商兼容</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>systemTempDir</td><td>系统临时目录</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>backgroundTaskDelay</td><td>定时任务周期（秒）</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>utilityThreads</td><td>任务并行度</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>delayStartConnector</td><td>延迟启动通道</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>ignoreApplicationStartupTime</td><td>忽略应用启动时间</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>gracefulStopAwaitMillis</td><td>优雅停机</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>18</td><td>gzipInputFilter</td><td>支持请求体压缩</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>19</td><td>serverHeader</td><td>服务器响应头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>20</td><td>addResponseHeader</td><td>附加响应头</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>jvmRoute</td><td>JVM Route</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>22</td><td>listenerClassEnabled</td><td>扩展生命周期模块</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>23</td><td>listenerClass</td><td>类名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>24</td><td>loadingFailedStopEnabled</td><td>加载失败时停止实例</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>25</td><td>x509UsernameRetrieverClas sName</td><td>证书解析类</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>26</td><td>websocketBlockingSendTim eout</td><td>WebSocket消息发送超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>27</td><td>allowHostnameChars</td><td>主机名允许字符</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>28</td><td>autoDeploy</td><td>自动部署应用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>29</td><td>autoRedeploy</td><td>自动更新</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>30</td><td>startupDeploy</td><td>启动时部署</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>31</td><td>createFlag</td><td>生成状态标签</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>32</td><td>deployToDeployment</td><td>部署到 deployment</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>33</td><td>autoDeployDir</td><td>自动部署目录</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>34</td><td>appTemplate</td><td>全局应用模板</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>35</td><td>refLib</td><td>应用共享类加载器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>36</td><td>useParallel</td><td>并行部署应用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>37</td><td>serverFileSizeLimit</td><td>服务器文件大小限制</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>38</td><td>postDeploymentBackup</td><td>应用主动备份</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>39</td><td>backupCount</td><td>应用备份数量</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>40</td><td>backupDir</td><td>应用备份目录</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>41</td><td>jarsToScan</td><td>扫描jar文件</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>42</td><td>jarsToSkip</td><td>跳过扫描jar文件</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>43</td><td>ignoreDeployError</td><td>忽略部署异常</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>44</td><td>ignoreClientAbortException</td><td>忽略客户端异常</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>45</td><td>validationSkip</td><td>跳过规范性校验</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>46</td><td>jspPrintNull</td><td>JSP输出NULL串</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>47</td><td>JSPAutoImport</td><td>JSP自动导包</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>48</td><td>JSPTagBufferSize</td><td>JSP标签缓存区大小</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>49</td><td>jspSpecialVars</td><td>JSP特殊变量</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>50</td><td>limitJSPTagBuffer</td><td>重置JSP标签缓存区</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>51</td><td>slowThreadEnabled</td><td>慢线程检测</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>52</td><td>threshold</td><td>阻塞阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>53</td><td>interruptThreadThreshold</td><td>中断阈值</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>54</td><td>monitorAppDataSource</td><td>监视应用数据源</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>55</td><td>supportBC</td><td>兼容BC加密算法</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>56</td><td>classFileProcessor</td><td>自定义Class文件解密</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>57</td><td>mappingRootPath</td><td>映射ROOT路径</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>58</td><td>licenseCheckTime</td><td>授权检查时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>59</td><td>notificationEnable</td><td>授权到期提醒</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>60</td><td>notificationTime</td><td>提前时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>61</td><td>javamailEnable</td><td>发送邮件</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>62</td><td>from</td><td>发件人地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>63</td><td>to</td><td>收件人地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>64</td><td>smsEnable</td><td>发送短信</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>65</td><td>sms</td><td>短信服务</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>66</td><td>smsSign</td><td>短信服务签名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>67</td><td>smsID</td><td>短信服务 ID</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>68</td><td>smsTel</td><td>接收人手机号</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>69</td><td>licenseCenterEnabled</td><td>启用授权中心</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>70</td><td>licenseCenter</td><td>授权中心</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>71</td><td>registerServerMBean</td><td>开启本地 JMX</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>72</td><td>alias</td><td>别名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>73</td><td>remoteSupported</td><td>支持集中管理</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>74</td><td>autoRegisterId</td><td>服务器标识</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>75</td><td>autoClusterId</td><td>集群标识</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>76</td><td>remoteKey</td><td>传输密钥</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>77</td><td>autoRegister</td><td>自动注册</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>78</td><td>remotePublicKey</td><td>加密公钥</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>79</td><td>registerAsNode</td><td>注册为节点</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>80</td><td>centralizedConsoleUrl</td><td>注册到集中管理URL</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>81</td><td>serviceRegistryEnabled</td><td>启用服务注册中心</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>82</td><td>serviceRegistryServer</td><td>服务注册中心</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>83</td><td>configRegistryEnabled</td><td>启用配置注册中心</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>84</td><td>configRegistryServer</td><td>配置注册中心</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>85</td><td>pushConfigEnabled</td><td>推送配置变更</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>86</td><td>restartOnUpdate</td><td>监听变更并重启</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>87</td><td>imageMode</td><td>镜像模式</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>88</td><td>appStoreServer</td><td>应用仓库</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.85.4. 参数补充说明
+1. instanceVersion
+◦ 取值范围：字符串长度限制0个到255个
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：指定当前实例的运行版本，默认为最新版本。注：此处显示的版本列表可在“产品升级”模块管理。
+2. reversePkg
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，TongWeb 会在启动之初切换运行时的 Java/Jakarta EE 命名空间，如果当前是 javax，则会自动切换为 jakarta，反之亦然。
+3. replaceWithEnv
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在启动 TongWeb 之前，检测 tongweb.xml 中所有 $\$ \{ x x x\}$ 格式的参数，若对应的参数“xxx”在环境变量里可找到，则使用环境变量指定的值替换到 tongweb.xml 中。注：替换操作为一次性的，替换后不可恢复，这通常适用于容器云环境下动态配置 TongWeb 参数的场景。
+4. globalIp
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置全局 IP 后，所有 HTTP、HTTPS、AJP、EJB 等协议建立的端口都绑定到此 IP 上（各协议自行指定绑定到的 IP 会被忽略）。这对于减少多实例场景下系统端口冲突很有用，例如集中管理。
+5. liteMode
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：以轻量模式运行 TongWeb，此模式会关闭 EJB、JCA 等服务，并尝试从应用自身加载JSF、JavaMail、WebSocket、WebService、Xml 等技术实现。如果应用是基于 Tomcat 或其它Servlet 容器开发的，则通常可以获得更好的兼容性。
+6. webserviceEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：liteMode=false
+◦ 说明：开启后，将加载 TongWeb 的 WebService 组件。注：请在确认需要使用 TongWeb 提供的WebService 功能后开启。
+7. compatibleWithJBoss
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：liteMode=false&webserviceEnabled=true
+◦ 说明：使用兼容 JBoss 客户端的 wsdl 格式。
+8. jpaEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：liteMode=false
+◦ 说明：开启后，将加载 TongWeb 内置的 JPA 组件。是否需要开启此功能，通常需要依据应用是否自带了 Hibernate、Eclipselink 等 JPA 实现来决定，若应用自带则不必开启，反之则需要开启。
+9. validatorEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：liteMode=false
+◦ 说明：关闭后，将不加载 TongWeb 内置的 Validator 组件。
+10. jtaEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：关闭后，将不加载 TongWeb 内置的 JTA 组件。
+
+# 4.85.4. 参数补充说明
+11. supportedVendors
+◦ 取值范围：WebLogic（释义：/WebLogic）, GlassFish（释义：/GlassFish）, WebSphere（释义：/WebSphere） 
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：指定需要兼容的其他厂商的自定义配置文件。WebLogic: weblogic-ejb-jar.xml; Glassfish:sun-application.xml,sun-application-client.xml,sun-web.xml,sun-ejb-jar.xml,sun-cmp-mappings.xml;Websphere: webservices.xml,XXXService_mapping.xml。
+12. systemTempDir 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：temp
+◦ 说明：设置 TongWeb 进程的临时工作目录，用于缓存上传的文件、编译的JSP等。
+13. backgroundTaskDelay 
+◦ 取值范围：大小限制2到3600
+◦ 默认值：10
+◦ 说明：设置 TongWeb 服务器内部一些定时任务的执行周期。注：此设置会影响应用会话有效性、应用自动部署、慢线程检测等周期性检测机制的敏感性。
+14. utilityThreads 
+◦ 取值范围：大小限制2到50
+◦ 默认值：2
+◦ 说明：服务器内部任务执行的最大并发数，这些任务包括应用会话超时检测、文件自动部署检测、虚拟主机的并行部署应用、应用的并行启动组件等。
+15. delayStartConnector 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，TongWeb 在启动时会优先启动应用，应用启动完成后，再启动端口，否则会优先启动端口。注：开启该功能可保证当有请求进入系统后所有的应用都是就绪的，但可能会引入一个现象，即如果部署了多个应用，那么在最后一个应用部署完成前所有的应用都将无法对外提供服务。
+16. ignoreApplicationStartupTime 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：delayStartConnector=false
+◦ 说明：开启该功能后，服务器启动时间不包含应用的启动时间。
+17. gracefulStopAwaitMillis 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：若将此参数设置为大于 0，则会在 TongWeb 服务器停止时，尝试等待正在进行中的客户端请求处理完毕，单位为毫秒。设置为 0，表示关闭此功能。
+18. gzipInputFilter 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启该功能后，将对 POST 请求头中 Content-Encoding 设置为 gzip 的请求体进行 GZIP 解压缩。
+19. serverHeader
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置通过HTTP协议响应头返回到客户端的服务器名称。
+20. addResponseHeader
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：该功能允许服务器在HTTP响应中附加自定义头部信息。优先级：应用的优先级高于通道，通道优先级高于全局配置。
+
+# 4.85.4. 参数补充说明
+21. jvmRoute
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：负载均衡场景下的服务实例标识，通常需要结合 AJP 协议使用。注：该值修改后，只能对后续部署的应用生效，修改前已经部署的应用需要进行编辑后才能生效。
+22. listenerClassEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：是否启用TongWeb生命周期管理模块。
+23. listenerClass
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 生效条件：listenerClassEnabled=true
+◦ 说明：提供一个 Java 类的全名称（多个类以英文逗号分隔），用以监听 TongWeb 应用服务器的启动和停止事件。该 Java 类按需声明对应事件的 Java 方法（静态或成员方法均可，若是成员方法则需要同时声明一个无参构造方法），并打包为 jar 文件在 TongWeb 启动之前放入
+${tongweb.base}/lib。事件及其对应的方法（均是无参方法）：启动之前：beforeStart；启动之后：afterStart；停止之前：beforeStop；停止之后：afterStop。
+24. loadingFailedStopEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：listenerClassEnabled=true
+◦ 说明：在指定的生命周期管理模块加载失败（方法执行出现异常）时，指定是否要停止 TongWeb 实例。
+25. x509UsernameRetrieverClassName 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定解析证书的实现类。若未指定，则使用 TongWeb 内置的 X509SubjectDnRetriever，它是以证书的完整 SubjectDN 作为用户名。
+26. websocketBlockingSendTimeout 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：20
+◦ 说明：设置以阻塞模式发送 WebSocket 消息的超时时间，单位：秒。注：此为 TongWeb 的WebSocket 服务提供的默认设置，应用可依据 WebSocket 规范对此进行重置。
+27. allowHostnameChars 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：允许主机名使用的特殊字符，如下划线"_"。
+28. autoDeploy 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启该功能后，只需要将应用包拷贝到 $\$ 1$ {tongweb.base}/autodeploy 目录（可通过“自动部署目录”指定为其它目录），即可自动部署该应用。注：若需要预设部署参数，可通过 tongweb-web.xml 自定义配置文件来实现，该文件需放置在应用的 WEB-INF/ 目录下（仅支持 web 应用），其内容格式同 tongweb.xml 的 applications 的子节点 app。
+29. autoRedeploy 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：autoDeploy=true
+◦ 说明：开启后，在检测到自动部署的应用包或文件夹有更新时，将会自动清理解压的目录，并使用新的应用包文件（.war、.ear等）重新解压。
+30. startupDeploy 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：autoDeploy=false
+◦ 说明：在 TongWeb 启动完成后，扫描自动部署目录，执行且仅执行一次应用自动部署。
+
+# 4.85.4. 参数补充说明
+31. createFlag 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：autoDeploy=true\|startupDeploy=true
+◦ 说明：开启该功能后，自动部署的应用将会生成对应的标签文件，成功：.deployed，失败：.failed，卸载 *.unDeployed。
+32. deployToDeployment 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：autoDeploy=true\|startupDeploy=true
+◦ 说明：开启该功能后，自动部署的非文件夹类型应用将解压部署到 $\$ 1$ {tongweb.base}/deployment 目录，关闭该功能将在原地解压部署。
+33. autoDeployDir 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：autodeploy
+◦ 生效条件：autoDeploy=true\|startupDeploy=true
+◦ 说明：指定自动部署的目录。
+34. appTemplate 
+◦ 取值范围：“应用模板”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：设置后，将会使用全局应用模板里的参数来部署应用，部署应用时指定的其他参数将会被忽略。 注：若应用部署时，指定了其它应用模板，则会优先使用应用指定的其它模板；若应用同时配置了自定义描述文件 tongweb-web.xml，则会优先使用 tongweb-web.xml 里面的配置参数。
+35. refLib 
+◦ 取值范围：“公共类库”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：扩展应用共享类加载器（lib/app/*）的加载路径，通常适用于多个应用需要在内存中共享类对象的业务场景。
+36. useParallel 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：以并行的方式进行应用部署，可尝试提高多应用部署的效率，但应用部署期间的日志打印会出现交叉。注：最大并行数受限于“全局配置”配置的“任务并行度”。
+37. serverFileSizeLimit 
+◦ 取值范围：大小限制0到8192
+◦ 默认值：1024
+◦ 说明：当文件来源为服务器文件时，出于安全考虑，限定了读取文件的大小（单位：MB）。注：设
+置为 0 表示不限制。
+38. postDeploymentBackup 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，应用会在部署之后主动进行一次备份，可以在“应用备份”模块里查看和管理应用的备份文件。
+39. backupCount 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：3
+◦ 说明：应用备份的最大数量，超过配置继续备份会清理较老的备份。配置为 0，表示禁用备份。
+40. backupDir 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：data/app/backup
+◦ 说明：应用备份目录（相对于 $\$ 1$ {tongweb.base} 的目录，若目录不存在，TongWeb 将会自动创建），以将应用备份到此目录。此项不必填，若未指定，则备份当前生效的应用文件到${tongweb.base}/data/app/backup 目录下。
+
+# 4.85.4. 参数补充说明
+41. jarsToScan 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：当 jar 的名称符合此模式时，则从该 jar 中扫描 TLD、web fragments 等信息。该模式可包含两个特殊字符：“*”表示 0 个或多个字符，“?”表示一个且只有一个字符。注：配置多个以英文逗号分隔，如 tongweb*.jar,common*.jar。其优先级高于“跳过jar”
+42. jarsToSkip 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：当 jar 的名称符合此模式时，则不再从该 jar 中扫描 TLD、web fragments 等信息。该模式可包含两个特殊字符：“*”表示 0 个或多个字符，“?” 表示一个且只有一个字符。注：配置多个以英文逗号分隔，如 tongweb*.jar,common*.jar。
+43. ignoreDeployError 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：忽略应用部署过程中的异常，此配置需自行确认该异常不影响应用业务，故可以选择忽略。目前包含：应用的 web.xml 中配置了 Servlet，在加载应用时，若找不到该 Servlet 的 Class 文件的异常忽略；应用 ServletContextListener 的初始化异常忽略。
+44. ignoreClientAbortException 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：开启此功能后，在应用处理请求过程中，若遇到客户端异常，如连接断开，则忽略不处理，以避免非必要的异常处理和日志打印等。注意：应用须在确认忽略的异常不会对业务造成影响的前提下谨慎使用此功能。
+45. validationSkip 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：当应用并未严格遵循 Java EE / Jakarta EE 规范时，可以选择跳过规范性校验，以尝试不中断部署。注：若开启了校验，对于未严格遵循规范的应用并不一定会中断部署，可能只是打印一些日志，这取决于应用的具体情况。
+46. jspPrintNull 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：开启后，当 JSP 输出的对象为 null 时，输出一个 null 字符串；不开启，则不输出任何内容。
+47. JSPAutoImport 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：开启后，自动为 JSP 导入 java.util 包。
+48. JSPTagBufferSize 
+◦ 取值范围：大小限制1到8196
+◦ 默认值：512
+◦ 说明：设置 JSP 标签缓存区在初始情况下的字符缓存空间大小，单位：字符个数。
+49. jspSpecialVars 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：设置 JSP 中定义的特殊变量值，如 com 等，防止编译 JSP 时特殊变量与内置对象命名冲突，导致编译失败。注：配置多个以英文逗号分隔。
+50. limitJSPTagBuffer 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：在实际使用的 JSP 标签缓存大小超过默认的 JSP 标签缓存区大小后，是否将缓存区重置到初始状态，选择重置会节省内存空间的消耗，但可能会有些许的性能影响。
+
+# 4.85.4. 参数补充说明
+51. slowThreadEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：慢线程检测功能可探测执行超时的请求，并能够自动中断执行的线程，以提高资源的利用效率。注：此配置更新后，应用需要重新部署或启动以生效。
+52. threshold
+◦ 取值范围：大小限制10到1000000000
+◦ 默认值：1000
+◦ 生效条件：slowThreadEnabled=true
+◦ 说明：线程处理应用业务的时间（从接收到客户端的请求开始计算）超过该阈值（单位：毫秒）后将会记录一条慢线程检测告警日志。注：此值建议不要小于“全局配置”模块里的“定时任务周期”参数值，否则发现慢线程会不及时。
+53. interruptThreadThreshold
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：slowThreadEnabled=true
+◦ 说明：线程处理应用业务的时间超过该阈值（单位：毫秒）后将被尝试中断，该时间从接收到客户端的请求开始计算，其值不支持小于阻塞阈值。0 表示不中断。
+54. monitorAppDataSource
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启该功能后，TongWeb 将主动去探测应用建立的数据源（数据库连接池），并尝试监视其资源的使用情况。您可通过“应用数据源”模块查看具体的监视信息。
+55. supportBC
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：打开此开关，可在一定程度上解决这类问题：在应用使用 Security.insertProviderAt(1,BCProvider) 方式安装了 BC 加密算法时，或者通过配置 JDK 的 java.security 文件方式安装了security.provider. $\mathtt { 1 = B C }$ 时，可能引起 https 通道访问错误。注：安装了 BC 加密算法后，若未出现所述问题，则不必需打开此开关。
+56. classFileProcessor
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定用于解密应用 Class 文件的类名。该类需实现 com.tongweb.classfile.ClassFileProcessor接口（所在 jar：${tongweb.home}/version*/boot/tongweb-bootstrap.jar）。注：包含该自定义处理类的 jar 文件，需在 TongWeb 启动之前放置到 $\$ 1$ {tongweb.base}/lib 下。
+57. mappingRootPath
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：开启后，当应用名为“ROOT”时，将自动将其访问前缀设置为 “/”。
+58. licenseCheckTime 
+◦ 取值范围：大小限制0到23
+◦ 默认值：6
+◦ 说明：设置检查授权（license）是否过期的时间点，单位：时。
+59. notificationEnable 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：设置是否在授权到期之前发出提醒。
+60. notificationTime 
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：15
+◦ 生效条件：notificationEnable=true
+◦ 说明：设置在授权到期之前，提前多少天发出提醒。
+
+# 4.85.4. 参数补充说明
+61. javamailEnable 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：notificationEnable=true
+◦ 说明：选择是否以电子邮件的方式发送提醒提醒。
+62. from 
+◦ 取值范围：“JavaMail 资源”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：notificationEnable $=$ true&javamailEnable=true
+◦ 说明：选择已创建的 JavaMail 资源，用于发送邮件。
+63. to 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：notificationEnable=true&javamailEnable=true
+◦ 说明：指定接收到期提醒的电子邮件地址。
+64. smsEnable 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：notificationEnable=true
+◦ 说明：选择是否以短信的方式发送提醒。
+65. sms
+◦ 取值范围：“短信服务”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：notificationEnable=true&smsEnable=true
+◦ 说明：选择已创建的短信服务，用于发送短信。
+66. smsSign
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：notificationEnable $=$ true&smsEnable=true
+◦ 说明：发送短信时使用的签名，该签名通常会添加到短信内容的开头处，一般位于【】里面，具体需要在短信服务平台进行设定。
+67. smsID
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：notificationEnable $=$ true&smsEnable $=$ true
+◦ 说明：发送短信时使用的短信服务平台的模板 ID，具体需要在短信服务平台进行设定。
+68. smsTel
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：notificationEnable $=$ true&smsEnable $=$ true
+◦ 说明：指定接收预警通知的手机号码，多个号码之间以逗号分隔。
+69. licenseCenterEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，TongWeb 将实时地从授权中心获取最新的授权文件，并更新到本地授权文件license.dat。
+70. licenseCenter
+◦ 取值范围：“注册中心”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：licenseCenterEnabled=true
+◦ 说明：选择要使用的授权中心。
+
+# 4.85.4. 参数补充说明
+71. registerServerMBean
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：将服务器实例的配置管理和监视接口注册到本地 MBean（即ManagementFactory.getPlatformMBeanServer() 上），名称为 TongWeb:name=server。本地MBean 的访问不需要密码，功能范围仅限配置查看和资源监视。
+72. alias
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：用来标识当前 TongWeb 的业务身份。
+73. remoteSupported
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：若此 TongWeb 服务器需要被集中管理，则需要打开此功能。出于安全考虑，此功能默认关闭。注：由集中管理工具自动创建的 TongWeb 节点和实例会自动打开该功能。此外，集中管理服务器的 IP 地址可以在 $\$ 1$ {tongweb.base}/conf/tongweb.xml <server> 节点的 centralizedIp 属性上记录。
+74. autoRegisterId
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：remoteSupported=true
+◦ 说明：注册到集中管理的节点名称标识，建议设置为一个有业务含义的名称，如果不设置则由TongWeb 服务器随机生成。注意：若当前实例已经被集中管理统一纳管，您在编辑此值后，需自行前往集中管理端同步更新已注册的此标识符号。
+75. autoClusterId
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：remoteSupported=true
+◦ 说明：注册到集中管理的服务器所属集群的名称标识，具有相同集群标识的服务器会自动组成集群，如无集群标识，则不属于任何集群。
+76. remoteKey
+◦ 取值范围：字符串长度限制0个到1024个
+◦ 默认值：无。
+◦ 生效条件：remoteSupported=true
+◦ 说明：当作为手动节点被集中管理时，传输过程中的敏感数据加密的密钥。
+77. autoRegister
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：remoteSupported=true
+◦ 说明：将此 TongWeb 服务器自动注册到集中管理，自动注册会在此处保存后立即生效，您可在指定的集中管理服务器上审查到注册信息。
+78. remotePublicKey
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：remoteSupported=true&autoRegister!=true
+◦ 说明：为了能够被集中化管理，需要在此设置集中管理的加密密钥，该密钥应该从集中管理工具的“集中配置”中获取。
+79. registerAsNode
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：remoteSupported=true&autoRegister=true
+◦ 说明：将此 TongWeb 作为节点或服务注册到集中管理，注册为节点：会出现在集中管理的“节点”模块里，可用作管理该节点上的其它 TongWeb 实例；注册为服务：会出现在集中的“服务发现”模块，目的是将该 TongWeb 实例纳入集中管理。注：当“注册为节点”后，若再更改为“注册为服务”，或关闭自动注册，并不会从集中管理的“节点”模块中移除，您可在集中管理端进行相关移除操作。
+80. centralizedConsoleUrl
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：remoteSupported=true&autoRegister=true
+◦ 说明：指定自动注册要注册到的集中管理服务器的 TongWeb 控制台访问地址，格式为：https://[localhost]:[9060]/[console]/。注：协议只能为 http 或者 https，访问前缀为默认的console 或者自定义的值，其后不需要再添加其它 url 内容。
+
+# 4.85.4. 参数补充说明
+81. serviceRegistryEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：remoteSupported=true
+◦ 说明：启用后，可将当前 TongWeb 实例注册到所选服务注册中心的服务器上，然后可在 TongWeb集中管理的“注册实例”模块管理该实例。此外：作为集中管理使用的 TongWeb 请勿和实例设置一样的注册中心，通常集中管理不必要设置注册中心。
+82. serviceRegistryServer
+◦ 取值范围：“注册中心”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：remoteSupported=true&serviceRegistryEnabled=true
+◦ 说明：选择要使用的服务注册中心。
+83. configRegistryEnabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：启用后，可将本 TongWeb 实例的配置与远端配置注册中心服务器上的配置保持一致，以支持状态分离、配置共享等场景。当本 TongWeb 实例与其它 TongWeb 实例选择使用了相同的“配置注册中心”时（不必需“启用服务注册中心”），它们将共享彼此的配置参数，此时，管理变更其中任何一个实例的参数，都将自动同步到其它实例。注意：启用该功能，应用部署只支持目录部署和应用仓库（在”全局配置“模块的”镜像模式“功能之下）两种方式，目录部署需要保证各个实例所在的文件系统上具有相同的应用文件路径。此外：作为集中管理使用的 TongWeb 请勿和实例设置一样的注册中心，通常集中管理不必要设置注册中心。
+84. configRegistryServer 
+◦ 取值范围：“注册中心”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：configRegistryEnabled=true
+◦ 说明：选择 TongWeb 要连接到的配置注册中心。
+85. pushConfigEnabled 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：configRegistryEnabled=true
+◦ 说明：开启后，在本 TongWeb 的配置发生变更时，会立即将变更后的配置推送到指定的配置注册中心上，不开启则不推送。注：推送配置变更会覆盖配置注册中心上的原有数据，因此，建议在初始化配置注册中心上的数据时打开，而中心上的数据初始化完毕后再加入到配置中心的 TongWeb 不需要打开，它们只需等待配置中心主动下发最新配置即可（前提是它们已开启”监听变更并重启“），您也可自行重启这些 TongWeb 以使它们立即从配置中心获取到最新配置。
+86. restartOnUpdate 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：configRegistryEnabled=true
+◦ 说明：是否监听配置中心上关于本实例的配置变更事件，并在有配置变更时自动重启本实例，以使得变更生效。注：开启该功能，需要首先开启“启动策略”模块的“宕机重启”功能。
+87. imageMode 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：指定是否以镜像模式运行 TongWeb。此模式会尝试从应用（注：需要在镜像模式下部署的应用，可选在 TongWeb 启动之前，将其放置到 $\$ 1$ {tongweb.base}/imagedeploy 目录下，也可选使用“应用仓库”来获取远程应用包）中查找 TongWeb 所需要的配置文件，查找位置为：应用根目录/META-INF/tongweb，查找到的文件将会合并入 $\$ 1$ {tongweb.base} 目录（注意：/META-
+INF/tongweb 目录下的文件目录结构要与 ${tongweb.base} 目录结构对应），原 $\$ 1$ {tongweb.base}目录将会整体备份。在以镜像模式运行时，TongWeb 将处于“只读”状态，即不支持对任何配置参数进行修改。若要关闭镜像模式，请先停止 TongWeb，然后修改`${tongweb.base}/conf/tongweb.xm`l，将 <server> 节点的 imageMode 属性值设置为 false，然后再启动 TongWeb 即可。
+88. appStoreServer
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：imageMode=true
+◦ 说明：应用仓库是存放应用程序文件的远程源地址或远程文件服务器，TongWeb 可以连接应用仓库，并从中拉取和部署应用。
+
+# 4.85.5. 支持的监视项
+无。
+
+# 4.86. 系统日志
+TongWeb 服务器的日志配置。
+
+# 4.86.1. 模块名
+serverlog 
+
+# 4.86.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>monitor</td><td>获取该组件的运行状态信息，该信息可反映组件的健康情况。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>weblog</td><td>通过浏览器页面实时查看日志的输出信息，并可根据关键字在线搜索最近的日志。</td></tr></table>
+
+# 4.86.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>loggers>server
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>logPattern</td><td>日志格式</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>enableConsoleLogging</td><td>启用控制台日志</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>takeoverJUL</td><td>接管 Java Logger</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>takeoverSystemPrint</td><td>接管系统打印</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>printToConsoleOnly</td><td>应用日志仅输出到控制台</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>enableAsynchronousLogging</td><td>开启异步日志</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>bufferQueueSize</td><td>缓冲队列大小</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>checkInterval</td><td>轮询间隔</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>baseFile</td><td>文件目录</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>10</td><td>loggerFileName</td><td>文件名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>11</td><td>appendTypeDir</td><td>追加类型目录</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>rollingFile</td><td>日志文件轮转</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>append</td><td>日志追加</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>rotationDay</td><td>按天轮转</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>rotationBySize</td><td>按大小轮转</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>keepMaxFiles</td><td>保留文件个数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>compression</td><td>日志文件压缩</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>18</td><td>charset</td><td>文件编码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>19</td><td>buffered</td><td>缓冲写入</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>20</td><td>bufferedSize</td><td>缓冲大小</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>enableThreadLogging</td><td>开启线程日志</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>22</td><td>logLevel</td><td>默认日志级别</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>23</td><td>jullogLevel</td><td>Java Logger 日志级别</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>24</td><td>enabledModuleLogLevel</td><td>启用模块日志级别</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>25</td><td>moduleLogLevelDatasource</td><td>数据源</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>26</td><td>moduleLogLevelEJB</td><td>EJB 容器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>27</td><td>moduleLogLevelConnector</td><td>通道</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>28</td><td>moduleLogLevelWebContainer</td><td>Web 容器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>29</td><td>moduleLogLevelJNDI</td><td>JNDI</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>30</td><td>initialShowLogLines</td><td>初始加载行数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>31</td><td>pullLogLines</td><td>日志刷新大小</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>32</td><td>maxShowLines</td><td>最大显示行数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.86.4. 参数补充说明
+1. logPattern
+◦ 取值范围：rich（释义：/yyyy-MM-dd HH:mm:ss.SSS [级别] [线程名] - 消息）, simple（释义：/yyyy-MM-dd HH:mm:ss [级别] - 消息）, none（释义：/仅消息）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：simple
+◦ 说明：日志内容的记录格式，包括时间戳、线程名、日志级别等。
+2. enableConsoleLogging
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：启用后，系统将在控制台输出日志信息
+3. takeoverJUL
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：将使用 java.util.logging.Logger 打印的应用日志转入到 TongWeb 日志模块统一处理，如存入 TongWeb 的 server.log 日志文件等。不开启，则会丢弃这些应用日志。注：若应用已有 JavaLogger 配置且需要使用自己的，则需修改 tongweb.xml，删除 -Djava.util.logging.manager 参数。
+4. takeoverSystemPrint
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：将系统打印（System.out、System.err）的日志转入到日志模块统一处理。注：若不开启，则会丢弃这些日志。
+5. printToConsoleOnly
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：takeoverSystemPrint=true&enableConsoleLogging=true
+◦ 说明：启用后，应用代码通过系统打印（System.out、System.err）和 JUL（java.util.logging.Logger） 输出的日志将仅在控制台输出，而不再存入系统日志文件（即默认的server.log 文件）。
+6. enableAsynchronousLogging
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：日志记录可以在单独的线程中执行，好处是应用程序本身不会被缓慢的 IO 操作阻塞，写入线
+程以低优先级运行并与应用程序一起自动关闭。
+7. bufferQueueSize
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：100000
+◦ 生效条件：printToConsoleOnly=true\|enableAsynchronousLogging=true
+◦ 说明：日志缓冲队列大小，单位为条数。缓冲队列所能容纳的日志字节大小的最大值为缓冲队列大小乘以每条日志的字节大小，可据此估计日志子系统所需要的内存峰值。
+8. checkInterval
+◦ 取值范围：大小限制10到1000000000
+◦ 默认值：500
+◦ 生效条件：printToConsoleOnly=true\|enableAsynchronousLogging=true
+◦ 说明：开启异步日志后，TongWeb 会周期性检测是否有需要输出的日志，此处可设置检测的频率，即每隔多久检测一次，单位：毫秒。
+9. baseFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：logs
+◦ 说明：将日志文件存放到指定的目录下。
+10. loggerFileName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：server
+◦ 说明：指定日志文件的名称，日志文件将以此名称开头存储在指定目录下。
+
+# 4.86.4. 参数补充说明
+11. appendTypeDir
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：启用后，将在指定的文件目录下增加一个 server 目录以存放日志文件。
+12. rollingFile
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：将日志信息按文件大小或时间进行轮转，确保日志文件不会过大。
+13. append
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：rollingFile $=$ false
+◦ 说明：启用日志追加模式，日志信息将追加到现有日志文件中而不是覆盖。
+14. rotationByDay
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 生效条件：rollingFile $=$ true
+◦ 说明：将每日未达到大小阈值的日志在零点切割到一个新文件中。
+15. rotationBySize
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：50
+◦ 生效条件：rollingFile $=$ true
+◦ 说明：当日志文件大小（单位：MB）达到该阈值时，将切割出一个新的日志文件。注：设置为 0 表示不启用此功能。
+16. keepMaxFiles
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：100
+◦ 生效条件：rollingFile $=$ true
+◦ 说明：指定在清理日志文件时，需保留文件的个数。
+17. compression
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 生效条件：rollingFile $=$ true
+◦ 说明：是否开启日志文件压缩功能。开启后，对轮转后的日志文件进行压缩。
+18. charset
+◦ 取值范围：UTF-8（释义：/UTF-8）, GBK（释义：/GBK）, ISO-8859-1（释义：/ISO-8859-1）,GB18030（释义：/GB18030）, GB2312（释义：/GB2312）, UTF-16（释义：/UTF-16）, US-ASCII（释义：/US-ASCII）
+◦ 默认值：UTF-8
+◦ 说明：指定日志文件的编码格式。
+19. buffered
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：是否开启文件缓冲写入功能。开启后，当持续记录的日志内容大小（单位：字节）之和达到缓冲大小时才一次性写入文件，而不是每条日志都立即写入文件（在服务器停止时会全部写入），这通常可以提高日志记录性能。关闭后，每条日志都立即写入文件。
+20. bufferedSize
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：65536
+◦ 生效条件：buffered=true
+◦ 说明：缓冲写入的阈值，当持续记录的日志内容大小（单位：字节）之和达到此值时，一次性写入进文件。
+
+# 4.86.4. 参数补充说明
+21. enableThreadLogging 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启线程日志后，系统日志在原有日志的基础上，会同步地单独保存到一个独立的文件中，该文件以输出日志的当前线程的ID或线程名命名。注意：线程日志文件不具备压缩、缓冲、压缩等能力，且会在下次重启服务器或编辑日志配置时自动清空，不建议在生产环境下使用。
+22. logLevel 
+◦ 取值范围：error（释义：/error）, warn（释义：/warn）, info（释义：/info）, debug（释义：/debug）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：info
+◦ 说明：设置默认日志级别，只有在日志信息的严重程度等于或高于此级别时，才会记录日志。
+23. julLogLevel 
+◦ 取值范围：error（释义：/error）, warn（释义：/warn）, info（释义：/info）, debug（释义：/debug）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：info
+◦ 生效条件：takeoverJUL=true
+◦ 说明：设置 Java Logger 日志级别，只有在日志信息的严重程度等于或高于此级别时，才会记录日志。注：其值低于“默认日志级别”时会自动使用“默认日志级别””。
+24. enabledModuleLogLevel 
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：按模块设置各自的日志级别，而不使用默认日志级别。
+25. moduleLogLevelDatasource 
+◦ 取值范围：error（释义：/error）, warn（释义：/warn）, info（释义：/info）, debug（释义：/debug）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：info
+◦ 生效条件：enabledModuleLogLevel=true
+◦ 说明：设置数据源模块的日志级别，只有在数据源模块日志信息的严重程度等于或高于此级别时，才会记录日志。
+26. moduleLogLevelEJB 
+◦ 取值范围：error（释义：/error）, warn（释义：/warn）, info（释义：/info）, debug（释义：/debug）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：info
+◦ 生效条件：enabledModuleLogLevel=true
+◦ 说明：设置 EJB 容器模块的日志级别，只有在 EJB 容器模块日志信息的严重程度等于或高于此级别时，才会记录日志。
+27. moduleLogLevelConnector 
+◦ 取值范围：error（释义：/error）, warn（释义：/warn）, info（释义：/info）, debug（释义：/debug）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：info
+◦ 生效条件：enabledModuleLogLevel=true
+◦ 说明：设置通道模块的日志级别，只有在通道模块日志信息的严重程度等于或高于此级别时，才会记录日志。
+28. moduleLogLevelWebContainer 
+◦ 取值范围：error（释义：/error）, warn（释义：/warn）, info（释义：/info）, debug（释义：/debug）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：info
+◦ 生效条件：enabledModuleLogLevel=true
+◦ 说明：设置 Web 容器模块的日志级别，只有在 Web 容器模块日志信息的严重程度等于或高于此级别时，才会记录日志。
+29. moduleLogLevelJNDI 
+◦ 取值范围：error（释义：/error）, warn（释义：/warn）, info（释义：/info）, debug（释义：/debug）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：info
+◦ 生效条件：enabledModuleLogLevel=true
+◦ 说明：设置 JNDI 模块的日志级别，只有在 JNDI 模块日志信息的严重程度等于或高于此级别时，才会记录日志。
+30. initialShowLogLines 
+◦ 取值范围：大小限制0到10000
+◦ 默认值：100
+◦ 说明：设置首次打开在线日志页面时加载的最新日志行数。
+31. pullLogLines 
+◦ 取值范围：大小限制1到1000
+◦ 默认值：20
+◦ 说明：设置浏览器每次从服务器拉取日志的最大行数。拉取太多日志可能造成网络和服务器压力，请根据实际情况设置。
+32. maxShowLines 
+◦ 取值范围：大小限制1到100000
+◦ 默认值：10000
+◦ 说明：当 Web 日志页面累积输出的日志过多时，可能会引起浏览器压力过大而无响应，设置最大显示行数可丢弃超出行数的部分以减轻浏览器压力，因此建议根据实际情况设置最大显示行数。
+
+# 4.86.5. 支持的监视项
+1. 监视项：bufferQueueUsed
+◦ 语义：异步日志缓冲数
+◦ 说明：开启异步日志后，日志缓冲队列暂存的日志条数，-1 表示未开启异步日志。
+◦ 是波动类型：是
+
+# 4.87. 注册实例
+发现和管理注册到集中管理的 TongWeb 实例。TongWeb 实例可以通过“全局配置”模块的“自动注册”功能，将自己注册到集中管理，也可以通过“全局配置”模块的“启用服务注册”功能将自己注册到服务注册中心（如 Nacos 等），这些注册过的实例统一在这里进行管理。
+
+# 4.87.1. 模块名
+servicediscovery 
+
+# 4.87.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr></table>
+
+# 4.87.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>alias</td><td>别名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>tenantName</td><td>租户</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>ip</td><td>IP</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>5</td><td>port</td><td>管理端口</td><td>数值类型</td><td>否</td><td>是</td><td>否</td></tr><tr><td>6</td><td>installationPath</td><td>安装路径</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>7</td><td>autoRegisterId</td><td>服务器标识</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>8</td><td>instanceName</td><td>实例名称</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>9</td><td>autoClusterId</td><td>所属集群</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>10</td><td>registryName</td><td>注册中心名称</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>11</td><td>running</td><td>运行中</td><td>布尔类型</td><td>否</td><td>是</td><td>否</td></tr><tr><td>12</td><td>remoteKey</td><td>传输密钥</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.87.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：唯一标识。
+2. alias
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：用来标识当前实例的备注，实例过多时方便通过别名进行模糊查询。
+3. tenantName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：实例所属的租户。
+4. ip
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：连接节点的 IP 地址。
+5. port
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0
+◦ 说明：节点的管理端口。
+6. installationPath
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：TongWeb 安装路径，即 $\$ 1$ {tongweb.home}。当路径不存在时，系统自动创建，不支持修改。当“注册方式”选择为 “SSH” 类型时，必填，且必须是空目录；手动节点可以自动获得。
+7. autoRegisterId 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：注册至集中管理的节点名称。
+8. instanceName 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：实例的名称。
+9. autoClusterId 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：实例所属的集群名称。
+10. registryName 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：所属服务注册中心的名称。
+11. running 
+◦ 取值范围：true 或 false
+◦ 默认值：false
+◦ 说明：了解该组件的运行状态。
+12. remoteKey 
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 说明：设置传输过程中的敏感数据加密的密钥。注：需从目标节点默认实例的“全局配置”>“集中管理”的“传输密钥”参数中获取。
+
+# 4.87.5. 支持的监视项
+无。
+
+# 4.88. 会话服务器
+配置缓存服务器，以获得会话高可用能力。
+
+# 4.88.1. 模块名
+sessionha 
+
+# 4.88.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>validate</td><td>获取会话服务器连接，对此连接进行有效性检查。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.88.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>sessionhas>sessionha
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>useExternalSessionServer</td><td>使用外部会话服务器</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>refSessionServer</td><td>TongDataGrid</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>serverType</td><td>服务器类型</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>mode</td><td>连接模式</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>6</td><td>sentinelMasterId</td><td>哨兵主ID</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>7</td><td>sentinelPassword</td><td>哨兵密码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>address</td><td>服务器地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>9</td><td>clusterName</td><td>认证名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>10</td><td>username</td><td>用户名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>password</td><td>认证密码</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>database</td><td>数据库ID</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>timeOut</td><td>通信超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>14</td><td>directCache</td><td>缓存直连</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>useLock</td><td>启用分布式锁</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>16</td><td>deferredWrite</td><td>合并写入</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>syncClean</td><td>被动清理</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.88.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：会话服务器的名称，用以在应用部署或虚拟主机开启会话共享时绑定会话服务器。
+2. useExternalSessionServer
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：会话服务器分为内部和外部两种，内部是指由 TongWeb 集中管理控制台创建的，外部是指不受 TongWeb 管理的会话服务器。外部会话服务器一般由人工自行建立或其它系统管理。
+3. refSessionServer
+◦ 取值范围：“TongDataGrid”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：useExternalSessionServer=false
+◦ 说明：选择由 TongWeb 集中管理控制台创建的 TongDataGrid。
+4. serverType
+◦ 取值范围：TongDataGrid（释义：/TongDataGrid）, RDS（释义：/RDS）, Hazelcast（释义：/Hazelcast）, Redis（释义：/Redis）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：TongDataGrid
+◦ 生效条件：useExternalSessionServer=true
+◦ 说明：指定外部会话服务器的类型。
+5. mode
+◦ 取值范围：cluster（释义：集群/集群模式）, sentinel（释义：/哨兵模式）, single（释义：/单例模式）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：cluster
+◦ 生效条件：useExternalSessionServer=true&serverType!=TongDataGrid&serverType!=Hazelcast
+◦ 说明：指定连接所使用的模式。
+6. sentinelMasterId
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：`useExternalSessionServer=true&serverType!=TongDataGrid&serverType!=Hazelcast&mode=sentinel` 
+◦ 说明：在使用哨兵模式时，指定哨兵主的 ID。
+7. sentinelPassword
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：`useExternalSessionServer=true&serverType!=TongDataGrid&serverType!=Hazelcast&mode=sentinel `
+◦ 说明：在使用哨兵模式时，哨兵密码。
+8. address
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：useExternalSessionServer=true
+◦ 说明：连接外部会话服务器的地址，使用英文逗号分隔可设置多个，请按照具体外部会话服务器的要求正确填写。
+9. clusterName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：useExternalSessionServer=true&serverType!=Redis&serverType!=RDS
+◦ 说明：连接会话服务器所需要的组名。
+10. username
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：useExternalSessionServer=true&serverType!=TongDataGrid&serverType!=Hazelcast
+◦ 说明：连接会话服务器所需要的用户名。
+
+# 4.88.4. 参数补充说明
+11. password
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：useExternalSessionServer=true&serverType!=Hazelcast
+◦ 说明：连接远端外部会话服务器所需要的认证密码。
+12. database
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：`useExternalSessionServer=true&serverType!=TongDataGrid&serverType!=Hazelcast&mode!=cluster` 
+◦ 说明：指定 Redis 使用的数据库 ID 号。
+13. timeOut
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：5000
+◦ 说明：与会话服务器通信的超时时间（单位：毫秒）。
+14. directCache
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，TongWeb 将放弃在本地内存中存取 Session 数据，而全部从会话服务器中存取。若不开启，则优先使用本地内存，在本地内存中数据版本号低于Cookie中记录的号码时再从会话服务器同步。
+15. useLock
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，同一个 Session ID 的数据，一次仅能被一个客户端请求访问，并发访问将会被强制等待，适用于同一个 Session 并发访问一致性的场景。注：仅对相同 ID 的 Session 加锁，不同的Session 之间不会加锁，这类似数据库的行级锁。
+16. deferredWrite
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：开启后，在一次请求的处理过程中，对 Session 的多次写入不会立即写入到会话服务器，而是等到请求处理完毕后，合并到一起写入到会话服务器。
+17. syncClean
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，远程会话服务器上的 Session 信息过期或者销毁时，将同步清理本服务器上的Session 信息。
+注：开启此功能会有微小的资源消耗，若不开启，Session 信息也会在超时后自动清理。
+
+# 4.88.5. 支持的监视项
+无。
+
+# 4.89. TongDataGrid
+TongDataGrid 服务器用于存储和备份应用的会话（Servlet 规范定义的 Session）数据，可在 TongWeb 实例意外宕机或在分布式环境下提供应用会话数据的高可用能力支撑。
+
+# 4.89.1. 模块名
+sessionserver 
+
+# 4.89.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>start</td><td>启动操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否启动成功。</td></tr><tr><td>stop</td><td>停止操作可能因为超时而提示失败，可在一段时间后刷新状态以确认是否停止成功。</td></tr><tr><td>forcetime</td><td>对于长时间难以停止成功或者停止过程被意外阻塞的情况，可以选择强制停止进程，强制停止通常是以强制杀死进程的方式来实现。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr><tr><td>remove</td><td>从当前列表删除此记录。注：移除记录操作仅在所属节点被删除或无法启动的情况下受支持，请谨慎操作，移除后不可恢复。</td></tr></table>
+
+# 4.89.3. 支持的参数
+持久化位置：conf/console.xml:console>session-servers>session-server
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>2</td><td>changeToName</td><td>重命名</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>3</td><td>autostart</td><td>宕机重启</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>maxretrycount</td><td>最大重试次数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>startwithnode</td><td>自启动</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>node</td><td>所在节点</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>7</td><td>count</td><td>实例数量</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>instanceCount</td><td>总实例数</td><td>数值类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>9</td><td>tdgInfo</td><td>实例信息</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>10</td><td>tdgAddress</td><td>实例端口</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>11</td><td>enableSessionMonitoring</td><td>启用会话监控</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>sessionMonitoringAddress</td><td>监控中心地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>13</td><td>uploadFrequency</td><td>发送频率</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>14</td><td>running</td><td>运行中</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>15</td><td>baseFile</td><td>文件目录</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>16</td><td>rotationBySize</td><td>按大小轮转</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>17</td><td>keepMaxFiles</td><td>保留文件个数</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>18</td><td>logLevel</td><td>日志级别</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.89.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制1个到150个
+◦ 默认值：无。
+◦ 说明：唯一标识。
+2. changeToName
+◦ 取值范围：字符串长度限制1个到150个
+◦ 默认值：无。
+◦ 说明：将名称更改为此值。注：修改名称的时候不要修改其他属性。
+3. autostart
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：异常宕机（如：被kill）后是否自动重启。
+4. maxretrycount
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：autostart=true
+◦ 说明：启用异常宕机（如：被kill）后尝试自动重启的次数上限。若设置为0，则表示自动重启的次数不受限制。
+5. startwithnode
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：指定该 TongDataGrid 服务器是否跟随其所在节点启动而启动。若其所在节点设置了“开机自启”，则通过这种方式可以实现该会话服务器的开机自启。
+6. node
+◦ 取值范围：“节点”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：TongDataGrid 服务器所在的节点
+7. count
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：1
+◦ 说明：每个节点需要创建的实例数量。
+8. instanceCount
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：TongDataGrid 服务器集群中总的实例数量。
+9. tdgInfo
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：TongDataGrid 服务器集群中的实例端口信息。
+10. tdgAddress
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：TongDataGrid 服务器集群中的实例端口信息。
+
+# 4.89.4. 参数补充说明
+11. enableSessionMonitoring
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，TongDataGrid 服务器上的数据将被发送到监控中心，以支持统一监控和数据查询等。注：该功能依赖“监控中心”服务，您可能需要通过官方渠道获取和启动 TongDG-manager 产品，进而启动“监控中心”服务。
+12. sessionMonitoringAddress
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：127.0.0.1:9070
+◦ 生效条件：enableSessionMonitoring=true
+◦ 说明：指定监控中心的连接地址。
+13. uploadFrequency
+◦ 取值范围：大小限制1到128
+◦ 默认值：1
+◦ 生效条件：enableSessionMonitoring=true
+◦ 说明：指定 TongDataGrid 服务器上的数据以多久（单位：秒）一次的频率被发送到监控中心。
+14. running
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：了解该组件的运行状态。
+15. baseFile
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：logs
+◦ 说明：将日志文件存放到指定的目录下。
+16. rotationBySize
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：10
+◦ 说明：当日志文件大小（单位：MB）达到该阈值时，将切割出一个新的日志文件。注：设置为 0 表示不启用此功能。
+17. keepMaxFiles
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：100
+◦ 说明：指定在清理日志文件时，需保留文件的个数。
+18. logLevel
+◦ 取值范围：OFF（释义：/OFF）, SEVERE（释义：/SEVERE）, WARNING（释义：/WARNING）,INFO（释义：/INFO）, CONFIG（释义：/CONFIG）, FINE（释义：/FINE）, FINER（释义：/FINER）, FINEST（释义：/FINEST）, ALL（释义：/ALL）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：INFO
+◦ 说明：设置默认日志级别，只有在日志信息的严重程度等于或高于此级别时，才会记录日志。
+
+# 4.89.5. 支持的监视项
+无。
+
+# 4.90. 单例 EJB
+配置单例会话 Bean。
+
+# 4.90.1. 模块名
+singleton 
+
+# 4.90.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.90.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>ServiceJar>ServiceProvider
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>AccessTimeout</td><td>等待超时（秒）</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.90.4. 参数补充说明
+1. AccessTimeout
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：30
+◦ 说明：从池中获取实例等待的超时时间。
+
+# 4.90.5. 支持的监视项
+无。
+
+# 4.91. 短信服务
+提供发送短信的服务。
+
+# 4.91.1. 模块名
+sms 
+
+# 4.91.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.91.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>smss>sms
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>implClass</td><td>实现类</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>address</td><td>接口地址</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>appld</td><td>认证 ID</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>appKey</td><td>认证密钥</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>6</td><td>additional</td><td>附加参数</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.91.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：短信服务的名称。
+2. implClass 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：需由用户提供的发送短信的实现类。该类需提供一个有参构造方法，参数依次是：接口地址（String）、认证 ID（String）、认证密钥（String）、附加参数（Map），以及一个名为 send 的实例方法，方法参数依次是：短信服务签名（String）、短信服务ID（String）、接收人手机号（String[]）、服务器信息（String[]），其中服务器信息参数值依次是：服务器 IP、TongWeb 实例名、预警策略名、预警消息。注：需在 TongWeb 启动之前，将相关的 jar 文件文件放置到了${tongweb.base}/lib 下。
+3. address 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：短信服务的接口地址，非必需，根据短信平台的具体要求而定。
+4. appId 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：短信平台提供的认证标识。
+5. appKey 
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 说明：短信平台提供的认证密钥。
+6. additional
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：短信服务需要的附加参数，根据需要进行填写，格式要求为 propertyName=propertyValue，多个参数以英文逗号分隔。
+
+# 4.91.5. 支持的监视项
+无。
+
+# 4.92. 快照文件
+快照可以记录 TongWeb 应用服务器在某一时刻的配置、日志、监控等信息。快照的生成依据是采集模板，采集模板里定义快照要包含的具体内容。
+
+# 4.92.1. 模块名
+snapshotfile 
+
+# 4.92.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>根据选择的采集模板，记录TongWeb应用服务器在某一时刻的配置、日志、监控等信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。注：文件大小超过4GB时，在下载时会被忽略。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.92.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>快照时间</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>2</td><td>snapshotTemplate</td><td>采集模板</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>isAuto</td><td>是预警快照</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr><tr><td>4</td><td>info</td><td>预警策略名</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.92.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此快照文件的生成时间。
+2. snapshotTemplate
+◦ 取值范围：“采集模板”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：选择本次快照生成所依据的采集模板。
+3. isAuto
+◦ 取值范围：true 或 false
+◦ 默认值：false
+◦ 说明：是否是依据预警策略自动生成的快照。除预警快照外，快照也可以通过主动创建的方式主动生成。
+4. info
+◦ 取值范围：“预警策略”的ID
+◦ 默认值：无。
+◦ 说明：预警快照的预警策略名称，提示快照是因哪个预警策略产生的。如果非预警快照，预警策略名为空。
+
+# 4.92.5. 支持的监视项
+无。
+
+# 4.93. 采集模板
+采集模板用于指定要采集 TongWeb 应用服务器的配置、日志、监控等信息数据的模板，这些模板可被用于生成快照文件和巡检报告等。
+
+# 4.93.1. 模块名
+snapshottemplate 
+
+# 4.93.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.93.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>snapshots>snapshot
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>monits</td><td>监视信息</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>configInfo</td><td>配置信息</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>logInfo</td><td>日志</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>tools</td><td>分析工具</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>info</td><td>描述</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.93.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：标识该采集模板的名称。
+2. monits
+◦ 取值范围：
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：下拉框中包含 TongWeb 的全部监视信息，根据需要勾选不同类型的监视信息，这些信息将记录到生成的快照的监视文件 monitor.xml 中。
+3. configInfo
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：选中配置信息，会记录 TongWeb 域目录下 conf 子目录中所有的文件。若存在“bin/JAVA_HOME.txt”,也会记录该文件。
+4. logInfo
+◦ 取值范围：server（释义：全局配置/服务器日志）, access（释义：/访问日志）, gc（释义：/GC日志）, hs_err_pid（释义：/hs_err日志）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：server
+◦ 说明：选中某日志，会记录 TongWeb 域目录下相应的日志文件。
+5. tools
+◦ 取值范围：jstack（释义：/jstack）, jmap（释义：/jmap）, coredump（释义：/coredump）, top（释义：/top）, lsof（释义：/lsof）, netstat（释义：/netstat）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：jstack,top
+◦ 说明：选中的分析工具将生成对应的文件以反映某时刻 TongWeb 的运行状态。注：部分分析工具仅在 Linux 平台有效，如：coredump、top、lsof、netstat等。
+6. info
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：描述信息。
+
+# 4.93.5. 支持的监视项
+无。
+
+# 4.94. SNMP 服务
+SNMP是广泛应用于TCP/IP网络的网络管理标准协议，该协议能够支持网络管理系统，用以监测连接到网络上的设备是否有任何引起管理上关注的情况。
+
+# 4.94.1. 模块名
+snmp 
+
+# 4.94.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.94.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>snmp
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>enabled</td><td>启用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>address</td><td>监听地址</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>port</td><td>监听端口</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>engineID</td><td>引擎ID</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>securityName</td><td>认证名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>6</td><td>authenticationPassphrase</td><td>认证密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>7</td><td>authenticationProtocol</td><td>认证算法</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>transportType</td><td>传输协议</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>privacyProtocol</td><td>加密算法</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>privacyPassphrase</td><td>加密密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.94.4. 参数补充说明
+1. enabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：启用后，TongWeb 会开启 SNMP 服务，监听客户端请求。
+2. address
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：127.0.0.1
+◦ 生效条件：enabled=true
+◦ 说明：SNMP 服务的监听的 IP 地址，默认为“127.0.0.1”，即监听 TongWeb 所在的本机 IP 地址。若配置为 “0.0.0.0”，则表示不限制，监听本机所有 IP
+3. port
+◦ 取值范围：大小限制1到65535
+◦ 默认值：161
+◦ 生效条件：enabled=true
+◦ 说明：SNMP 服务的监听端口。
+4. engineID
+◦ 取值范围：字符串长度限制14个到32个
+◦ 默认值：62:a0:c1:81:11:c3:17:33
+◦ 生效条件：enabled=true
+◦ 说明：设置当前 SNMP 服务的唯一标识。
+5. securityName
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：用以识别客户端的身份。
+6. authenticationPassphrase
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：用以验证客户端的安全性。
+7. authenticationProtocol
+◦ 取值范围：MD5（释义：/MD5）, SHA-1（释义：/SHA-1）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：SHA-1
+◦ 生效条件：enabled=true
+◦ 说明：设置验证密码采用的摘要算法。
+8. transportType
+◦ 取值范围：udp（释义：/udp）, tcp（释义：/tcp）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：udp
+◦ 生效条件：enabled=true
+◦ 说明：指定数据在网络上的传输协议。
+9. privacyProtocol
+◦ 取值范围：AES128（释义：/AES128）, DES（释义：/DES）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：AES128
+◦ 生效条件：enabled=true
+◦ 说明：设置数据加密采用的算法。
+10. privacyPassphrase 
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 生效条件：enabled=true
+◦ 说明：设置加密数据的密码。
+
+# 4.94.5. 支持的监视项
+无。
+
+# 4.95. 启动策略
+配置系统的启动和重启的策略。注：该机制仅对使用脚本启动的 TongWeb 实例有效，对集中管理内部管理的实例无效。开启此机制后，TongWeb 主进程将会到后台运行。
+
+# 4.95.1. 模块名
+startpolicy 
+
+# 4.95.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.95.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>start-policy
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>selfStart</td><td>开机自启</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>autoRestart</td><td>宕机重启</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>maxretrycount</td><td>最大重试次数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>scheduledRestart</td><td>定时重启</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>scheduledCron</td><td>Cron 表达式</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>6</td><td>startAt</td><td>执行时间</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>endAt</td><td>停止时间</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>restartTimes</td><td>计划重启日期</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr></table>
+
+# 4.95.4. 参数补充说明
+1. selfStart
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：设置开机后是否自动启动此 TongWeb 实例，该功能仅在 TongWeb 位于 Linux 操作系统时有效。
+2. autoRestart
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：异常宕机（如：被kill）后是否自动重启。注：该功能仅对使用脚本启动的 TongWeb 实例有效，对于集中管理启动的实例，则需要在对应的实例配置页面为其配置宕机重启。
+3. maxretrycount
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：autoRestart=true
+◦ 说明：启用异常宕机（如：被kill）后尝试自动重启的次数上限。若设置为0，则表示自动重启的次数不受限制。
+4. scheduledRestart
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：设置是否开启 TongWeb 的定时重启机制，开启后 TongWeb 将按照指定的周期计划进行自动重启。注：该功能仅对使用脚本启动的 TongWeb 实例有效，对于集中管理启动的实例无效。
+5. scheduledCron
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：scheduledRestart=true
+◦ 说明：设置 TongWeb 进行周期性重启的调度策略，即所使用的 cron 表达式。Crontab 时间表达式的基本格式： $\mathbf { \left[ * * * * * * * * \right. }$ command】，分别表示【分 时 日 月 周 命令】。Crontab 还有操作符，用来实现一些复杂的时间设定需求，如：* 取值范围内的所有数字；/ 每过多少个数字；- 代表一段时间范围；, 代表分割开多个值。列举一些范例，每隔1分钟执行一次： $0 \ast / 1 \ast \ast \ast ?$ ；每天22点执行一次： $0 0 2 2 ^ { \ast } \ast ?$ ；每月1号凌晨1点执行一次： $0 0 1 1 * ?$ ；每月最后一天23点执行一次： $0 0 2 3 \lfloor * ?$ ；每周周六凌晨3点实行一次： $0 0 3 ? ^ { * } \lfloor$ ；在24分、30分执行一次： $0 \ : 2 4 , 3 0 \ast \ast \ast ?$ 。此外，互联网上有一些在线的 Cron 表达式生成器可方便使用。
+6. startAt
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：scheduledRestart=true
+◦ 说明：设置从何时开始执行 Cron 表达式所指定的调度策略。设置为空表示从当前时间开始计算。
+7. endAt
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：scheduledRestart=true
+◦ 说明：设置从何时开始停止 Cron 表达式所指定的调度策略。设置为空表示永不停止。
+8. restartTimes
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：scheduledRestart=true
+◦ 说明：TongWeb 将在下述日期里进行重新启动。
+
+# 4.95.5. 支持的监视项
+无。
+
+# 4.96. 启动参数
+管理TongWeb的启动参数。
+
+# 4.96.1. 模块名
+startupargs 
+
+# 4.96.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.96.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>java-config>start-args>arg
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>参数</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>changeToArg</td><td>更改为</td><td>字符串</td><td>是</td><td>否</td><td>是</td></tr><tr><td>3</td><td>enabled</td><td>启用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>onlyForLinux</td><td>仅 Linux 有效</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>supportedJRE</td><td>限定 JRE 版本</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>range</td><td>限定区间</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>desc</td><td>描述</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.96.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：该参数将用于 JVM 启动时的进程入参。
+2. changeToArg 
+◦ 取值范围：字符串长度限制0个到4096000个
+◦ 默认值：无。
+◦ 说明：将参数更改为此值。
+3. enabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：只有启用的参数才会传给 JVM 加载，未启用的则不会。
+4. onlyForLinux
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，该参数仅会在 linux 操作系统上启用。
+5. supportedJRE
+◦ 取值范围：（释义：/）, 8（释义：/8）, 9（释义：/9）, 10（释义：/10）, 11（释义：/11）, 12（释义：/12）, 13（释义：/13）, 14（释义：/14）, 15（释义：/15）, 16（释义：/16）, 17（释义：/17）, 18（释义：/18）, 19（释义：/19）, 20（释义：/20）, 21（释义：/21）, 22（释义：/22）, 23（释义：/23）, 24（释义：/24）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：限定该参数支持的 JRE 的版本，限定后，只有限定的 JRE 可以加载到该参数；其它 JRE 则不会，为空表示不限制。
+6. range
+◦ 取值范围：（释义：/）, $=$ （释义： $/ =$ ）, -（释义：/-）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：supportedJRE!=
+◦ 说明：限定支持的 JRE 版本区间，大于、等于或者小于指定的 JRE 版本号。 $^ +$ 表示大于等于， $=$ 表示等于，- 表示小于等于。
+7. desc
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：该参数的描述信息。
+
+# 4.96.5. 支持的监视项
+无。
+
+# 4.97. 有状态 EJB
+提供了 TongWeb 的 EJB 容器的配置有状态实例池。
+
+# 4.97.1. 模块名
+stateful 
+
+# 4.97.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.97.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>ServiceJar>ServiceProvider
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>AccessTimeout</td><td>等待超时（秒）</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>TimeOut</td><td>空闲超时时间（分钟）</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>Frequency</td><td>扫描频率</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>Capacity</td><td>缓存最大容量</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>BulkPassivate</td><td>钝化实例数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>refSessionHa</td><td>会话服务器</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.97.4. 参数补充说明
+1. AccessTimeout
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：30
+◦ 说明：从池中获取实例 Bean 等待的超时时间。
+2. TimeOut
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：-1
+◦ 说明：实例 Bean 在两次调用间能够等待的最大时间。
+3. Frequency
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：60
+◦ 说明：扫描实例 Bean 缓存是否存在空闲的频率，单位为“秒”。
+4. Capacity
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：1000
+◦ 说明：Bean 容器中允许缓存的最大实例数。
+5. BulkPassivate
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：100
+◦ 说明：每次进行钝化处理的实例 Bean 数量。
+6. refSessionHa
+◦ 取值范围：“会话服务器”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：选择有状态 EJB 要连接的会话服务器，将有状态 EJB 的会话信息存储到会话服务器，以支持有状态 EJB 的会话高可用能力。若没有会话服务器可选，可在“资源管理”>“会话服务器”中，创建会话服务器。
+
+# 4.97.5. 支持的监视项
+无。
+
+# 4.98. 无状态 EJB
+配置无状态实例池。
+
+# 4.98.1. 模块名
+stateless 
+
+# 4.98.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.98.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>ServiceJar>ServiceProvider
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>AccessTimeout</td><td>等待超时（秒）</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>MaxSize</td><td>最大实例数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>MinSize</td><td>最小实例数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>StrictPooling</td><td>池满等到</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>MaxAge</td><td>实例超时时间（小时）</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>ReplaceAged</td><td>实例超时替换</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>ReplaceFlushed</td><td>刷新</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>MaxAgeOffset</td><td>延迟参数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>IdleTimeout</td><td>空闲超时时间（分钟）</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>GarbageCollection</td><td>实例垃圾回收</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>SweepInterval</td><td>扫描频率（分钟）</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>CallbackThreads</td><td>线程数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>CloseTimeout</td><td>关闭超时时间（分 钟）</td><td>数值类 型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.98.4. 参数补充说明
+1. AccessTimeout
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：30
+◦ 说明：从池中获取实例 Bean 等待的超时时间。
+2. MaxSize
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：200
+◦ 说明：池中实例 Bean 的最大个数。
+3. MinSize
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：10
+◦ 说明：池中实例 Bean 的初始值和最小个数。注：该值为 0 时，即表示延迟加载。
+4. StrictPooling
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：池中正在使用的实例 Bean 超过最大实例数时，有请求申请实例时是否要等待池空闲。
+5. MaxAge
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：实例 Bean 在池中允许存活的最大时间，0 表示无限制。
+6. ReplaceAged
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：池中实例 Bean 存活时间超过“实例超时时间”后是否替换或删除。
+7. ReplaceFlushed
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：调用池的刷新操作时，是否更新池中的实例 Bean。
+8. MaxAgeOffset
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：-1.0
+◦ 说明：多个实例 Bean 同时创建时，避免实例 Bean 同时退休，可指定实例按时间比例来延迟退休。
+9. IdleTimeout
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：实例 Bean 的空闲时间超过该时间，就从实例池中删除该实例，0 表示没有空闲超时时间。
+10. GarbageCollection
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：若开启，则池中的实例在 JVM 中以软引用方式保存，当 JVM 内存紧张就会回收池中实例。
+11. SweepInterval
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：5
+◦ 说明：对实例池进行扫描的周期。
+12. CallbackThreads
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：5
+◦ 说明：替换池中实例所使用的线程池的线程数。
+13. CloseTimeout
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：5
+◦ 说明：关闭池操作的超时时间。
+
+# 4.98.5. 支持的监视项
+无。
+
+# 4.99. 静态度量
+静态度量。
+
+# 4.99.1. 模块名
+staticmetrics 
+
+# 4.99.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.99.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>目录</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>initiator</td><td>发起方(类型|值)</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>3</td><td>dataDisplay</td><td>度量模式</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr></table>
+
+# 4.99.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：请确保该目录存在。
+2. initiator
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：发起方(类型\\|值)。
+3. dataDisplay
+◦ 取值范围：CHECK（释义：/CHECK）, NOCHECK（释义：/NOCHECK）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：NOCHECK
+◦ 说明：度量模式。
+
+# 4.99.5. 支持的监视项
+无。
+
+# 4.100. 支持列表
+汇总 TongWeb 支持的产品列表。注: 对于每个支持项，在其对应的使用说明中，有涉及到文件（如 *.jar）没有表明下载地址等信息的，请联系官方获取帮助。
+
+# 4.100.1. 模块名
+support 
+
+# 4.100.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr></table>
+
+# 4.100.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>支持产品名</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>summary</td><td>概要</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>usage</td><td>使用说明</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.100.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：TongWeb 可以支持的产品名称。
+2. summary
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：TongWeb 支持该产品的简单介绍。
+3. usage
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：TongWeb 支持该产品的使用说明。
+
+# 4.100.5. 支持的监视项
+无。
+
+# 4.101. Syslog 推送
+将 TongWeb 的运行日志推送到远端 Syslog 服务上，以便于统一管理。开启本功能后，TongWeb 的日志除了在本地文件存储之外，还会推送到指定的日志存储服务器。注：当无法连接到日志服务器时，日志推送将会失败，并且目前 TongWeb 不会进行补充推送。
+
+# 4.101.1. 模块名
+syslog 
+
+# 4.101.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.101.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>syslog
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>enableSyslog</td><td>启用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>ip</td><td>服务器地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>port</td><td>端口</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>protocol</td><td>协议</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>encoding</td><td>编码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>6</td><td>tag</td><td>日志类型</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>7</td><td>facility</td><td>设施</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.101.4. 参数补充说明
+1. enableSyslog
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：设置是否要启用 Syslog 日志功能。
+2. ip
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：localhost
+◦ 生效条件：enableSyslog=true
+◦ 说明：设置 Syslog 服务器的IP，默认为本机。
+3. port
+◦ 取值范围：大小限制1到65535
+◦ 默认值：514
+◦ 生效条件：enableSyslog=true
+◦ 说明：设置 Syslog 服务器的端口。
+4. protocol
+◦ 取值范围：UDP（释义：/UDP）, TCP（释义：/TCP）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：UDP
+◦ 生效条件：enableSyslog=true
+◦ 说明：设置向 Syslog 服务发送数据的协议。
+5. encoding
+◦ 取值范围：UTF-8（释义：/UTF-8）, GBK（释义：/GBK）, ISO-8859-1（释义：/ISO-8859-1）,GB18030（释义：/GB18030）, GB2312（释义：/GB2312）, UTF-16（释义：/UTF-16）, US-ASCII（释义：/US-ASCII）
+◦ 默认值：UTF-8
+◦ 生效条件：enableSyslog=true
+◦ 说明：设置发送日志数据的编码类型。
+6. tag
+◦ 取值范围：server（释义：全局配置/server）, access（释义：/access）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：server
+◦ 生效条件：enableSyslog=true
+◦ 说明：设置要发送到 Syslog 的日志类型。
+7. facility
+◦ 取值范围：LOCAL0（释义：/LOCAL0）, LOCAL1（释义：/LOCAL1）, LOCAL2（释义：/LOCAL2）, LOCAL3（释义：/LOCAL3）, LOCAL4（释义：/LOCAL4）, LOCAL5（释义：/LOCAL5）,
+LOCAL6（释义：/LOCAL6）, LOCAL7（释义：/LOCAL7）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：LOCAL0
+◦ 生效条件：enableSyslog=true
+◦ 说明：设置日志在 Syslog 中的类型。当日志类型为多个时，可以为每种类型指定一个设施。
+
+# 4.101.5. 支持的监视项
+无。
+
+# 4.102. 线程池
+提供由服务器管理的线程池资源，可用来处理特定的应用业务。
+
+# 4.102.1. 模块名
+threadpool 
+
+# 4.102.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>monitor</td><td>获取该组件的运行状态信息，该信息可反映组件的健康情况。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.102.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>threadpools>threadpool
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>maxThreads</td><td>最大线程数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>minSpareThreads</td><td>最小备用线程数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>keepAliveTime</td><td>空闲超时</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>queueSize</td><td>任务队列大小</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>priority</td><td>优先级</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.102.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：线程池的名称，此名称将用于创建线程时给线程命名。
+2. maxThreads
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：100
+◦ 说明：线程池中用于处理网络请求的最大的线程数。
+3. minSpareThreads
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：10
+◦ 说明：线程池中用于处理网络请求的最小的备用线程数，即线程池中最少存在的线程数
+4. keepAliveTime
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：60
+◦ 说明：当线程池里的空闲线程数大于“最小备用线程数”时，线程空闲的时间超过该时间后将被回收。单位：秒。
+5. queueSize
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：100000
+◦ 说明：设置用于保存任务并移交给工作线程的队列的大小。
+6. priority
+◦ 取值范围：大小限制1到10
+◦ 默认值：5
+◦ 说明：指定此线程的优先级。
+
+# 4.102.5. 支持的监视项
+1. 监视项：activeCount
+◦ 语义：活跃线程数
+◦ 说明：线程池中的活跃线程数。
+◦ 是波动类型：是
+2. 监视项：poolSize
+◦ 语义：总线程数
+◦ 说明：线程池中的总线程数。
+◦ 是波动类型：是
+
+# 4.103. 预警策略
+预警策略用于监控系统指标（如CPU 负载、内存使用率、线程使用情况等）在达到设置的阈值后进行特定的处理，如记录或通知管理员当时的系统状况。注：如果同时监控了多个系统指标，则只有当这些指标同时达到其阈值后才会进行特定的处理。
+
+# 4.103.1. 模块名
+thresholdstrategy 
+
+# 4.103.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.103.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>thresholds>threshold
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>enabled</td><td>是否启用</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>interval</td><td>预警间隔</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>info</td><td>描述</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>cpuThreshold</td><td>CPU负载</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>memoryThreshold</td><td>内存使用率</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>diskThreshold</td><td>硬盘使用率</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>connectorThreshold</td><td>通道线程使用率</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>connectorName</td><td>监控的通道</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>10</td><td>datasourceThreshold</td><td>数据源连接使用率</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>datasourceName</td><td>监控连接使用率的数据源</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>12</td><td>dsMaxConnThreshold</td><td>数据源最大连接数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>maxConnDsName</td><td>监控最大连接数的数据源</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>14</td><td>appDatasourceThreshold</td><td>应用数据源连接使用率</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>appDatasourceName</td><td>监控连接使用率的应用数据源</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>16</td><td>appdsMaxConnThreshold</td><td>应用数据源最大连接数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>maxConnAppDsName</td><td>监控最大连接数的应用数据源</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>18</td><td>gcThreshold</td><td>FullGC平均时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>19</td><td>gcConditionCount</td><td>FullGC次数条件</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>20</td><td>gcConditionTime</td><td>FullGC时间条件</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>21</td><td>gcCountThreshold</td><td>FullGC累计次数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>22</td><td>gcCountCondition</td><td>FullGC时间条件</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>23</td><td>gcTimeThreshold</td><td>FullGC累计时间</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>24</td><td>gcTimeCondition</td><td>FullGC时间条件</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>25</td><td>threadCountThreshold</td><td>JVM线程总数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>26</td><td>slowSQLThreshold</td><td>数据源慢SQL数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>27</td><td>slowSQLDsName</td><td>监控慢SQL数的数据源</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>28</td><td>hungThreadThreshold</td><td>应用慢线程数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>29</td><td>appName</td><td>监控慢线程的应用</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>30</td><td>snapshotTemplate</td><td>生成快照</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>31</td><td>keepMaxFiles</td><td>保留文件个数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>32</td><td>jmsEnable</td><td>发送JMS消息</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>33</td><td>jmsConnectionPool</td><td>JCA连接池</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>34</td><td>jmsAdminObject</td><td>JCA托管对象</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>35</td><td>javamailEnable</td><td>发送邮件</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>36</td><td>from</td><td>发件人地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>37</td><td>to</td><td>收件人地址</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>38</td><td>smsEnable</td><td>发送短信</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>39</td><td>sms</td><td>短信服务</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>40</td><td>smsSign</td><td>短信服务签名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>41</td><td>smsID</td><td>短信服务ID</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>42</td><td>smsTel</td><td>接收人手机号</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>43</td><td>responseCodeEnable</td><td>发送响应码</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>44</td><td>connectorNames</td><td>响应端口</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>45</td><td>responseCode</td><td>响应码</td><td>数值类型</td><td>是</td><td>是</td><td>是</td></tr><tr><td>46</td><td>responseContent</td><td>响应内容</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>47</td><td>responsePath</td><td>匹配路径</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.103.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：预警策略的唯一标识。
+2. enabled
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：是否启用此预警策略。
+3. interval
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：10
+◦ 说明：两次预警的时间间隔（单位：分钟）。在该时间段内最多进行一次预警以节省系统资源。
+4. info
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：对这个预警策略备注必要的说明信息。
+5. cpuThreshold
+◦ 取值范围：大小限制0到100
+◦ 默认值：80
+◦ 说明：只有当 CPU 负载大于该阈值时（单位：百分比），才会触发指定的处理办法，0 表示不开启此项监控。
+6. memoryThreshold
+◦ 取值范围：大小限制0到100
+◦ 默认值：0
+◦ 说明：只有当内存使用率大于该阈值时（单位：百分比），才会触发指定的处理办法，0 表示不开启此项监控。
+7. diskThreshold
+◦ 取值范围：大小限制0到100
+◦ 默认值：0
+◦ 说明：只有当硬盘使用率大于该阈值时（单位：百分比），才会触发指定的处理办法，0 表示不开启此项监控。
+8. connectorThreshold
+◦ 取值范围：大小限制0到100
+◦ 默认值：0
+◦ 说明：只有当通道线程使用率大于该阈值时（单位：百分比），才会触发指定的处理办法，0 表示不开启此项监控。
+9. connectorName
+◦ 取值范围：“通道”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 生效条件：connectorThreshold!=0
+◦ 说明：设置要监控的通道。
+10. datasourceThreshold
+◦ 取值范围：大小限制0到100
+◦ 默认值：0
+◦ 说明：只有当数据源连接使用率大于该阈值时（单位：百分比），才会触发指定的处理办法，0 表示不开启此项监控。
+
+# 4.103.4. 参数补充说明
+11. datasourceName
+◦ 取值范围：“数据源”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 生效条件：datasourceThreshold! $\mathtt { \mathtt { = 0 } }$ 
+◦ 说明：设置要监控连接使用率的数据源。
+12. dsMaxConnThreshold
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：只有当数据源最大连接数大于该阈值时，才会触发指定的处理办法，0 表示不开启此项监控。
+13. maxConnDsName
+◦ 取值范围：“数据源”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 生效条件：dsMaxConnThreshold! $\scriptstyle {  { \begin{array} { l } {  { \begin{array} { r l r } \end{array} }  } } \\ {  { \begin{array} { r l r } \end{array} }  } \end{array} }$ 
+◦ 说明：设置要监控最大连接数的数据源。
+14. appDatasourceThreshold
+◦ 取值范围：大小限制0到100
+◦ 默认值：0
+◦ 说明：只有当应用数据源连接使用率大于该阈值时（单位：百分比），才会触发指定的处理办法，0表示不开启此项监控。
+15. appdatasourceName
+◦ 取值范围：“应用数据源”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 生效条件：appDatasourceThreshold! ${ \tt = } 0$ 
+◦ 说明：设置要监控连接使用率的应用数据源。
+16. appdsMaxConnThreshold
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：只有当应用数据源最大连接数大于该阈值时，才会触发指定的处理办法，0 表示不开启此项监控。
+17. maxConnAppDsName
+◦ 取值范围：“应用数据源”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 生效条件：appdsMaxConnThreshold! $\mathtt { \mathtt { = 0 } }$ 
+◦ 说明：设置要监控最大连接数的应用数据源。
+18. gcThreshold 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：只有当 FullGC 平均时间大于该阈值时（单位：秒），才会触发指定的处理办法，0 表示不开启此项监控。
+19. gcConditionCount 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：gcThreshold $\scriptstyle    \begin{array} { l } { \scriptstyle {  { \begin{array} { l } { \end{array} }  } } \\ {  { \begin{array} { l } {  { \begin{array} { l } { \end{array} }  } } \\ {  { \begin{array} { l } {  { \begin{array} { l } { \end{array} }  } } \end{array} } } \end{array} } }  } \end{array}$ 
+◦ 说明：FullGC 平均时间的附件条件，指定统计最近几次的 FullGC，非必选，单位：次。当 FullGC 平均时间大于 0 且指定了 FullGC 次数条件后，只有最近 N 次的 FullGC 的平均时间大于等于 FullGC 平均时间的阈值才预警（N 为指定的次数）。若不填或者小于等于 0，则表示没有附件条件，只要FullGC 总的平均时间大于等于设定阈值就预警。
+20. gcConditionTime 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：gcThreshold $\scriptstyle    \begin{array} { l } { \scriptstyle {  { \begin{array} { l } { \end{array} }  } } \\ {  { \begin{array} { l } {  { \begin{array} { l } { \end{array} }  } } \\ {  { \begin{array} { l } {  { \begin{array} { l } { \end{array} }  } } \end{array} } } \end{array} } }  } \end{array}$ 
+◦ 说明：FullGC 平均时间的附件条件，指定统计最近几分钟内的 FullGC，非必选，单位：分钟。当FullGC 时间大于 0 且指定了 FullGC 时间条件后，只有最近 N 分钟内的 FullGC 的平均时间大于等于FullGC 平均时间的阈值才预警（N 为指定的分钟数）。若不填或者小于等于 0，则表示没有附件条件，只要 FullGC 总的平均时间大于等于设定阈值就预警。
+
+# 4.103.4. 参数补充说明
+21. gcCountThreshold 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：只有 FullGC 累计次数大于该阈值时（单位：次），才会触发指定的处理办法，0 表示不开启此项监控。
+22. gcCountCondition 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：gcCountThreshold! $\mathtt { \mathtt { = 0 } }$ 
+◦ 说明：FullGC 累计次数的附加条件，指定统计最近几分钟内的 FullGC，非必选，单位：分钟。当FullGC 累计次数大于 0 且指定了 FullGC 时间条件后，只有最近 N 分钟内的 FullGC 的次数大于等于FullGC 累计次数的阈值才预警（N 为指定的分钟数）。若不填或者小于等于0，则表示没有附件条件，只要 FullGC 总的次数大于等于设定阈值就预警。
+23. gcTimeThreshold 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：只有 FullGC 累计时间大于该阈值时（单位：秒），才会触发指定的处理办法，0 表示不开启此项监控。
+24. gcTimeCondition 
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0
+◦ 生效条件：gcTimeThreshold $\mathtt { \mathtt { = 0 } }$ 
+◦ 说明：FullGC 累计时间的附加条件，指定统计最近几分钟内的 FullGC，非必选，单位：分钟。当FullGC 累计时间大于 0 且指定了 FullGC 时间条件后，只有最近 N 分钟内的 FullGC 的累计时间大于等于该阈值才预警（N为指定的分钟数）。若不填或者小于等于 0，则表示没有附件条件，只要FullGC 累计时间大于等于设定阈值就预警。
+25. threadCountThreshold 
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0
+◦ 说明：只有当 JVM 线程总数大于该阈值时（单位：个），才会触发指定的处理办法，0 表示不开启此项监控。
+26. slowSQLThreshold 
+◦ 取值范围：大小限制-1到1000000000
+◦ 默认值：0
+◦ 说明：只有当慢 SQL 数大于该阈值时（单位：个），才会触发指定的处理办法，0 表示不开启此项监控。
+27. slowSQLDsName 
+◦ 取值范围：“数据源”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 生效条件：slowSQLThreshold! $\scriptstyle {  { \begin{array} { l } {  { \begin{array} { r l r } \end{array} }  } } \\ {  { \begin{array} { r l r } \end{array} }  } \end{array} }$ 
+◦ 说明：设置要监控慢 SQL 数的数据源。
+28. hungThreadThreshold 
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 说明：只有当应用慢线程数量大于该阈值时，才会触发指定的处理办法，0 表示不开启此项监控。
+29. appName 
+◦ 取值范围：“应用”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 生效条件：hungThreadThreshold!=0
+◦ 说明：设置要监控慢线程的应用。
+30. snapshotTemplate 
+◦ 取值范围：“采集模板”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：选择已创建的采集模板，当预警策略中所有的预警条件的系统实际运行数据大于等于阈值时，会按照选中的采集模板生成指定内容的快照文件。
+
+# 4.103.4. 参数补充说明
+31. keepMaxFiles
+◦ 取值范围：大小限制1到1000000000
+◦ 默认值：100
+◦ 生效条件：snapshotTemplate!=
+◦ 说明：指定在清理该策略产生的快照文件时要保留的个数。
+32. jmsEnable
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：满足触发条件后，是否通过 JMS 发送预警通知。
+33. jmsConnectionPool
+◦ 取值范围：“JCA 连接池”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：jmsEnable=true
+◦ 说明：选择已创建的 JCA 连接池，用于发送 JMS 消息。
+34. jmsAdminObject
+◦ 取值范围：“JCA 托管对象”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：jmsEnable=true
+◦ 说明：选择已创建的 JCA 托管对象，用于发送 JMS 消息。
+35. javamailEnable
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：满足触发条件后，是否通过电子邮件发送预警通知。
+36. from
+◦ 取值范围：“JavaMail 资源”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：javamailEnable $1 =$ true
+◦ 说明：选择已创建的 JavaMail 资源，用于发送邮件。
+37. to
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：javamailEnable $1 =$ true
+◦ 说明：指定接收预警通知的电子邮件地址。
+38. smsEnable
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：满足触发条件后，是否通过短信发送预警通知。
+39. sms
+◦ 取值范围：“短信服务”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：smsEnable true
+◦ 说明：选择已创建的短信服务，用于发送短信。
+40. smsSign
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：smsEnable=true
+◦ 说明：发送短信时使用的签名，该签名通常会添加到短信内容的开头处，一般位于【】里面，具体需要在短信服务平台进行设定。
+
+# 4.103.4. 参数补充说明
+41. smsID
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：smsEnable true
+◦ 说明：发送短信时使用的短信服务平台的模板 ID，具体需要在短信服务平台进行设定。
+42. smsTel
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：smsEnable=true
+◦ 说明：指定接收预警通知的手机号码，多个号码之间以英文逗号分隔。
+43. responseCodeEnable
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：此预警处理办法会中断指定端口上的请求，并返回指定的 HTTP 响应码。
+44. connectorNames
+◦ 取值范围：“通道”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 生效条件：responseCodeEnable=true
+◦ 说明：指定在哪些端口上返回响应码。
+45. responseCode 
+◦ 取值范围：大小限制100到599
+◦ 默认值：503
+◦ 生效条件：responseCodeEnable=true
+◦ 说明：设置要返回到客户端的响应码。
+46. responseContent 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：responseCodeEnable=true
+◦ 说明：设置需要通过 HTTP 消息体返回到客户端的信息。
+47. responsePath 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：responseCodeEnable=true
+◦ 说明：当请求的路径与匹配路径一致时才会发送响应码，为空则表示不校验请求路径，即所有请求路径都会发送响应码。
+
+# 4.103.5. 支持的监视项
+无。
+
+# 4.104. 可信授权
+可信授权。
+
+# 4.104.1. 模块名
+trustedauthority 
+
+# 4.104.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr></table>
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr></table>
+4.104.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>hardKey</td><td>硬件码</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>2</td><td>createTime</td><td>创建时间</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>3</td><td>beginDate</td><td>开始时间</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>4</td><td>endDate</td><td>截止时间</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>5</td><td>productType</td><td>授权类型</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>6</td><td>customer</td><td>用户名称</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>7</td><td>fileFrom</td><td>文件来源</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>fromServer</td><td>服务器文件</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>9</td><td>fromUpload</td><td>上传文件</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.104.4. 参数补充说明
+1. hardKey
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：硬件码。
+2. createTime
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：创建时间。
+3. beginDate
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：开始时间。
+4. endDate
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：截止时间。
+5. productType 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：授权类型。
+6. customer 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：用户名称。
+7. fileFrom 
+◦ 取值范围：fromUpload（释义：/上传文件）, fromServer（释义：/服务器文件）
+◦ 默认值：fromServer
+◦ 说明：授权文件可以从客户端上传，也可以从服务器端指定的位置读取。注：出于安全考虑，TongWeb 出厂设置禁用了文件上传功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。
+8. fromServer 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom=fromServer
+◦ 说明：服务器上授权文件位置，须是 *.resp 类型的文件。
+9. fromUpload 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom $\mid =$ fromUpload
+◦ 说明：上传一个文件到服务器，文件须是 *.resp 类型的文件，否则可能会导致失败。
+
+# 4.104.5. 支持的监视项
+无。
+
+# 4.105. 可信行为详情
+可信行为详情。
+
+# 4.105.1. 模块名
+trustedbehaviordetails 
+
+# 4.105.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>start</td><td>应用</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.105.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>id</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>2</td><td>subject</td><td>主体</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>3</td><td>object</td><td>客体</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>4</td><td>action</td><td>行为</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr></table>
+
+# 4.105.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：id。
+2. subject
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：主体。
+3. object
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：客体。
+4. action
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：行为。
+
+# 4.105.5. 支持的监视项
+无。
+
+# 4.106. 可信行为模型
+可信行为模型。
+
+# 4.106.1. 模块名
+trustedbehaviormodel 
+
+# 4.106.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>start</td><td>应用</td></tr><tr><td>stop</td><td>停止应用</td></tr><tr><td>forcestop</td><td>停止应用</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.106.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>id</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>2</td><td>creatTime</td><td>创建时间</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>3</td><td>creatSubject</td><td>创建主体</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>4</td><td>acquisitionCycle</td><td>采集周期</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>acquisitionStatus</td><td>采集状态</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>6</td><td>isPolicyCreated</td><td>是否创建策略</td><td>布尔类型</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.106.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：id。
+2. creatTime 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：创建时间。
+3. creatSubject 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：创建主体。
+4. acquisitionCycle 
+◦ 取值范围：7（释义：/7 天）, 15（释义：/15 天）, 30（释义：/30 天）, 45（释义：/45 天）, 60（释义：/60 天）, 90（释义：/90 天）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：采集周期。
+5. acquisitionStatus 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：采集状态。
+6. isPolicyCreated 
+◦ 取值范围：true 或 false
+◦ 默认值：false
+◦ 说明：采集状态。
+
+# 4.106.5. 支持的监视项
+无。
+
+# 4.107. 可信文件
+可信文件功能旨在确保 TongWeb 执行过程中所使用的可执行文件（如 java）的安全性。在 TongWeb 执行受可信文件功能管理的可信文件之前，均会检查其 MD5 哈希值，当哈希值不匹配时会抛出错误并终止执行。受管理的可信文件列表存储在 $\$ 1$ {tongweb.base}/data/secure/trusted-files.txt，每行记录一个文件的哈希值及其文件路径，格式为：哈希值\\|文件路径。其中，文件路径可使用 $\$ 1$ {tongweb.home} 和${tongweb.base} 替换符。
+
+# 4.107.1. 模块名
+trustedfiles 
+
+# 4.107.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr></table>
+
+# 4.107.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>ID</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>file</td><td>文件</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>md5</td><td>MD5</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.107.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：本条记录的标识符。
+2. file
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：可信文件的路径。
+3. md5
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：可信文件的 MD5。
+
+# 4.107.5. 支持的监视项
+无。
+
+# 4.108. 可信策略
+可信策略。
+
+# 4.108.1. 模块名
+trustedpolicy 
+
+# 4.108.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个可信策略。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.108.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>策略名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>subjectTypeAndValue</td><td>发起方(类型|值)</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>3</td><td>subjectType</td><td>发起方类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>subjectValue</td><td>发起方值</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>objectTypeAndValue</td><td>目标(类型|值)</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>6</td><td>objectType</td><td>目标类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>objectType1</td><td>目标类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>objectValue</td><td>目标值</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>9</td><td>actionValue</td><td>动作</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>actionValue1</td><td>动作</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.108.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：策略名称。
+2. subjectTypeAndValue
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：发起方(类型\\|值)。
+3. subjectType
+◦ 取值范围：2（释义：/进程）, 3（释义：/无类型）, 4（释义：/TongWeb）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：发起方类型。
+4. subjectValue
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：subjectType $^ { = 2 }$ 
+◦ 说明：发起方值。
+5. objectTypeAndValue
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：目标(类型\\|值)
+6. objectType
+◦ 取值范围：0（释义：/文件）, 1（释义：/目录）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：subjectType!=3
+◦ 说明：目标类型。
+7. objectType1
+◦ 取值范围：4（释义：/进程）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：subjectType=3
+◦ 说明：目标类型。
+8. objectValue
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：目标值。
+9. actionValue
+◦ 取值范围：N（释义：/创建）, R（释义：/读）, W（释义：/写）, D（释义：/删除）, X（释义：/执行）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 生效条件：subjectType!=3
+◦ 说明：动作。
+10. actionValue1
+◦ 取值范围：S（释义：/禁止停止）, P（释义：/禁止启动）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：S
+◦ 生效条件：subjectType $^ { = 3 }$ 
+◦ 说明：动作。
+
+# 4.108.5. 支持的监视项
+无。
+
+# 4.109. 可信进程
+可信进程。
+
+# 4.109.1. 模块名
+trustedprocess 
+
+# 4.109.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.109.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>可信进程</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>2</td><td>initiator</td><td>发起方(类型|值)</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>3</td><td>action</td><td>动作</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.109.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：请确保输入的路径存在。
+2. initiator 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：发起方(类型\\|值)。
+3. action 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：动作。
+
+# 4.109.5. 支持的监视项
+无。
+
+# 4.110. 产品升级
+将 TongWeb 产品升级到一个更高的版本上。注：对于远程管理的节点或实例，在上传完毕升级包之后，还需要在控制台上点击对应的“重启升级”以使远端的 TongWeb 升级生效。
+
+# 4.110.1. 模块名
+upgrade 
+
+# 4.110.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>将 TongWeb 产品升级到一个新的版本。</td></tr><tr><td>show</td><td>查看该版本的发布说明信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>downloadlist</td><td>获取该组件可下载文件的列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>delete</td><td>删除这个历史版本，请注意：执行后，版本文件（*.zip）及其解压的目录都将一并删除，且不可恢复。</td></tr></table>
+
+# 4.110.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>产品版本</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>2</td><td>fileFrom</td><td>文件来源</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>3</td><td>fromServer</td><td>服务器文件</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>4</td><td>fromUpload</td><td>上传文件</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>5</td><td>buildTime</td><td>构建日期</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>6</td><td>state</td><td>状态</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>7</td><td>releaseNotes</td><td>发布说明</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.110.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：服务器上现有的 TongWeb 产品版本。
+. fileFrom
+◦ 取值范围：fromUpload（释义：/上传文件）, fromServer（释义：/服务器文件）
+◦ 默认值：fromServer
+◦ 说明：产品版本文件可以从客户端上传，也可以从服务器端指定的位置读取。注：出于安全考虑，TongWeb 出厂设置禁用了文件上传功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。
+3. fromServer
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom $\mid =$ fromServer
+◦ 说明：服务器上产品版本文件的位置，须是 ZIP 类型的文件。
+4. fromUpload
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：fileFrom=fromUpload
+◦ 说明：上传一个产品版本文件到服务器，须是 ZIP 类型的文件。
+5. buildTime
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此版本的构建日期。
+6. state
+◦ 取值范围：字符串长度限制0个到255个
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：展示此版本的使用状态。
+7. releaseNotes
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：产品版本及补丁的说明信息，通常会包括该版本的新增功能、修复已知问题等内容。
+
+# 4.110.5. 支持的监视项
+无。
+
+# 4.111. 管理员
+管理登录和操作服务器的管理员，管理员可登录控制台、REST接口等。
+
+# 4.111.1. 模块名
+user 
+
+# 4.111.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.111.3. 支持的参数
+持久化位置：conf/console.xml:console>auth>users>user
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>账户名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>info</td><td>描述</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>password</td><td>账户密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>4</td><td>confirmPassword</td><td>确认密码</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>5</td><td>digestAlg</td><td>摘要算法</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>6</td><td>saltLength</td><td>加盐长度</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>7</td><td>iterations</td><td>迭代次数</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>8</td><td>minLen</td><td>密码最小长度</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>9</td><td>composition</td><td>密码复杂度</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>10</td><td>enablePasswordAge</td><td>密码期限</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>11</td><td>passwordMaxAge</td><td>密码最长使用期限</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>12</td><td>passwordMinAge</td><td>密码最短使用期限</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>13</td><td>passwordLastModifiedTime</td><td>密码最后修改时间</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>14</td><td>limitRepeats</td><td>不与最近密码重复</td><td>数值类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>15</td><td>oldPasswords</td><td>历史密码</td><td>字符串</td><td>否</td><td>否</td><td>是</td></tr><tr><td>16</td><td>changelInitPwd</td><td>下次登录须改密码</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>17</td><td>active</td><td>激活</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.111.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：唯一标识。
+2. info
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：描述信息。
+3. password
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 说明：密码须包含大小写字母、数字、特殊符号，长度至少 10 位。
+4. confirmPassword
+◦ 取值范围：字符串长度限制0个到2048个
+◦ 默认值：无。
+◦ 说明：确认管理员登录系统的新密码。
+5. digestAlg
+◦ 取值范围：SM3（释义：/SM3）, SHA-256（释义：/SHA-256）, SHA-384（释义：/SHA-384）,SHA-512（释义：/SHA-512）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：SHA-256
+◦ 说明：进行摘要加密所采用的算法。
+6. saltLength
+◦ 取值范围：大小限制0到32
+◦ 默认值：4
+◦ 说明：将自动生成的盐值和字符串一起加密可以提高加密强度。
+7. iterations
+◦ 取值范围：大小限制1到128
+◦ 默认值：5
+◦ 说明：连续多次摘要加密可以提高加密强度。
+8. minLen
+◦ 取值范围：大小限制8到32
+◦ 默认值：8
+◦ 说明：出于安全考虑，在更新密码时，密码长度不得低于最小长度。
+9. composition
+◦ 取值范围：Number（释义：/数字）, Char（释义：/字母）, Case（释义：/大小写）, Special（释义：/特殊符号）, NoConsecutive（释义：/不可连续）, NoUser（释义：/不可含用户名）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：Number,Char,Case,Special,NoConsecutive,NoUser
+◦ 说明：为满足安全要求，密码字符串须包含指定的字符类型。
+10. enablePasswordAge
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：开启该功能，可限制密码的使用期限。
+
+# 4.111.4. 参数补充说明
+11. passwordMaxAge
+◦ 取值范围：大小限制1到180
+◦ 默认值：90
+◦ 生效条件：enablePasswordAge $=$ true
+◦ 说明：用户登录系统的密码距离上次修改超过该期限（单位为天）后，需首先更新密码才能继续登录系统。
+12. passwordMinAge
+◦ 取值范围：大小限制0到1000000000
+◦ 默认值：0
+◦ 生效条件：enablePasswordAge=true
+◦ 说明：用户登录系统的密码距离上次修改未达到该期限（单位为天），则不能进行更新。0 表示可以随时更新。
+13. passwordLastModifiedTime
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：最后一次修改密码的日期和时间。
+14. limitRepeats
+◦ 取值范围：大小限制1到10
+◦ 默认值：5
+◦ 说明：限制本次更新的密码不能和最近几次使用过的密码重复。注：设置为 “1” 表示只要不与当前密码重复即可。
+15. oldPasswords
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：记录最近几次使用过的密码。
+16. changeInitPwd
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：标记该用户下次登录系统后，须首先修改其登录密码，否则不能进行其它操作。
+17. active
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：true
+◦ 说明：若未激活，则无法登录服务器。
+
+# 4.111.5. 支持的监视项
+无。
+
+# 4.112. 权限分配
+给管理员分配权限。
+
+# 4.112.1. 模块名
+userrole 
+
+# 4.112.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr></table>
+
+# 4.112.3. 支持的参数
+持久化位置：conf/console.xml:console>auth>users>user
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>roles</td><td>角色</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>instances</td><td>实例</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>clusters</td><td>集群</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>nodes</td><td>节点</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr></table>
+
+# 4.112.4. 参数补充说明
+1. name
+◦ 取值范围：“管理员”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：管理员的登录名。
+2. roles
+◦ 取值范围：“角色”的ID
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：管理员的角色，给管理员分配不同的角色以控制访问不同的资源。
+3. instances
+◦ 取值范围：
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：分配可管理的实例列表。
+4. clusters
+◦ 取值范围：
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：分配可管理的集群列表。
+5. nodes
+◦ 取值范围：default（释义：/default）
+◦ 取值说明：在取值范围内，以逗号分隔可指定多个值
+◦ 默认值：无。
+◦ 说明：分配可管理的节点列表。
+
+# 4.112.5. 支持的监视项
+无。
+
+# 4.113. 版本生成
+生成和下载适用于不同应用场景的 TongWeb 版本。
+
+# 4.113.1. 模块名
+version 
+
+# 4.113.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>更具设置的参数，生成对应的 TongWeb 版本。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>downloadfile</td><td>下载指定的文件集合，这些文件须在该组件的可下载文件列表内。注：指定的文件集合须以downloadFileNames参数传递给服务器，多个文件之间用英文逗号分隔。</td></tr><tr><td>downloadlist</td><td>获取可下载的版本列表。注：出于安全考虑，TongWeb 出厂设置禁用了文件下载功能，您可在“控制台安全”模块了解详情和进行相关的配置操作。</td></tr><tr><td>delete</td><td>删除这个版本，请注意：执行后，版本文件目录内的所有文件都将一并删除，且不可恢复。</td></tr></table>
+
+# 4.113.3. 支持的参数
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr><tr><td>2</td><td>type</td><td>版本类型</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>3</td><td>console</td><td>含控制台</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>instanceTemplate</td><td>实例模板</td><td>字符串</td><td>否</td><td>是</td><td>否</td></tr><tr><td>5</td><td>version</td><td>版本号</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.113.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：唯一标识。
+2. type
+◦ 取值范围：enterprise（释义：/企业版）, lite（释义：/轻量版）
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：lite
+◦ 说明：指定需要生成的 TongWeb 版本类型。
+3. console
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：指定生成的 TongWeb 是否需要包含控制台。
+4. instanceTemplate
+◦ 取值范围：“实例模板”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 生效条件：type!=embed
+◦ 说明：选取一个实例模板，生成的 TongWeb 的默认实例配置使用此模板的配置。
+5. version
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：此版本的的版本号。
+
+# 4.113.5. 支持的监视项
+无。
+
+# 4.114. WebFlux 应用
+部署和管理基于 Spring WebFlux 开发的应用程序。
+
+# 4.114.1. 模块名
+webflux 
+
+# 4.114.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>start</td><td>启动这个应用，使其可以对外提供服务。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.114.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>webflux>apps>app
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>应用名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>fromServer</td><td>应用位置</td><td>字符串</td><td>是</td><td>是</td><td>否</td></tr><tr><td>3</td><td>startClass</td><td>启动类</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>4</td><td>loadManifestClassPath</td><td>加载 Class-Path 资源</td><td>布尔类型</td><td>否</td><td>是</td><td>是</td></tr><tr><td>5</td><td>manifestClassPathBase</td><td>Class-Path 相对目录</td><td>字符串</td><td>否</td><td>是</td><td>是</td></tr><tr><td>6</td><td>state</td><td>状态</td><td>字符串</td><td>否</td><td>否</td><td>否</td></tr></table>
+
+# 4.114.4. 参数补充说明
+1. name 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：表示 WebFlux 应用的名称。
+2. fromServer 
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：指定服务器上应用文件的位置，须是 *.war 类型的文件。
+3. startClass
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：应用的启动类。如果为空，TongWeb 将从应用内 META-INF/MANIFEST.MF 文件中获取，读取参数为 Start-Class。
+4. loadManifestClassPath
+◦ 取值范围：true 或 false
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：false
+◦ 说明：开启后，将会根据应用根目录下的 META-INF/MANIFEST.MF 文件（Class-Path 参数）来加载更多的 jar 等文件到应用中。
+5. manifestClassPathBase
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 生效条件：loadManifestClassPath $\mid =$ true
+◦ 说明：指定加载 Class-Path 资源时的相对目录，将会在此目录下查找和加载 Class-Path 中指定的jar 等文件。
+ 6. state
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：应用当前的运行状态。
+
+# 4.114.5. 支持的监视项
+无。
+
+# 4.115. 工作管理器
+工作管理器（commonj.work.WorkManager接口）是JSR 237定义的，用于在Java EE应用中并发编程的API，通常被称为CommonJ。通过工作管理器，可以并发编写在Java EE应用中的EJB和Servlet程序。
+
+# 4.115.1. 模块名
+workmanager 
+
+# 4.115.2. 支持的操作
+<table><tr><td>操作名</td><td>说明</td></tr><tr><td>add</td><td>创建一个组件，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>update</td><td>更新这个组件的配置信息，并尝试实时生效，对于不支持实时生效的更新则会在通知里添加一条提示重启TongWeb的消息。</td></tr><tr><td>list</td><td>展示该类型的所有组件数据或界面。</td></tr><tr><td>show</td><td>查看该组件的详细配置信息。</td></tr><tr><td>delete</td><td>删除这个组件，该组件引用的其它组件不会被删除。注：请谨慎操作，删除后不可恢复。</td></tr></table>
+
+# 4.115.3. 支持的参数
+持久化位置：conf/tongweb.xml:tongweb>server>Resources>Resource
+<table><tr><td>序号</td><td>参数名</td><td>语义</td><td>类型</td><td>必填</td><td>可创建</td><td>可编辑</td></tr><tr><td>1</td><td>name</td><td>名称</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>2</td><td>aliases</td><td>绑定 JNDI 名</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr><tr><td>3</td><td>管理工作器线程池</td><td>工作管理器线程池</td><td>字符串</td><td>是</td><td>是</td><td>是</td></tr></table>
+
+# 4.115.4. 参数补充说明
+1. name
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：唯一标识符，工作管理器名称。
+2. aliases
+◦ 取值范围：字符串长度限制0个到255个
+◦ 默认值：无。
+◦ 说明：对象的别名会被用作其绑定到 JNDI 资源树上的名字，一个对象可以逗号分隔指定多个别名。
+3. workManagerThreadPool
+◦ 取值范围：“线程池”的ID
+◦ 取值说明：在取值范围内，只能取其中一个值
+◦ 默认值：无。
+◦ 说明：应用选择已创建的工作管理器线程池，通过调用线程运行应用创建的工作任务。这些线程是被服务器所管理，而不是应用创建，也无需由应用自身维护。
+
+# 4.115.5. 支持的监视项
+无。
+
+# 5. 错误码对照表
+当前，错误码采用四位数字形式，其中前两位代表错误类型，后两位则对应具体的错误情况。
+
+# 5.1. 错误码对照表
+• 0000：%s 
+• 0001：远程服务器[%s:%s]请求错误：%s。 请查看日志以获取详细信息
+• 0002：端口[%s]已被使用
+• 0003：服务器正在启动中或相关服务尚未就绪，请稍后重试
+• 0004：不支持
+• 0005：类 %s 未找到
+• 0006：没有这样的方法，类型：%s，操作：%s
+• 0007：无法加载 servlet 类：%s
+• 0008：公钥参数错误
+• 0009：远程操作等待超时，页面不再等待，请稍后刷新对应的页面以检查操作的最终结果。
+• 0100：部署应用的名称或ID冲突，例如EJB应用的名字已被其它应用占用
+• 0101：无法正常识别应用类型，请检查要部署的应用文件是否合法
+• 0102：部署的应用程序名称不支持包含特殊字符，例如#: %s
+• 0103：找不到应用备份
+• 0104：应用程序增量更新文件必须是 *.zip 类型
+• 0105：转换为TongWeb应用时发生异常，应用部署失败
+• 0106：部署失败，%s
+• 0107：应用端口[%s]已被使用
+• 0108：轻量模式下不支持部署 *.jar(ejb) *.ear *.rar 类型的应用，请选择 *.war 类型的应用文件
+• 0109：尝试指定应用程序附带的 JSF 实现的使用
+• 0110：应用名或访问前缀（版本号）已存在，请选择其它的重试
+• 0200：数据库驱动类加载失败，请确保已经正确配置了数据库 JDBC 驱动包
+• 0201：使用指定的驱动和URL无法连接到数据库
+• 0202：启用JTA支持，要求驱动类型为XA类型，您也可以配置JTA事务允许非XA事务分支
+• 0203：PersistenceUnit需要JTA支持，但没有定义支持JTA的数据源
+• 0204：数据源资源 (%s) 未找到且未成功自动创建
+• 0205：数据源当前存在活跃连接，无法停止
+• 0206：数据源启动失败
+• 0300：请检查实例或集群是否不存在、停止或者无法连接
+• 0301：实例[%s]获取remotekey失败，请检查remotekey配置
+• 0302：名称[%s]已被使用，如列表中没有，请检查节点的domains目录下是否已存在同名文件夹
+• 0303：管理端口[%s]已被使用
+• 0304：请检查节点[%s]是否启动或管理端口[%s]是否配置正确
+• 0305：未找到节点[%s]
+• 0306：请检查端口 [%s] 是否正确
+• 0400：该类型的版本已存在，无需再次生成
+• 0401：不是一个有效的升级文件
+• 0402：该版本正在被域 [ %s ] 使用，不可进行更新、删除等操作
+• 0403：不支持构建的版本类型[ %s ]
+• 0404：当前服务器正在运行中，不支持此操作，请停止后重试
+• 0500：文件须是 *.zip 类型的
+• 0501：文件须是 *.jar 类型的
+• 0502：配置文件[%s]没有找到
+• 0503：指定的目录或文件没有创建成功
+• 0504：未找到所需要的文件或文件访问权限受限：%s
+• 0505：文件权限不足:%s
+• 0506：须是一个合法的目录
+• 0507：无法创建符号链接，可能是因为缺少必要的权限
+• 0600：不支持删除系统预置的通道：%s
+• 0601：不支持停止系统预置的通道：%s
+• 0602：不支持删除系统预置的虚拟主机
+• 0603：admin 通道重启中，请稍后再试
+• 0604：上传文件个数超过 admin 通道文件上传最大个数限制: %s
+• 0605：上传请求头个数超过 admin 通道文件上传最大请求头限制: %s
+• 0700：SSH身份验证失败，请检查用户名、密码或密钥是否正确
+• 0701：SSH获取执行结果超时，请检查执行状态或重试
+• 0702：SSH获取执行发生未知异常，请查看日志详情
+• 0703：安全域连接异常，请检查连接信息
+• 0704：Redis身份验证失败，请检查用户名、密码是否正确
+• 0705：Redis连接异常，请检查redis服务是否启动或者网络是否能够连接
+• 0706：证书密码不正确
+• 0707：连接注册中心失败，原因：%s
+• 0708：不被信任的文件：%s
+• 0800：OSGi 服务异常
+• 0801：OSGi 服务未启动
+![image](https://cdn-mineru.openxlab.org.cn/result/2026-02-10/be5c3b76-0d97-4118-8a06-edfc977b815a/17b95dc5d2673b9d1437980e9bade44f1c4ac839ad40cdb2f6781461f8df4a0b.jpg)

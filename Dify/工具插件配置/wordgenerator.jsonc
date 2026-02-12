@@ -1,0 +1,56 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "WordMaker",
+    "version": "3.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://192.168.137.52:8000"     
+      // 本地测试地址，请替换为实际IP，并和`dify_main.py中的IP一致`
+    }
+  ],
+  "paths": {
+    "/generate_word": {
+      "post": {
+        "operationId": "generateWordDocument",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": {
+                    "type": "string",
+                    "description": "Word内容"
+                  }
+                },
+                "required": [
+                  "content"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "download_url": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

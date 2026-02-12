@@ -1,0 +1,2348 @@
+﻿Question,Answer
+OceanBase数据库POC测试连接具体是怎么操作的呀？,"OceanBase数据库如下
+ob实例：
+ip:1xx.xx.xx
+端口：2883
+实例名：obm_xczjj_1_poc#cs_pool_1
+用户名：root
+密码：xxxxxx
+问题出现：根据客户提供的OceanBase数据库配置报错。配置如下
+[查看排障截图: image1.png]
+[查看排障截图: image2.png]
+查询数据库资料如下
+[查看排障截图: image3.png]
+解决方案
+OceanBase数据库有一个租户的概念，要以用户名@租户名进行配置，所以配置如下解决，敏感信息以隐藏
+[查看排障截图: image4.png]
+[查看排障截图: image5.png]"
+在公司内网环境下，要怎么去测试新产品TongWeb8.0中间件的性能测试结果呀？,"第 1 章 测评概述
+1.1测评环境
+1.1.1软硬件环境
+1.1.1.1虚拟机：
+Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz
+8个CPU
+16G内存
+50G硬盘
+1.1.2 网络环境
+网络环境:公司内网环境
+测试机网卡：Realtek PCIe GbE Family Controller
+1.1.3测评工具
+测试的中间件产品：TongWeb8.0
+测试工具软件：jmeter
+1.1.4测评数据
+性能测试数据通过压力测试工具jmeter自动生成，性能测试每个案例取3组测试结果
+第二章TongWeb8.0性能测试案例
+1.测评目标
+测试TongWeb8性能测试数据。
+2.测评步骤
+产品部署案例应用后，借助jmeter测试工具模拟用户访问，每种虚拟用户测3组，在一定并发用户下持续访问10分钟，无失败事务。
+3.测评结果：
+（1）1M图片：
+A、100虚拟用户：
+[查看排障截图: image6.png]
+[查看排障截图: image7.png]
+[查看排障截图: image8.png]
+B、300虚拟用户
+[查看排障截图: image9.png]
+[查看排障截图: image10.png]
+[查看排障截图: image11.png]
+(2)10M图片
+A、100虚拟用户
+[查看排障截图: image12.png]
+[查看排障截图: image13.png]
+[查看排障截图: image14.png]
+B、300虚拟用户
+因为带宽满了没有测试
+（3）add 添加数据库数据
+A、100虚拟用户：
+[查看排障截图: image15.png]
+[查看排障截图: image16.png]
+[查看排障截图: image17.png]
+B、300用户
+[查看排障截图: image18.png]
+[查看排障截图: image19.png]
+[查看排障截图: image20.png]
+C、500 用户
+带宽满了，没有再测"
+如何用TongWeb8配置MQ发消息？,"如图配置MQ：
+[查看排障截图: image21.png]
+二、部署
+imqjmsra.rar
+配置JCA和JCA托管对象
+[查看排障截图: image22.png]
+[查看排障截图: image23.png]
+四、重启后，部署：mdbExample.war
+五、访问：
+[查看排障截图: image24.png]
+[查看排障截图: image25.png]"
+TongWeb部署EJB具体是怎么操作的呀？,"配置EJB w3协议：
+[查看排障截图: image26.png]
+或者：
+也可以使用127.0.0.1 5200配置
+EJB w3协议
+基本属性
+Ip      127.0.0.1
+端口    5200
+开启EJB http 协议
+[查看排障截图: image27.png]
+三、重启TongWeb8050,
+四、部署EJB应用
+五、访问EJB
+http://10.10.81.161:8088/ejbExample/ejb/remoteCall?serverType=tw&remotePort=5200&protocol=ejbd&remoteIp=10.10.81.161
+[查看排障截图: image28.png]
+或者
+[查看排障截图: image29.png]"
+新产品TongWeb8（第一版）的应用场景具体是怎样的呀？,"Tongweb8.0 支持liferay portal要点
+应用场景：
+tongweb：8.0.4.0
+liferay portal： 6.2.5 GA6社区版
+jdk：jdk1.8.0_22164-Bit
+hsqldb-2.6.1
+操作系统：window10  64位
+系统内存：8GB
+本配置都在E:下进行，目录结构如下：
+TongWeb8.0：应用服务器的安装目录
+portal：应用程序部署目录
+适配过程
+把从官网下载的liferay的data目录拷贝到E:\portal下
+在E:\portal下新建文件夹webapps，并把liferay的主工程ROOT和应用程序管理插件marketplace-portlet拷贝到webapps下
+进入E:\portal\webapps\ROOT\WEB-INF\classes，新建文件portal-ext.properties，并录入以下内容后保存：
+#通过liferay应用程序管理器上传后地址
+auto.deploy.dest.dir=${liferay.home}/webapps
+#是否开启jsp动态重载功能。默认情况下，此功能处于启用状态。
+direct.servlet.context.reload=false
+#数据库地址
+jdbc.default.driverClassName=org.hsqldb.jdbcDriver
+jdbc.default.password=123456
+jdbc.default.url=jdbc:hsqldb:mem:mydb
+进入F:\TongWeb8.0.4.0\bin，新建文件portal-setup-wizard.properties，并录入以下内容后保存：
+admin.email.from.address=test@liferay.com
+admin.email.from.name=Test Test
+liferay.home=E:/portal
+setup.wizard.enabled=false
+进入F:\TongWeb8.0.4.0\bin，
+Cd / F:\TongWeb8.0.4.0/domains/domain1/conf
+修改tongweb.xml红色为修改的内容：
+<start-args>
+</start-args>之间加字符集和时区参数、其他选项
+<arg desc=""TongWeb字符集"" name=""-Dfile.encoding=UTF8""/>
+<arg desc=""时区"" name=""-Duser.timezone=GMT+8""/>
+<arg desc=""其他选项"" name=""-Dcom.sun.media.jai.disableMediaLib=true""/>
+把liferay自带tomcat下的ext下的包拷贝到F:\TongWeb8.0.4.0\domains\domain1\lib\app下
+[查看排障截图: image30.png]
+3、创建数据源
+创建数据库liferay-tongweb（步骤2.4中配置hsqldb）
+Jartoskip：
+activation.jar,ccpp.jar,hsql.jar,jms.jar,jta.jar,jtds.jar,junit.jar,jutf7.jar,mail.jar,mysql.jar,persistence.jar,portal-service.jar,portlet.jar,postgresql.jar,support-tomcat.jar,jruby.jar
+[查看排障截图: image31.png]
+5、适配验证
+进入F:\TongWeb8.0.4.0\bin，双击startserver.bat，启动应用服务器
+登录应用服务器控制台
+https://127.0.0.1:9060/console/
+thanos/thanos123.com
+点击应用管理，看看部署应用列表中是否有ROOT和marketplace-portlet，是否为已启用
+登录portal系统
+http://localhost
+test@liferay.com/test
+经过系统引导，进入如下页面：
+[查看排障截图: image32.png]
+查看F:\TongWeb8.0.4.0\logs\server.log或E: \portal\logs\ liferay.xxxx-xx-xx.log
+liferay.2022-09-09.log两个日志文件，做进一步跟踪分析
+支持Jetspeed应用要点
+应用场景：
+TongWeb8.0.4.0
+Jet speed安装包jetspeed-installer-2.3.1.jar
+C:\Users\dell>java -version
+java version ""1.8.0_221""
+Java(TM) SE Runtime Environment (build 1.8.0_221-b11)
+Java HotSpot(TM) 64-Bit Server VM (build 25.221-b11, mixed mode)
+2先把jetspeed的安装程序进行安装，安装过程中会初始化数据库。
+JetSpeed2提供源码编译安装和执行程序安装两种方式。以执行程序安装方式为例进行说明。首先在Apache官网下载安装程序jetspeed-installer-2.3.1.jar即可。注意：将此jar放在非中文路径下，否则安装出问题。
+图形界面安装命令： java -jar  jetspeed-installer-2.3.1.jar
+字符界面安装命令： java -jar  jetspeed-installer-2.3.1.jar text
+安装过程很简单，主要就是建数据库、把Tomcat和JetSpeed解压到某一目录下。查看其安装目录就是Tomcat下部署了JetSpeed
+2.1无法安装的问题的解决：开发上次遇到安装问题估计是这个
+E:\>java -jar  jetspeed-installer-2.3.1.jar text
+Error: Unable to access jarfile jetspeed-installer-2.3.1.jar
+解决方法：---用cmd的管理员运行方式安装
+Cd \windows\system32> java -jar  jetspeed-installer-2.3.1.jar
+2.2本次测试采用的是ORACLE数据库，本测试采用ORACLE21c版本，不能用ORACLE11G，请注意这个提示
+3.装好TongWeb8.0.4.0
+后把tomcat8.5.57/lib下的公用类，放在TongWeb8的/lib/app下。
+F:\TongWeb8.0.4.0\TongWeb8.0.4.0\domains\domain1\lib\app
+[查看排障截图: image33.png]
+jartoskip:
+[查看排障截图: image34.png]
+参考conf\Catalina\localhost下jetspeed.xml建数据源jdbc/jetspeed
+[查看排障截图: image35.png]
+[查看排障截图: image36.png]
+6、login.conf配置：
+把webapps\jetspeed\WEB-INF\lib下jetspeed-security-2.3.0.jar中的login.conf删了，并在TongWeb的conf\login.config中加上:( TongWeb8.0.4.0\domains\domain1\conf)
+Jetspeed {
+org.apache.jetspeed.security.impl.DefaultLoginModule required;
+};
+部署webapps下的jetspeed即可。
+[查看排障截图: image37.png]
+[查看排障截图: image38.png]
+8. 还要部署demo, j2-admin, webcontent2 这三个应用，并增加参数
+跨上下文的访问
+[查看排障截图: image39.png]
+[查看排障截图: image40.png]
+[查看排障截图: image41.png]
+9. 还得把webapps\jetspeed\WEB-INF\lib下的jetspeed-security-2.3.0.jar, db-ojb-1.0.3.jar, slf4j的jar也放在TongWeb的lib下一份。要不那个JAAS配置报找不到类。
+10、创建jetspeed安全域和安全用户。
+11.最后启动，出现此页面，用户名/密码(jetspeed/jetspeed)登录应当成功。
+[查看排障截图: image42.png]
+[查看排障截图: image43.png]
+三、THS6支持TongWeb8 的国密设置：
+THS6 设置
+#user  nobody;
+worker_processes 4;
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+error_log logs/error.log error;
+pid logs/httpserver.pid;
+events {
+worker_connections 1024;
+use epoll;
+}
+http {
+include mime.types;
+default_type application/octet-stream;
+log_format main '$remote_addr - $remote_user [$time_local] ""$request"" '
+'$status $body_bytes_sent ""$http_referer"" '
+'""$http_user_agent"" ""$http_x_forwarded_for""';
+access_log logs/access.log main;
+sendfile on;
+#tcp_nopush     on;
+#keepalive_timeout  0;
+keepalive_timeout 60;
+#gzip  on;
+server {
+listen 8080;
+server_name localhost;
+access_log logs/host.access.log main;
+# ssl_protocols GMTLSv1.1;
+ssl_certificate crt/SS.pem;
+ssl_certificate_key crt/SS.key.pem;
+ssl_certificate crt/SE.pem;
+ssl_certificate_key crt/SE.key.pem;
+error_page 500 502 503 504 /50x.html;
+location /examples {
+proxy_pass http://10.10.81.161:8088/examples;
+root html;
+index index.html index.htm;
+}
+location = /50x.html {
+root html;
+}
+}
+#}
+#        events {
+#           worker_connections 1024;
+#          use epoll;
+#    }
+# HTTPS server
+server {
+listen 443 ssl;
+server_name localhost;
+ssl_protocols  GMTLSv1.1;
+ssl_certificate crt/SS.pem;
+ssl_certificate_key crt/SS.key.pem;
+ssl_certificate crt/SE.pem;
+ssl_certificate_key crt/SE.key.pem;
+#https key
+ssl_certificate crt/common_cert/server.crt;
+ssl_certificate_key crt/common_cert/server.key;
+ssl_session_cache shared:SSL:1m;
+ssl_session_timeout 5m;
+ssl_ciphers HIGH:!aNULL:!MD5;
+ssl_prefer_server_ciphers on;
+location /examples{
+proxy_pass http://10.10.81.161:8080/examples;
+root html;
+index index.html index.htm;
+}
+}
+}
+部署应用examples,WEB端口8088，访问：http://10.10.81.161:8088/examples
+访问THS   https://10.10.81.161/examples/
+[查看排障截图: image44.png]
+四、TongWeb8的国密设置：
+WEB容器中TongWeb 通道的配置：
+通道的配置基本属性：
+[查看排障截图: image45.png]
+安全属性：
+[查看排障截图: image46.png]
+开启SSL---国密证书
+[查看排障截图: image47.png]
+部署应用：
+用安全浏览器访问：
+安全浏览器配置要点：
+国密SSL设置，选中
+国密SSL的可信任站点的设置，IP和端口
+注意：如果安全浏览器不能访问，一般是受licesen限制，如果在限制时间内可以进行国密SSL设置，如果过期了就不能进行国密SSL设置了，所以访问不了国密应用。
+举例：用安全浏览器访问应用：
+[查看排障截图: image48.png]
+五、实现XFF设置：
+在TongWeb6和7 有这个，com.tongweb.catalina.valves.RemoteIpValve,protocolHeader=X-Forwarded-Proto,remoteIpHeader=X-Forwarded-For取XFF地址，这个在以前的一个项目上用到过
+[查看排障截图: image49.png]
+在TongWeb8里这样设置：
+点击基础配置—安全配置：打开解析XFF头：
+[查看排障截图: image50.png]
+具体配置：
+[查看排障截图: image51.png]
+具体的XFF地址在access.log里面找。
+六、THS6.0 HA+TongWeb8.0的实现：
+进入THS界面配置：
+http://ip:8000/console   用户名：admin  默认密码：ths#123.com
+虚拟IP 10.10.81.151
+httpserver.conf  配置
+[root@node1 conf]# vi httpserver.conf
+#user  nobody;
+worker_processes 4;
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+error_log logs/error.log error;
+pid logs/httpserver.pid;
+events {
+worker_connections 1024;
+use epoll;
+}
+http {
+include tw-conf/*.conf;
+include mime.types;
+default_type application/octet-stream;
+log_format main '$remote_addr - $remote_user [$time_local] ""$request"" '
+'$status $body_bytes_sent ""$http_referer"" '
+'""$http_user_agent"" ""$http_x_forwarded_for""';
+access_log logs/access.log main;
+status_zone;
+sendfile on;
+#tcp_nopush     on;
+#keepalive_timeout  0;
+keepalive_timeout 60;
+#gzip  on;
+upstream proxyserver {
+server 10.10.81.161:8088;
+server 10.10.81.192:8088;
+keepalive 32;
+keepalive_requests 1000;
+keepalive_timeout 60s;
+health_check interval=30000 rise=1 fall=3 type=tcp;
+}
+server {
+listen 8090;
+server_name localhost;
+access_log logs/host.access.log main;
+error_page 500 502 503 504 /50x.html;
+location /favicon.ico {
+log_not_found off;
+access_log off;
+}
+location ~ /\. {
+deny all;
+access_log off;
+log_not_found off;
+}
+location /examples {
+#add_header Content-Security-Policy ""upgrade-insecure-requests"";
+proxy_redirect http:// $scheme://;
+proxy_redirect http:// https://;
+proxy_pass http://proxyserver;
+}
+location /api {
+access_log off;
+api write=off;
+status_bypass on;
+allow 127.0.0.1;
+deny all;
+}
+location = /50x.html {
+root html;
+}
+}
+# HTTPS server
+#server {
+#listen       443 ssl;
+#server_name  localhost;
+#ssl_protocols TLSv1.2 TLSv1.3 GMTLSv1.1;
+#GMTLS key
+#ssl_certificate      crt/SS.pem;
+#ssl_certificate_key  crt/SS.key.pem;
+#ssl_certificate      crt/SE.pem;
+#ssl_certificate_key  crt/SE.key.pem;
+#https key
+#ssl_certificate      crt/common_cert/server.crt;
+#ssl_certificate_key  crt/common_cert/server.key;
+#ssl_session_cache    shared:SSL:1m;
+#ssl_session_timeout  5m;
+#ssl_ciphers  HIGH:!aNULL:!MD5;
+#ssl_prefer_server_ciphers  on;
+#location / {
+#root   html;
+#index  index.html index.htm;
+#}
+#}
+}
+[查看排障截图: image52.png]
+THS-2的配置：
+[查看排障截图: image53.png]
+用上述配置完后可能要经过第二步修改配置文件的过程，因为有时会报如下错误：
+[2022-10-17 14:41:20] bogus VRRP packet received on ens192 !!!
+[2022-10-17 14:41:20] VRRP_Instance(VI_1) ignoring received advertisment...
+[2022-10-17 14:41:21] (VI_1): ip address associated with VRID 53 not present in MASTER advert : 10.10.81.151
+httpserverHA.conf  配置
+修改配置文件httpservercHA.conf  两个THS都要改
+! Configuration File for httpserverHA
+global_defs {
+notification_email {
+dongph@agilenet.com.cn
+}
+notification_email_from Alexandre.Cassen@firewall.loc
+!   smtp_server 127.0.0.1
+smtp_connect_timeout 30
+router_id host_10.18.0.92
+}
+vrrp_script Monitor_httpserver {
+script ""/opt/TongWeb/THS/bin/monitor.sh""
+interval 1
+}
+vrrp_instance VI_1 {
+state BACKUP
+interface ens192
+virtual_router_id 53  改为  virtual_router_id 56
+priority 91
+advert_int 1
+authentication {
+auth_type PASS
+auth_pass 1111
+}
+track_script {
+Monitor_httpserver
+}
+virtual_ipaddress {
+10.10.81.151
+}
+virtual_ipaddress_excluded {
+}
+smtp_alert
+}
+启动httpserverHA，
+ip  address  会出现虚拟IP 10.10.81.151
+输入虚拟IP 和访问端口前缀即可访问了：
+[查看排障截图: image54.png]"
+应用程序通过TongWeb8 JCA调用TLQ场景，具体是怎么实现的呀？,"客户环境说明
+原was+ibmmq
+在客户现场驻场开发的应用厂商在本地开发机用tomcat开发应用代码，使用spring直连方式连接ibmmq进行本地开发测试。部署到生产环境通过was连接池调用ibmmq，所以打包时需要注释掉spring直连的代码，放开was连接池代码后把应用包放到was生产环境部署。
+所以应用厂商今后如果生产环境是tongweb708+tlq8.1，也要和上述工作模式一样
+通过TongWeb708jca方式调用tlq8.1
+1.1. TLQ配置
+配置队列
+截图配置文件： 本地队列lq
+[查看排障截图: image55.png]
+1.2. TongWeb708配置
+部署tlq资源适配器
+部署TLQ的资源适配器包TongJMS_ra.rar包
+[查看排障截图: image56.png]
+部署完后指定TLQ的JMS Broker的地址
+[查看排障截图: image57.png]
+创建JCA连接池
+在EJB容器中创建JCA连接池：创建 JCA 连接池，创建名称分别为testc、连接定义为javax.jms.ConnectionFactory；
+[查看排障截图: image58.png]
+[查看排障截图: image59.png]
+部署JMS应用
+部署消息发送接收的应用包
+在配置文件中配置tongwebjca连接池
+[查看排障截图: image60.png]
+[查看排障截图: image61.png]
+[查看排障截图: image62.png]
+发送消息+主动接收消息
+发送接收消息
+[查看排障截图: image63.png]
+[查看排障截图: image64.png]
+[查看排障截图: image65.png]
+[查看排障截图: image66.png]
+Tlq需开启计数器功能，可以监控收发消息计数
+tlqdebug -m qcu1 1 打开计数功能
+tlqstat -sum qcu1 lq 统计消息情况
+[查看排障截图: image67.png]
+通过spring直连方式调用tlq8.1
+1.3. TLQ配置
+配置队列
+截图配置文件： 本地队列lq
+[查看排障截图: image68.png]
+1.4. TongWeb708配置
+复制Jar包
+将TLQ的TongJMS.jar文件拷贝到TongWeb/lib/app目录下。或者将jar放到应用程序lib目录下。
+部署Spring JMS应用
+修改配置文件
+需要先修改一下war包中的配置文件
+spring.war\WEB-INF\classes
+修改spring的配置文件 application.xml
+根据测试环境配置tlq的地址。
+[查看排障截图: image69.png]
+部署应用
+[查看排障截图: image70.png]"
+应用使用jpa事务部署失败应该怎么解决？,"报错日志如下： 2024-12-27 10:39:47 [ERROR] - Unable to deploy collapsed ear in war StandardEngine[server].StandardHost[localhost].StandardContext[eladmin-system-2.6] com.tongweb.tongejb.OpenEJBException: Creating application failed: version8.0.8.0/digitallogbooks/eladmin-system-2.6: Error building bean 'eladmin-system-2.6.Comp'. Exception: class com.tongweb.tongejb.OpenEJBException: PersistenceUnit 'null' not found for EXTENDED ref 'comp/env/dlogbook.modules.system.repository.impl.CustomJobMediaRepositoryImpl/entityManager': PersistenceUnit 'null' not found for EXTENDED ref 'comp/env/dlogbook.modules.system.repository.impl.CustomJobMediaRepositoryImpl/entityManager' at com.tongweb.tongejb.assembler.classic.Assembler.createApplication(Assembler.java:1238) at com.tongweb.tongejb.assembler.classic.Assembler.createApplication(Assembler.java:854) at com.tongweb.ee.server.TongWebWebAppBuilder.startInternal(TongWebWebAppBuilder.java:1291) at com.tongweb.ee.server.TongWebWebAppBuilder.configureStart(TongWebWebAppBuilder.java:1114) at com.tongweb.ee.server.GlobalListenerSupport.lifecycleEvent(GlobalListenerSupport.java:117) at com.tongweb.server.util.LifecycleBase.fireLifecycleEvent(LifecycleBase.java:114) at com.tongweb.server.core.StandardContext.access$301(StandardContext.java:79) at com.tongweb.server.core.StandardContext.lambda$fireLifecycleEvent$1(StandardContext.java:4603) at com.tongweb.server.util.Utils.runUnderClassLoader(Unknown Source) at com.tongweb.server.core.StandardContext.fireLifecycleEvent(StandardContext.java:4602) at com.tongweb.server.core.StandardContext.startInternal0(StandardContext.java:4421) tongweb版本为8.0.8.0 需要在应用部署时开启web兼容
+[查看排障截图: image71.png]"
+为什么在https协议下无法访问TongWeb8控制台呢？,"TongWeb版本：8081
+JDK版本：jdk-8u311-linux-aarch64
+应用部署方式：
+单台TongWeb上部署了2个应用。
+现象：
+客户使用一段时间后，会突然无法访问https协议下的TongWeb控制台。应用正常访问，TongWeb进程仍然存在。有时候更换机器，可以访问控制台，有时候，更换机器也无法访问控制台。
+相关报错：
+2024-12-19 19:49:16 [ERROR] - Error running socket processor java.lang.NullPointerException
+at org.bouncycastle.crypto.signers.PSSSigner.generateSignature(Unknown Source)
+at org.bouncycastle.jcajce.provider.asymmetric.rsa.PSSSignatureSpi.engineSign(Unknown Source)
+at java.security.Signature$Delegate.engineSign(Signature.java:1382)
+at java.security.Signature.sign(Signature.java:698)
+at sun.security.ssl.ECDHServerKeyExchange$ECDHServerKeyExchangeMessage.<init>(ECDHServerKeyExchange.java:177)
+at sun.security.ssl.ECDHServerKeyExchange$ECDHServerKeyExchangeProducer.produce(ECDHServerKeyExchange.java:495)
+at sun.security.ssl.ClientHello$T12ClientHelloConsumer.consume(ClientHello.java:1020)
+at sun.security.ssl.ClientHello$ClientHelloConsumer.onClientHello(ClientHello.java:727)
+at sun.security.ssl.ClientHello$ClientHelloConsumer.consume(ClientHello.java:693)
+at sun.security.ssl.SSLHandshake.consume(SSLHandshake.java:377)
+at sun.security.ssl.HandshakeContext.dispatch(HandshakeContext.java:444)
+at sun.security.ssl.SSLEngineImpl$DelegatedTask$DelegatedAction.run(SSLEngineImpl.java:981)
+at sun.security.ssl.SSLEngineImpl$DelegatedTask$DelegatedAction.run(SSLEngineImpl.java:968)
+at java.security.AccessController.doPrivileged(Native Method)
+at sun.security.ssl.SSLEngineImpl$DelegatedTask.run(SSLEngineImpl.java:915)
+at com.tongweb.web.util.net.SecureNioChannel.tasks0(SecureNioChannel.java:457)
+at com.tongweb.web.util.net.SecureNioChannel.tasks(SecureNioChannel.java:451)
+at com.tongweb.web.util.net.SecureNioChannel.handshakeUnwrap(SecureNioChannel.java:523)
+at com.tongweb.web.util.net.SecureNioChannel.handshake(SecureNioChannel.java:220)
+at com.tongweb.web.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1625)
+at com.tongweb.web.util.net.SocketProcessorBase.run(SocketProcessorBase.java:33)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+at com.tongweb.web.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:47)
+at java.lang.Thread.run(Thread.java:750)
+2024-12-19 19:49:16 [ERROR] - Error running socket processor java.lang.NullPointerException
+at org.bouncycastle.crypto.signers.PSSSigner.generateSignature(Unknown Source)
+at org.bouncycastle.jcajce.provider.asymmetric.rsa.PSSSignatureSpi.engineSign(Unknown Source)
+at java.security.Signature$Delegate.engineSign(Signature.java:1382)
+at java.security.Signature.sign(Signature.java:698)
+at sun.security.ssl.ECDHServerKeyExchange$ECDHServerKeyExchangeMessage.<init>(ECDHServerKeyExchange.java:177)
+at sun.security.ssl.ECDHServerKeyExchange$ECDHServerKeyExchangeProducer.produce(ECDHServerKeyExchange.java:495)
+at sun.security.ssl.ClientHello$T12ClientHelloConsumer.consume(ClientHello.java:1020)
+at sun.security.ssl.ClientHello$ClientHelloConsumer.onClientHello(ClientHello.java:727)
+at sun.security.ssl.ClientHello$ClientHelloConsumer.consume(ClientHello.java:693)
+at sun.security.ssl.SSLHandshake.consume(SSLHandshake.java:377)
+at sun.security.ssl.HandshakeContext.dispatch(HandshakeContext.java:444)
+at sun.security.ssl.SSLEngineImpl$DelegatedTask$DelegatedAction.run(SSLEngineImpl.java:981)
+at sun.security.ssl.SSLEngineImpl$DelegatedTask$DelegatedAction.run(SSLEngineImpl.java:968)
+at java.security.AccessController.doPrivileged(Native Method)
+at sun.security.ssl.SSLEngineImpl$DelegatedTask.run(SSLEngineImpl.java:915)
+at com.tongweb.web.util.net.SecureNioChannel.tasks0(SecureNioChannel.java:457)
+at com.tongweb.web.util.net.SecureNioChannel.tasks(SecureNioChannel.java:451)
+at com.tongweb.web.util.net.SecureNioChannel.handshakeUnwrap(SecureNioChannel.java:523)
+at com.tongweb.web.util.net.SecureNioChannel.handshake(SecureNioChannel.java:220)
+at com.tongweb.web.util.net.NioEndpoint$SocketProcessor.doRun(NioEndpoint.java:1625)
+at com.tongweb.web.util.net.SocketProcessorBase.run(SocketProcessorBase.java:33)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+at com.tongweb.web.util.threads.TaskThread$WrappingRunnable.run(TaskThread.java:47)
+at java.lang.Thread.run(Thread.java:750)
+解决方案：
+bishengjdk/jre/security/java.security 配置如下：在禁用算法末尾添加 RSASSA-PSS,
+jdk.tls.disabledAlgorithms=SSLv3, RC4, DES, MD5withRSA, DH keySize < 1024, \
+EC keySize < 224, 3DES_EDE_CBC, anon, NULL, RSASSA-PSS
+注意要有逗号分割，否则TongWeb无法启动"
+springboot应用获取tw数据源具体是怎么操作的呀？,"创建数据源，查看JNDI名称
+[查看排障截图: image72.png]
+[查看排障截图: image73.png]
+配置application.properties
+[查看排障截图: image74.png]
+3. 配置类 (实际和spring 配置文件类似)
+<bean id=""dataSource"" class=""org.springframework.jndi.JndiObjectFactoryBean"">
+[查看排障截图: image75.png]
+部署应用
+[查看排障截图: image76.png]"
+THS搭配TongWeb8.0进行session复制配置，一步一步具体该怎么操作呀？,"一、安装THS6.0，配置THS，如下图：
+[查看排障截图: image77.png]
+[查看排障截图: image78.png]
+二、配置会话服务器
+你好！请记得一定在两台机器上都配置如下会话服务器，相当于配置缓存池
+[查看排障截图: image79.png]
+[查看排障截图: image80.png]
+[查看排障截图: image81.png]
+[查看排障截图: image82.png]
+三、资源中Session缓存的配置：
+你好！请记得一定在两台机器上都配置如下会话服务器，相当于配置缓存连接
+[查看排障截图: image83.png]
+[查看排障截图: image84.png]
+四、应用部署：
+你好！请记得一定在两台机器上都配置应用部署
+[查看排障截图: image85.png]
+[查看排障截图: image86.png]
+[查看排障截图: image87.png]
+[查看排障截图: image88.png]
+然后点部署和更新，完成部署过程
+六、测试session复制：
+1、先启动负载均衡THS，
+[查看排障截图: image89.png]
+[查看排障截图: image90.png]
+2、确保session缓存—会话服务器已启动
+[查看排障截图: image91.png]
+3、测试带缓存的应用
+[查看排障截图: image92.png]
+点击servlet example超链接
+七、遇到问题的解决方法：
+1、报这个可能会遇到这个问题
+2022/09/27 17:08:51 [error] 8412#8412: *24 connect() failed (111: Connection refused) while connecting to upstream, client: 192.168.55.112, server: localhost, request: ""GET / HTTP/1.1"", upstream: ""http://10.10.81.161:8089/"", host: ""10.10.81.161:8080""
+2022/09/27 17:08:51 [error] 8412#8412: *24 connect() failed (111: Connection refused) while connecting to upstream, client: 192.168.55.112, server: localhost, request: ""GET /favicon.ico HTTP/1.1"", upstream: ""http://10.10.81.161:8089/favicon.ico"", host: ""10.10.81.161:8080"", referrer: ""http://10.10.81.161:8080/""
+解决方法如下：
+vi /etc/selinux/config，改成这样
+SELINUXTYPE=disabled
+3、两个TongWeb时间不一致的问题
+date –s  “2022-09-28 18:43:00”
+2、报这个可能会遇到下面这个问题
+2022/09/27 18:12:13 [notice] 10385#10385: signal process started
+2022/09/27 18:14:57 [notice] 10823#10823: signal process started
+2022/09/27 18:17:42 [notice] 11137#11137: signal process started
+2022/09/27 18:21:50 [notice] 11762#11762: signal process started
+2022/09/28 13:09:48 [notice] 16886#16886: signal process started
+显示时显示一半，
+[查看排障截图: image93.png]
+应该显示如下：
+[查看排障截图: image94.png]
+解决方法：
+不用8888端口，examples应用程序使用8888端口时会有问题，避免掉这个端口，使用8090端口
+附录：
+THS的配置：
+./startConsole.sh
+http://10.10.81.161:8000/console/index.do
+#user  nobody;
+worker_processes 4;
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+error_log logs/error.log error;
+pid logs/httpserver.pid;
+events {
+worker_connections 1024;
+use epoll;
+}
+http {
+include tw-conf/*.conf;
+include mime.types;
+default_type application/octet-stream;
+log_format main '$remote_addr - $remote_user [$time_local] ""$request"" '
+'$status $body_bytes_sent ""$http_referer"" '
+'""$http_user_agent"" ""$http_x_forwarded_for""';
+access_log logs/access.log main;
+status_zone;
+sendfile on;
+#tcp_nopush     on;
+#keepalive_timeout  0;
+keepalive_timeout 60;
+#gzip  on;
+upstream proxyserver {
+server 10.10.81.161:8088;
+server 10.10.81.192:8088;
+keepalive 32;
+keepalive_requests 1000;
+keepalive_timeout 60s;
+health_check interval=30000 rise=1 fall=3 type=tcp;
+}
+server {
+listen 8090;
+server_name localhost;
+access_log logs/host.access.log main;
+error_page 500 502 503 504 /50x.html;
+location /favicon.ico {
+log_not_found off;
+access_log off;
+}
+location ~ /\. {
+deny all;
+access_log off;
+log_not_found off;
+}
+location /examples {
+#add_header Content-Security-Policy ""upgrade-insecure-requests"";
+proxy_redirect http:// $scheme://;
+proxy_redirect http:// https://;
+proxy_pass http://proxyserver;
+}
+location /api {
+access_log off;
+api write=off;
+status_bypass on;
+allow 127.0.0.1;
+deny all;
+}
+location = /50x.html {
+root html;
+}
+}
+# HTTPS server
+#server {
+#listen       443 ssl;
+#server_name  localhost;
+#ssl_protocols TLSv1.2 TLSv1.3 GMTLSv1.1;
+#GMTLS key
+#ssl_certificate      crt/SS.pem;
+#ssl_certificate_key  crt/SS.key.pem;
+#ssl_certificate      crt/SE.pem;
+#ssl_certificate_key  crt/SE.key.pem;
+#https key
+#ssl_certificate      crt/common_cert/server.crt;
+#ssl_certificate_key  crt/common_cert/server.key;
+#ssl_session_cache    shared:SSL:1m;
+#ssl_session_timeout  5m;
+#ssl_ciphers  HIGH:!aNULL:!MD5;
+#ssl_prefer_server_ciphers  on;
+#location / {
+#root   html;
+#index  index.html index.htm;
+#}
+#}
+}
+[查看排障截图: image95.png]
+[查看排障截图: image96.png]
+[查看排障截图: image97.png]
+[查看排障截图: image98.png]
+[查看排障截图: image99.png]
+[查看排障截图: image100.png]
+[查看排障截图: image101.png]
+[查看排障截图: image102.png]"
+Tongweb8081如何打Docker镜像？,"Tongweb7跟Tongweb8081 的区别
+[查看排障截图: image103.png]
+安装准备
+已有docker环境，并且已经拉取了操作系统镜像和jdk镜像，如下图所示：
+[查看排障截图: image104.png]
+上图拉取的是centos7和openjdk8的镜像。
+如果遇到docker镜像无法拉取的情况，可以参考这个帖子： 解决docker: Error response from daemon: Get “https://registry-1.docker.io/v2/“:连接超时问题
+如果是国产的操作系统（例如麒麟），请联系对应厂商获取相关镜像。
+2.已经搭建了Tongweb8081控制台，并且能正常运行。 搭建参考：Tongweb8080企业版安装（by lqw）
+3.确认生成的版本。
+Tongweb8081里的版本生成，如下图所示：
+[查看排障截图: image105.png]
+里面会有区分企业版和轻量版，以及在java使用上，会区分javax和jakarta。
+[查看排障截图: image106.png]
+所以在制造镜像之前，必须确认使用哪种。
+如何使用Tongweb8081打Docker镜像并运行
+确认了docker里已经拉取了操作系统和jdk镜像后，来到控制台，找到版本生成这个功能：
+[查看排障截图: image107.png]
+点击创建，选择好对应的版本，并把Docker镜像这个开关打开：
+[查看排障截图: image108.png]
+然后在基础镜像里，填写上jdk的基础镜像（例如我拉取的镜像是openjdk 8，那就是openjdk:8）,这里示范的是轻量版，请根据需求选择对应的版本。
+[查看排障截图: image109.png]
+[查看排障截图: image110.png]
+一般只需要等待一段时间，列表就会出现对应的镜像包的名称：
+[查看排障截图: image111.png]
+也可以自己用docker images指令查看：
+[查看排障截图: image112.png]
+另外对应的镜像包也可以在这里找一找
+[查看排障截图: image113.png]
+如何测试打好的docker镜像
+以下是我本地测试的指令,将容器里的8088和9060映射到宿主机：
+docker run -d --name my_tongweb_console -p 8089:8088 -p 9061:9060 tongweb-enterprise-javax-console:8.0.8.1
+其中my_tongweb_console 是我起的名字，tongweb-enterprise-javax-console是我打好的镜像名称：
+[查看排障截图: image114.png]
+由于我创建镜像的时候勾选了控制台，所以在浏览器上访问https://服务器ip：9061/console进行测试：
+[查看排障截图: image115.png]
+如果不熟悉目录结构，或者后期有绑定目录结构的需求，可以通过dockers ps -a 找到对应的CONTAINER ID，然后使用这个指令，进去容器内部查看里面的结构：
+[查看排障截图: image116.png]
+docker exec -it CONTAINER ID /bin/bash
+[查看排障截图: image117.png]
+也可以自行部署应用进行测试，例如Tongweb8081安装包里的version.zip里的example.war：
+[查看排障截图: image118.png]
+由于docker容器里本身没有这个war，我们需要借助文件上传的形式进行部署，需要先放开文件上传的限制：
+[查看排障截图: image119.png]
+放开后重启容器，上传这个war包进行部署：
+[查看排障截图: image120.png]
+部署后用服务器ip：映射端口/访问前缀进行访问：
+[查看排障截图: image121.png]
+[查看排障截图: image122.png]
+备注： 1.打镜像的时候，Tongweb8081的授权会同步被打入到镜像里，所以请确保授权的使用时间还没过期，避免后期更换麻烦。"
+TongWeb8.0的国密算法配置具体是怎么操作的呀？,"一、TongWeb8的国密设置：
+WEB容器中TongWeb 通道的配置：
+通道的配置基本属性：
+[查看排障截图: image123.png]
+二、安全属性：
+[查看排障截图: image124.png]
+开启SSL---国密证书
+[查看排障截图: image125.png]
+三、部署应用：
+四、用安全浏览器访问：
+安全浏览器配置要点：
+国密SSL设置，选中
+国密SSL的可信任站点的设置，IP和端口
+注意：如果安全浏览器不能访问，一般是受licesen限制，如果在限制时间内可以进行国密SSL设置，如果过期了就不能进行国密SSL设置了，所以访问不了国密应用。
+五、举例：用安全浏览器访问应用：
+[查看排障截图: image126.png]"
+THS搭配TongWeb8.0（TongWeb8050版本），通过session复制配置来实现THS HA，一步一步具体该怎么操作呀？,"安装THS6.0，配置THS，如下图：
+[查看排障截图: image127.png]
+[查看排障截图: image128.png]
+二、配置会话服务器
+你好！请记得一定在两台机器上都配置如下会话服务器，相当于配置缓存池
+[查看排障截图: image129.png]
+[查看排障截图: image130.png]
+[查看排障截图: image131.png]
+[查看排障截图: image132.png]
+三、资源中Session缓存的配置：
+你好！请记得一定在两台机器上都配置如下会话服务器，相当于配置缓存连接
+/opt/TongWeb8050/domains/domain1/centralized/tdg/sessionfuzhi1-5071/bin
+tongdatagrid.xml  配置里面
+名称dev
+<password>C+cufEIpHYNXqqQEoBoS9Q==</password>
+[查看排障截图: image133.png]
+[查看排障截图: image134.png]
+四、应用部署：
+你好！请记得一定在两台机器上都配置应用部署
+[查看排障截图: image135.png]
+[查看排障截图: image136.png]
+[查看排障截图: image137.png]
+[查看排障截图: image138.png]
+然后点部署和更新，完成部署过程
+六、测试session复制：
+1、先启动负载均衡THS，
+[查看排障截图: image139.png]
+[查看排障截图: image140.png]
+确保session缓存—会话服务器已启动
+[查看排障截图: image141.png]
+测试带缓存的应用
+[查看排障截图: image142.png]
+点击servlet example超链接
+七、遇到问题的解决方法：
+1、报这个可能会遇到这个问题
+2022/09/27 17:08:51 [error] 8412#8412: *24 connect() failed (111: Connection refused) while connecting to upstream, client: 192.168.55.112, server: localhost, request: ""GET / HTTP/1.1"", upstream: ""http://10.10.81.161:8089/"", host: ""10.10.81.161:8080""
+2022/09/27 17:08:51 [error] 8412#8412: *24 connect() failed (111: Connection refused) while connecting to upstream, client: 192.168.55.112, server: localhost, request: ""GET /favicon.ico HTTP/1.1"", upstream: ""http://10.10.81.161:8089/favicon.ico"", host: ""10.10.81.161:8080"", referrer: ""http://10.10.81.161:8080/""
+解决方法如下：
+vi /etc/selinux/config，改成这样
+SELINUXTYPE=disabled
+3、两个TongWeb时间不一致的问题
+date –s  “2022-09-28 18:43:00”
+2、报这个可能会遇到下面这个问题
+2022/09/27 18:12:13 [notice] 10385#10385: signal process started
+2022/09/27 18:14:57 [notice] 10823#10823: signal process started
+2022/09/27 18:17:42 [notice] 11137#11137: signal process started
+2022/09/27 18:21:50 [notice] 11762#11762: signal process started
+2022/09/28 13:09:48 [notice] 16886#16886: signal process started
+显示时显示一半，
+[查看排障截图: image143.png]
+应该显示如下：
+[查看排障截图: image144.png]
+解决方法：
+不用8888端口，examples应用程序使用8888端口时会有问题，避免掉这个端口，使用8090端口
+附录：
+THS的配置：
+./startConsole.sh
+http://10.10.81.161:8000/console/index.do
+（1）httpserver.conf  配置：
+#user  nobody;
+worker_processes 4;
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+error_log logs/error.log error;
+pid logs/httpserver.pid;
+events {
+worker_connections 1024;
+use epoll;
+}
+http {
+include tw-conf/*.conf;
+include mime.types;
+default_type application/octet-stream;
+log_format main '$remote_addr - $remote_user [$time_local] ""$request"" '
+'$status $body_bytes_sent ""$http_referer"" '
+'""$http_user_agent"" ""$http_x_forwarded_for""';
+access_log logs/access.log main;
+status_zone;
+sendfile on;
+#tcp_nopush     on;
+#keepalive_timeout  0;
+keepalive_timeout 60;
+#gzip  on;
+upstream proxyserver {
+ip_hash;
+server IP1(写自己IP1):8088;
+server IP2(写自己IP2):8088;
+keepalive 32;
+keepalive_requests 1000;
+keepalive_timeout 60s;
+health_check interval=30000 rise=1 fall=3 type=tcp;
+}
+server {
+listen 8090;
+server_name localhost;
+access_log logs/host.access.log main;
+error_page 500 502 503 504 /50x.html;
+location /favicon.ico {
+log_not_found off;
+access_log off;
+}
+location ~ /\. {
+deny all;
+access_log off;
+log_not_found off;
+}
+#location /examples/{
+#   proxy_redirect http:// $scheme://;
+#  proxy_redirect http:// https://;
+#  proxy_set_header Host $http_host;
+# }
+location / {
+proxy_set_header Host $http_host;
+proxy_pass http://proxyserver/;
+}
+location /api {
+access_log off;
+api write=off;
+status_bypass on;
+allow 127.0.0.1;
+deny all;
+}
+location = /50x.html {
+root html;
+}
+}
+# HTTPS server
+#server {
+#listen       443 ssl;
+#server_name  localhost;
+#ssl_protocols TLSv1.2 TLSv1.3 GMTLSv1.1;
+#GMTLS key
+#ssl_certificate      crt/SS.pem;
+#ssl_certificate_key  crt/SS.key.pem;
+#ssl_certificate      crt/SE.pem;
+#ssl_certificate_key  crt/SE.key.pem;
+#https key
+#ssl_certificate      crt/common_cert/server.crt;
+#ssl_certificate_key  crt/common_cert/server.key;
+#ssl_session_cache    shared:SSL:1m;
+#ssl_session_timeout  5m;
+#ssl_ciphers  HIGH:!aNULL:!MD5;
+#ssl_prefer_server_ciphers  on;
+#location / {
+#root   html;
+#index  index.html index.htm;
+#}
+#}
+}
+控制台集群配置：
+[查看排障截图: image145.png]
+[查看排障截图: image146.png]
+工作节点，备份节点处要选---否，IP 哈希和备份选否是必须关系。
+（3）虚拟主机配置：
+[查看排障截图: image147.png]
+[查看排障截图: image148.png]
+[查看排障截图: image149.png]
+[查看排障截图: image150.png]
+[查看排障截图: image151.png]
+扩展参数里添加：
+proxy_set_header Host $http_host
+[查看排障截图: image152.png]
+[查看排障截图: image153.png]
+[查看排障截图: image154.png]
+[查看排障截图: image155.png]"
+TongWeb8的MQ实现发布订阅具体是怎么操作的呀？,"如图配置MQ：
+[查看排障截图: image156.png]
+部署JCA连接池testc
+[查看排障截图: image157.png]
+三、配置JCA托管对象testd和testa
+testd 为队列javax.jms.Queue，testa为Topic----javax.jms.Topic
+[查看排障截图: image158.png]
+四、部署应用/opt/TongWeb8050/version8.0.5.0/examples/tmqjms.war
+五、访问：
+先接收：
+[查看排障截图: image159.png]
+先发布：
+[查看排障截图: image160.png]
+需要先刷收，确定是空后。再刷一次收，然后刷发，就收到了
+[查看排障截图: image161.png]
+有一定的延迟时间，这个在代码里有设定，默认就行，不用调。
+[查看排障截图: image162.png]"
+Tongweb8命令行使用收集涉及哪些关键要点呢？,"声明
+1.命令行工具在哪里：
+一般在tw8安装目录的bin目录下：commandstool.sh
+[查看排障截图: image163.png]
+备注： 1.使用该工具的时候，例如使用thanos用户的时候，会把正在登录了thanos的控制台给挤掉，导致控制台需要重新登录。（同理，jmx监控也是如此，所以不建议一起使用）
+在tw8 里，有以下三个重要的概念：实例，节点和集群
+[查看排障截图: image164.png]
+[查看排障截图: image165.png]
+[查看排障截图: image166.png]
+其中一个服务器ip只能有一个节点，集群>节点>实例。
+根据业务的需求不同，应用可以部署在实例里，也可以部署在节点和集群里，所以我们要弄清楚，操作的对象是哪一个，是实例，节点，还是集群，这个是在命令行工具里用到的非常重要的参数：
+[查看排障截图: image167.png]
+3.关于脚本录制
+命令行页面的很多指令都可以通过脚本录制获取：
+[查看排障截图: image168.png]
+如有遇到一些本文没有记录的操作，需要使用命令行操作的，建议可以先开启脚本录制，录制相关操作后点击完成，之后下载到本地。
+[查看排障截图: image169.png]
+4. Tongweb8中的应用启动和停止，还有卸载，不建议反复执行，容易导致资源没有回收，具体参考这个：
+TongWeb上反复重部署应用后异常：application instance has been stopped already 或OutOfMemoryError：Metaspace 5. 本次操作仅供参考，最终以命令行工具使用手册为准。
+对应版本
+Tongweb8081。
+修改thanos用户密码
+./commandstool.sh --host=192.168.10.113 --port=9061  --model=password --username=thanos --password=Yeyehuo163.com --acceptAgreement=true  --action=update originalPassword=Yeyehuo163.com newPassword=Yeyehuo163.com2 confirmPassword=Yeyehuo163.com2
+[查看排障截图: image170.png]
+# tw8所在服务器ip
+--host=192.168.10.113：指定管理服务所在的服务器 IP 地址。
+# 控制台端口
+--port=9061：用于连接管理服务的端口。
+--model=password：操作类型指定为密码操作。
+--username=thanos：需要更新密码的用户名。
+# 当前thanos使用的密码
+--password=Yeyehuo163.com：当前用于身份验证的用户密码。
+--acceptAgreement=true：表示您已接受相关协议。
+--action=update：您正在执行的是更新操作。
+originalPassword=Yeyehuo163.com：当前有效的原始密码。
+newPassword=Yeyehuo163.com2：新密码。
+confirmPassword=Yeyehuo163.com2：确认新密码。
+部署应用到默认实例
+./commandstool.sh --host=192.168.10.113 --port=9061 --model=app --action=add --username=thanos --password=Yeyehuo163.com2 --acceptAgreement=true  appFrom=fromServer  filename=/opt/Tongweb/TongWeb8.0.8.0/version8.0.8.0/examples/jmsExample.war
+./commandstool.sh
+这是一个脚本文件，通常用于执行一系列预定义的命令，以便与服务器进行交互。
+--host=192.168.10.113
+指定目标服务器的 IP 地址，在这里是 192.168.10.113。
+--port=9061
+指定服务器监听的端口号为 9061。通常用于指定与服务交互的端口。
+--model=app
+模式设置为 app，表示这是一个应用相关的操作。
+--action=add
+指定动作为 add，表明这是一个添加或部署新的应用程序到服务器的操作。
+--username=thanos
+用于认证的用户名是 thanos。
+--password=Yeyehuo163.com2
+指定用户 thanos 用于认证的密码。
+--acceptAgreement=true
+明确同意某些相关的协议，这可能是部署或使用软件时必要的同意条款。
+appFrom=fromServer
+表示应用的来源是服务器，通常指示应用部署的来源或资源位置。
+filename=/opt/Tongweb/TongWeb8.0.8.0/version8.0.8.0/examples/jmsExample.war
+指定要添加或部署的应用程序文件的完整路径。
+[查看排障截图: image171.png]
+[查看排障截图: image172.png]
+节点相关操作
+新增节点(一般一个服务器ip只能装一个节点)
+./commandstool.sh  --host=192.168.10.113 --port=9061 --model=node --action=add --password=Yeyehuo163.com2 --acceptAgreement=true --username=thanos sshPort=22 sshUserName=root nodeCreationType=SSH ip=192.168.10.115 sshPassword=yeyehuo163 autostart=false keyPairType=ssh-rsa javaHome=/opt/bisheng-jdk-11.0.24  port=9061 name=node115 passwordType=PASSWORD maxretrycount=0 installationPath=/opt/tongweb8node115
+[查看排障截图: image173.png]
+# tw8所在服务器ip
+--host=192.168.10.113：远程管理服务的服务器 IP。
+# 控制台端口
+--port=9061：连接到管理服务的端口。
+--model=node：操作的对象类型是一个节点。
+--action=add：指定对节点执行添加操作。
+--password=Yeyehuo163.com2：用于身份验证的密码。
+--acceptAgreement=true：您已同意相关协议。
+--username=thanos：执行操作的用户名。
+sshPort=22：SSH 连接使用的端口。
+sshUserName=root：用于 SSH 连接的用户名。
+nodeCreationType=SSH：节点创建类型，通过 SSH。
+ip=192.168.10.115：新节点的 IP 地址。
+sshPassword=yeyehuo163：用于 SSH 的密码。
+autostart=false：配置节点在启动时是否自动开始。
+keyPairType=ssh-rsa：使用的密钥对类型。
+javaHome=/opt/bisheng-jdk-11.0.24：Java 环境的安装路径。
+port=9061：新节点将使用的端口。
+name=node115：节点名称。
+passwordType=PASSWORD：密码类型指定为普通密码。
+maxretrycount=0：最大重试次数配置。
+installationPath=/opt/tongweb8node115：节点的安装路径。
+启动节点（需确认节点没有运行）
+./commandstool.sh --host=192.168.10.113 --port=9061 --model=node --action=start --password=Yeyehuo163.com2 --acceptAgreement=true --username=thanos name=node115
+[查看排障截图: image174.png]
+--host=192.168.10.113：目标管理服务的服务器 IP 地址。
+--port=9061：连接到管理服务的端口。
+--model=node：操作的对象类型是一个节点。
+--action=start：指定对节点执行启动操作。
+--password=Yeyehuo163.com2：用于身份验证的密码。
+--acceptAgreement=true：表明您已同意相关协议。
+--username=thanos：执行操作的用户名。
+name=node115：要启动的节点名称。
+备注：如果节点已经是运行中，会有这种提示
+[查看排障截图: image175.png]
+停止节点
+./commandstool.sh --host=192.168.10.113 --port=9061 --model=node --action=stop  --password=Yeyehuo163.com2 --acceptAgreement=true --username=thanos name=node115
+[查看排障截图: image176.png]
+# tw8所在服务器
+--host=192.168.10.113：目标管理服务的 IP 地址。
+# 控制台端口
+--port=9061：连接到管理服务的端口。
+--model=node：操作的对象类型是一个节点。
+--action=stop：指定对节点执行停止操作。
+--password=Yeyehuo163.com2：用于身份验证的密码。
+--acceptAgreement=true：表示您已同意相关协议。
+--username=thanos本停止节点 node115。以下是对命：执行操作的用户名。
+name=node115：指定停止的节点名称是 node115。
+删除节点
+./commandstool.sh --host=192.168.10.113 --port=9060 --model=node --action=delete --password=thanos123.com --acceptAgreement=true --username=thanos name=node115
+[查看排障截图: image177.png]
+# tongweb8服务器ip
+--host=192.168.10.113：指定目标主机的IP地址为192.168.10.113。
+#tw8控制台端口
+--port=9060：指定连接到目标主机的端口为9060。
+--model=node：指定操作的模型或类型为node（节点）。
+--action=delete：指定要执行的动作是删除（delete）。
+# 改成登录控制台thanos的密码
+--password=Yeyehuo163.com：指定连接的密码为Yeyehuo163.com。
+--acceptAgreement=true：表示接受相关的协议或条款。
+--username=thanos：指定用于连接的用户名为thanos。
+name=node115：指定要操作的节点名称为node115。
+节点新增应用
+./commandstool.sh --host=192.168.10.113 --port=9061 --model=app --action=add --username=thanos --password=Yeyehuo163.com2 --acceptAgreement=true targetType=node targetName=node113 appFrom=fromServer  filename=/opt/Tongweb/TongWeb8.0.8.0/version8.0.8.0/examples/examples.war cacheMaxSize=1024000
+[查看排障截图: image178.png]
+--host=192.168.10.113
+指定目标服务器的 IP 地址，即运行应用服务器的机器。
+--port=9061
+指定服务器监听的端口，用于与服务通信。
+--model=app
+表示操作的模式为 app，即与应用程序相关。
+--action=add
+指定执行的动作为 add，这意味着当前的任务是部署新的应用程序。
+--username=thanos 和 --password=Yeyehuo163.com2
+提供的用户名和密码用于认证，以确保命令拥有必要的权限来操作服务器。
+--acceptAgreement=true
+表示同意相关协议或条款，这是许多工具中为操作合法性设计的参数。
+targetType=node 和 targetName=node113
+targetType=node：部署目标类型为单个节点。
+targetName=node113：指定目标节点的名称为 node113，即部署的服务器具体节点。
+appFrom=fromServer
+指定应用的来源，这里是 fromServer，表明应用包可能已经存在于目标服务器上，而不是通过本地上传。
+filename=/opt/Tongweb/TongWeb8.0.8.0/version8.0.8.0/examples/examples.war
+cacheMaxSize=1024000
+设置应用程序缓存的最大大小，为 1024000（通常以字节为单位）。
+这是一个可选参数，用于优化应用程序的缓存行为
+节点查看应用
+./commandstool.sh -host=192.168.10.113 --port=9061 --model=app  --username=thanos --password=Yeyehuo163.com2  --acceptAgreement=true  --action=list targetType=node targetName=node113
+[查看排障截图: image179.png]
+[root@localhost bin]# ./commandstool.sh -host=192.168.10.113 --port=9061 --model=app  --username=thanos --password=Yeyehuo163.com2  --acceptAgreement=true  --action=list targetType=node targetName=node1132024-11-22 16:24:14 >>> Execute the command: commandstool
+{""models"":[{""name"":""examples"",""autoDeploy"":""false"",""appFrom"":""fromServer"",""filename"":""\/opt\/Tongweb\/TongWeb8.0.8.0\/version8.0.8.0\/examples\/examples"",""appTemplate"":"""",""springBootCompatible"":""true"",""contextRoot"":""examples"",""host"":""localhost"",""startupPriority"":""99"",""refRealm"":"""",""dependentApp"":"""",""delegateFirst"":""false"",""useEjbStandaloneLoader"":""false"",""forcedLoad"":""javax.ws"",""forcedSkip"":"""",""webSocketEnabled"":""false"",""webModuleOnly"":""false"",""appImplModules"":"""",""disableCDI"":""false"",""refLib"":"""",""priorityJars"":"""",""reloadable"":""false"",""addWebinfClassesResources"":""false"",""loadManifestClassPath"":""false"",""manifestClassPathBase"":"""",""absoluteOrdering"":""false"",""customClassLoader"":"""",""customClass"":"""",""docBases"":"""",""archiveIndexStrategy"":""BLOOM"",""sessionCookieName"":"""",""useLegacyCookieProcessor"":""false"",""allowEqualsInValue"":""false"",""allowHttpSepsInV0"":""false"",""useHttpOnly"":""true"",""sameSiteCookies"":""Unset"",""maxActiveSessions"":""100000"",""sessionTimeout"":""30"",""refSessionHa"":"""",""jspDevelopment"":""false"",""mappedFile"":""false"",""quoteAttributeEL"":""true"",""strictQuoteEscaping"":""true"",""strictWhiteSpace"":""true"",""enablePooling"":""true"",""jspPrecompile"":""false"",""jspPrecompileThreadCount"":""4"",""requestCharacterEncoding"":""UTF-8"",""responseCharacterEncoding"":""UTF-8"",""javaEncoding"":""UTF-8"",""fileEncoding"":""UTF-8"",""slowThreadEnabled"":""false"",""threshold"":""60"",""interruptThreadThreshold"":""0"",""cachingAllowed"":""true"",""cacheMaxSize"":""1024000"",""cacheObjectMaxSize"":""1024"",""cacheTtl"":""60"",""forceCache"":""false"",""preloadResource"":""false"",""preCompress"":""false"",""forcedContainerHandling"":""false"",""staticUrlPatterns"":"""",""brEnabled"":""false"",""enableCORSAccess"":""false"",""corsAllowedOrigins"":"""",""corsAllowedMethods"":""GET,POST,HEAD,OPTIONS"",""corsAllowedHeaders"":""Origin,Accept,X-Requested-With,Content-Type,Access-Control-Request-Method,Access-Control-Request-Headers"",""corsExposedHeaders"":"""",""corsSupportCredentials"":""false"",""corsPreflightMaxAge"":""1800"",""requestParametersLostValidation"":""false"",""XSSFilterEnabled"":""false"",""csrfPrevention"":""false"",""csrfCacheSize"":""20"",""tokenValidTimes"":""1"",""csrfEntryPoints"":""\/login"",""httpHeaderToken"":""false"",""secretLevel"":"""",""threadPoolPolicy"":""1"",""threadPool"":"""",""threadPoolTimeout"":""30000"",""taskRule"":"""",""exclusionRule"":"""",""otherThreadPool"":"""",""otherThreadPoolTimeout"":""30000"",""semaphoreEnabled"":""false"",""concurrency"":""10"",""block"":""true"",""interruptible"":""true"",""restrictedPorts"":"""",""crossContext"":""false"",""unloadDelay"":""20"",""allowLinking"":""false"",""clearReferences"":""false"",""shtmlEnabled"":""false"",""virtualWebappRelative"":""false"",""allowExec"":""false"",""expires"":""0"",""urlPatterns"":""*.shtml"",""webAppVersion"":"""",""useRelativeRedirects"":""true"",""allowCasualMultipartParsing"":""false"",""allowOverrideContentType"":""false"",""enableStatelessPoolMonitor"":""false"",""type"":""war"",""state"":""STARTED"",""jarScannerImpl"":"""",""raPros"":"""",""pkgCompatible"":""false""}],""attachments"":{""totalSize"":""1"",""pageNum"":""1"",""pageSize"":""10""},""success"":""true"",""msg"":""应用列表成功"",""redirectURL"":"""",""dataTime"":""""}
+--host=192.168.10.113
+指定目标服务器的 IP 地址，命令将作用于此服务器上。
+--port=9061
+服务器监听的端口号, 用于工具与服务器之间的通信。
+--model=app
+操作对象为应用程序，表明该命令属于应用程序管理任务。
+--username=thanos 和 --password=Yeyehuo163.com2
+登录信息，用以验证用户权限的合法性。
+--acceptAgreement=true
+确认接受协议条款，这是运行命令前的必要条件。
+--action=list
+指定操作为列出当前节点上的应用程序，而非删除或其他管理操作。
+targetType=node 和 targetName=node113
+targetType=node：目标为某个特定节点，兴趣集中在节点级部署的应用程序。
+targetName=node113：该节点的名称为 node113，这是正在查询哪个节点的具体说明。
+节点启动应用
+./commandstool.sh  --host=192.168.10.113 --port=9060 --model=app --action=start --password=Yeyehuo163.com --acceptAgreement=true --username=thanos targetName=node10 name=examples targetType=node
+[查看排障截图: image180.png]
+--host=192.168.10.113:
+目标服务器的 IP 地址，用于连接操作。
+--port=9060:
+目标服务器的端口，指定应用管理接口。
+--model=app:
+指定操作的模块为 app，表示对应用进行管理操作。
+--action=start:
+操作类型为 start，表示要启动应用或服务。
+--password=Yeyehuo163.com:
+用于身份验证的密码。应注意这类信息的安全管理，避免硬编码。
+--acceptAgreement=true:
+指定已同意相关使用协议，通常用于许可条款。
+--username=thanos:
+执行操作的用户名，确保具有相应权限。
+targetName=node10:
+要操作的具体节点名称。此处为 node10。
+name=examples:
+需要启动的应用或服务名称。此处为 examples。
+targetType=node:
+指定目标类型为 node，即该操作针对具体的节点。
+节点停止应用
+./commandstool.sh  --host=192.168.10.113 --port=9060 --model=app --action=stop --password=Yeyehuo163.com --acceptAgreement=true --username=thanos targetName=node10 name=examples targetType=node
+[查看排障截图: image181.png]
+--host=192.168.10.113:
+目标服务器的 IP 地址，用于连接操作。
+--port=9060:
+目标服务器的端口，指定应用管理接口。
+--model=app:
+指定操作的模块为 app，表示对应用进行管理操作。
+--action=stop:
+操作类型为 stop，表示要停止的应用或服务。
+--password=Yeyehuo163.com:
+用于身份验证的密码。应注意这类信息的安全管理，避免硬编码。
+--acceptAgreement=true:
+指定已同意相关使用协议，通常用于许可条款。
+--username=thanos:
+执行操作的用户名，确保具有相应权限。
+targetName=node10:
+要操作的具体节点名称。此处为 node10。
+name=examples:
+需要启动的应用或服务名称。此处为 examples。
+targetType=node:
+指定目标类型为 node，即该操作针对具体的节点。
+节点卸载应用（谨慎操作，卸载后应用就没有了,建议备份后操作）
+./commandstool.sh -host=192.168.10.113 --port=9061 --model=app --username=thanos --password=Yeyehuo163.com2 --acceptAgreement=true  --action=delete  targetType=node targetName=node113  name=examples
+[查看排障截图: image182.png]
+--host=192.168.10.113
+指定目标服务器的 IP 地址，表示运行应用服务器的机器。
+--port=9061
+服务器用于接收工具请求的监听端口。
+--model=app
+操作的对象为应用程序，强调这次操作的中心是应用管理。
+--username=thanos 和 --password=Yeyehuo163.com2
+提供合法的认证凭据，以确保有权限在服务器上执行这些操作。
+--acceptAgreement=true
+确认接受了与操作相关的协议或条款，为合规性而设。
+--action=delete
+指定执行的操作是删除一个应用程序。
+targetType=node 和 targetName=node113
+targetType=node：表明目标是一个节点级别的操作。
+targetName=node113：指定目标节点，即从 node113 节点上删除应用程序。
+name=examples
+指定要删除的应用程序名称为 examples
+实例相关操作
+新增实例（需确认在哪个节点上新建）
+./commandstool.sh --host=192.168.10.113 --port=9061 --model=instance --action=add --password=Yeyehuo163.com --acceptAgreement=true --username=thanos node=default needConsolePort=true name=testexamples002 startwithnode=false appPort=8091 maxretrycount=0 installationPath=/opt/testexamples002 autostart=false
+[查看排障截图: image183.png]
+#这里我指定的是tongweb8控制台所在的服务器ip
+--host=192.168.10.113：指定目标主机的 IP 地址为 192.168.10.113。
+#这里的9061是我的tongweb8控制台的端口
+--port=9061：指定与目标服务交互的端口为 9061。
+--model=instance：指明操作的对象为一个实例。
+--action=add：执行的操作是添加一个新的实例。
+#这个password是我修改的thanos账户的密码
+--password=Yeyehuo163.com：设置实例的相关密码为 Yeyehuo163.com。
+--acceptAgreement=true：表示接受协议条款。
+--username=thanos：指定使用的用户名为 thanos。
+#这里使用的是tw自带的节点
+node=default：使用的节点是 default。
+needConsolePort=true：明确表示需要一个控制台端口。
+name=testexamples002：设置实例名称为 testexamples002。
+startwithnode=false：实例不会随节点一起启动。
+appPort=8091：应用程序使用端口 8091。
+maxretrycount=0：设置最大重试次数为 0。
+installationPath=/opt/testexamples002：指定实例的安装路径为 /opt/testexamples002。
+autostart=false：实例不会自动启动。
+启动实例（需确认实例没有在运行）
+./commandstool.sh  --host=192.168.10.113 --port=9061 --model=instance --action=start --password=Yeyehuo163.com2 --acceptAgreement=true --username=thanos name=testexamples001
+[查看排障截图: image184.png]
+# tw8所在服务器ip
+--host=192.168.10.113：目标管理服务的服务器 IP 地址。
+# 控制台端口
+--port=9061：连接到管理服务的端口。
+--model=instance：操作的对象类型是一个实例。
+--action=start：指定对实例执行启动操作。
+--password=Yeyehuo163.com2：用于身份验证的密码。
+--acceptAgreement=true：表示您已同意相关协议。
+--username=thanos：执行操作的用户名。
+name=testexamples001：要启动的实例的名称。
+停止实例
+./commandstool.sh  --host=192.168.10.113 --port=9061 --model=instance --action=stop --password=Yeyehuo163.com2 --acceptAgreement=true --username=thanos name=testexamples001
+[查看排障截图: image185.png]
+--host=192.168.10.113：目标管理服务的 IP 地址。
+--port=9061：用于连接管理服务的端口号。
+--model=instance：表明操作的目标类型是实例（instance）。
+--action=stop：指定对实例执行停止操作。
+--password=Yeyehuo163.com2：身份验证使用的密码。
+--acceptAgreement=true：表明已同意相关协议，允许操作继续。
+--username=thanos：执行操作的用户名。
+name=testexamples001：需要停止的实例名称。
+备注：如果已停止的时候执行，会有以下提示
+[查看排障截图: image186.png]
+删除实例
+./commandstool.sh --host=192.168.10.113 --port=9060 --model=instance --action=delete --password=Yeyehuo163.com --acceptAgreement=true --username=thanos name=testinstance001
+[查看排障截图: image187.png]
+实例新增应用
+./commandstool.sh --host=192.168.10.113 --port=9061 --model=app --action=add --username=thanos --password=Yeyehuo163.com2 --acceptAgreement=true targetType=instance targetName=testexamples002 appFrom=fromServer  filename=/opt/Tongweb/TongWeb8.0.8.0/version8.0.8.0/examples/webServiceExample.war  contextRoot=/
+[查看排障截图: image188.png]
+--host=192.168.10.113
+目标服务器的 IP 地址，用于指定部署目标的机器。
+--port=9061
+服务器的监听端口，负责接收该工具的请求。
+--model=app
+操作对象为应用程序，强调此次操作是与应用有关。
+--action=add
+执行的动作是添加一个新应用，意味着会将指定的 WAR 包部署到服务器上。
+--username=thanos 和 --password=Yeyehuo163.com2
+提供访问服务器所需的认证信息，以确保具有进行此操作的权限。
+--acceptAgreement=true
+确认接受了与这些操作相关的协议或条款，这通常是必要的法律合规措施。
+targetType=instance 和 targetName=testexamples002
+targetType=instance：目标类型为实例级别的部署。
+targetName=testexamples002：指定目标实例的名称为 testexamples002，表明应用部署的具体实例。
+appFrom=fromServer
+指定应用源为 fromServer，这通常表示应用程序包已经存在于目标服务器上，而不需要从本地上传。
+filename=/opt/Tongweb/TongWeb8.0.8.0/version8.0.8.0/examples/webServiceExample.war
+指定要部署的应用程序文件，此处为 webServiceExample.war
+contextRoot=/
+指定应用程序的上下文根为 /，意味着该应用将会成为默认应用程序，直接通过根路径访问
+实例启动应用
+./commandstool.sh  --host=192.168.10.113 --port=9060 --model=app --action=start --password=Yeyehuo163.com --acceptAgreement=true --username=thanos targetName=testinstance10 name=examples targetType=instance
+[查看排障截图: image189.png]
+--host=192.168.10.113:
+目标服务器的 IP 地址，用于连接操作。
+--port=9060:
+目标服务器的端口，指定应用管理接口。
+--model=app:
+指定操作的模块为 app，表示对应用进行管理操作。
+--action=start:
+操作类型为 start，表示要启动应用或服务。
+--password=Yeyehuo163.com:
+用于身份验证的密码。应注意这类信息的安全管理，避免硬编码。
+--acceptAgreement=true:
+指定已同意相关使用协议，通常用于许可条款。
+--username=thanos:
+执行操作的用户名，确保具有相应权限。
+targetName=testinstance10:
+要操作的具体实例名称。此处为 testinstance10。
+name=examples:
+需要启动的应用或服务名称。此处为 examples。
+targetType=instance:
+指定目标类型为 instance，即该操作针对具体的实例。
+实例停止应用
+./commandstool.sh  --host=192.168.10.113 --port=9060 --model=app --action=stop --password=Yeyehuo163.com --acceptAgreement=true --username=thanos targetName=testinstance10 name=examples targetType=instance
+[查看排障截图: image190.png]
+--host=192.168.10.113:
+目标服务器的 IP 地址，用于连接操作。
+--port=9060:
+目标服务器的端口，指定应用管理接口。
+--model=app:
+指定操作的模块为 app，表示对应用进行管理操作。
+--action=stop:
+操作类型为 stop，表示要停止应用或服务。
+--password=Yeyehuo163.com:
+用于身份验证的密码。应注意这类信息的安全管理，避免硬编码。
+--acceptAgreement=true:
+指定已同意相关使用协议，通常用于许可条款。
+--username=thanos:
+执行操作的用户名，确保具有相应权限。
+targetName=testinstance10:
+要操作的具体实例名称。此处为 testinstance10。
+name=examples:
+需要启动的应用或服务名称。此处为 examples。
+targetType=instance:
+指定目标类型为 instance，即该操作针对具体的实例。
+实例卸载应用（谨慎操作，卸载后应用就没有了，建议备份后操作）
+./commandstool.sh -host=192.168.10.113 --port=9061 --model=app --username=thanos --password=Yeyehuo163.com2 --acceptAgreement=true  --action=delete  targetType=instance  targetName=testexamples002  name=examples
+-host=192.168.10.113
+目标服务器的 IP 地址，表示运行应用服务器的机器。
+--port=9061
+工具请求所连接的服务器端口，用于接收并处理命令。
+--model=app
+操作的对象是应用程序，表明此次操作是针对某个应用进行管理。
+--username=thanos 和 --password=Yeyehuo163.com2
+提供认证信息，以确保用户拥有执行该操作的权限。
+--acceptAgreement=true
+表示接受与操作相关的条款或协议，这通常是为了遵守软件使用规定。
+--action=delete
+执行的操作是删除用于移除指定的应用程序。
+targetType=instance 和 targetName=testexamples002
+targetType=instance：表明目标为一个具体的应用程序实例。
+targetName=testexamples002：指定应用程序从哪个实例中删除，这里是 testexamples002。
+name=examples
+要删除的应用程序的名称为 examples
+集群相关操作
+创建集群（前提：创建节点且节点正常运行，节点间能正常通信，节点没有加入其他集群）
+./commandstool.sh --host=192.168.10.113 --port=9061 --model=cluster --action=add --password=Yeyehuo163.com2  --acceptAgreement=true --username=thanos node=node113,node114,node115 autoUpdateLbConf=true name=clustertest01 startwithnode=false maxretrycount=0 autostart=false rollingUpdate=false
+[查看排障截图: image191.png]
+--host=192.168.10.113 和 --port=9061
+指定目标服务器的 IP 和端口，用于连接到管理服务器。
+--model=cluster
+表明操作是基于集群的管理任务。
+--action=add
+指定操作为添加，意味着将节点加入到指定的集群中。
+--username=thanos 和 --password=Yeyehuo163.com2
+提供用于身份验证的用户名和密码，确保权限符合要求。
+--acceptAgreement=true
+node=node113,node114,node115
+列出要添加到集群的节点列表，这里包括 node113、node114 和 node115。
+name=clustertest01
+指定目标集群的名称为 clustertest01，将这些节点加入此集群。
+autoUpdateLbConf=true
+指定在操作后自动更新负载均衡配置，这有助于确保集群的流量分发功能立即反映新增节点。
+startwithnode=false
+指定新增节点是否自动启动服务：
+false 表示不自动启动，可能需要后续手动操作启动。
+maxretrycount=0
+表明对失败的操作不重试，0 意味着没有最大重试次数。
+autostart=false
+新增节点加入集群后是否自动启动集群：
+false 表示不会自动启动。
+rollingUpdate=false
+是否进行滚动更新：
+false 表示不会逐个节点滚动更新，可能用于一次性添加多个节点。
+备注： 1.不要把已经加入到其他集群的节点加入到新建的集群，一般推荐最好一个节点加入一个集群即可，否则很容易出现各种问题。 2.本次示范新建的集群并没有负载均衡功能，需要负载均衡功能的，建议使用Tonghttpserver。
+启动集群
+./commandstool.sh --host=192.168.10.113 --port=9060 --model=cluster --action=start  --password=Yeyehuo163.com --acceptAgreement=true --username=thanos name=clustertest01
+[查看排障截图: image192.png]
+--host=192.168.10.113：目标主机的 IP 地址为 192.168.10.113。
+--port=9060：指定连接到目标主机的端口为 9060。
+--model=cluster：指定操作的模型或类型为 cluster（集群）。
+--action=start：表示要执行的动作是启动（start）。
+--password=Yeyehuo163.com：指定连接的密码为 Yeyehuo163.com。
+--acceptAgreement=true：表示接受相关协议或条款。
+--username=thanos：指定用于连接的用户名为 thanos。
+name=clustertest01：指定要操作的集群名称为 clustertest01
+停止集群
+./commandstool.sh --host=192.168.10.113 --port=9060 --model=cluster --action=stop  --password=Yeyehuo163.com --acceptAgreement=true --username=thanos name=clustertest01
+[查看排障截图: image193.png]
+--host=192.168.10.113：目标主机的 IP 地址是 192.168.10.113。
+--port=9060：连接到目标主机所用的端口为 9060。
+--model=cluster：表示操作对象的类型为 cluster（集群）。
+--action=stop：指要执行的动作是停止（stop）。
+--password=Yeyehuo163.com：用于连接的凭证密码为 Yeyehuo163.com。
+--acceptAgreement=true：表示用户已接受必要的协议或条款。
+--username=thanos：用于连接的用户名为 thanos。
+name=clustertest01：指定要操作的集群名称为 clustertest01。
+查看集群信息（包括集群里的节点和实例）
+./commandstool.sh -host=192.168.10.113 --port=9061 --model=cluster  --username=thanos --password=Yeyehuo163.com2  --acceptAgreement=true  --action=list targetType=cluster targetName=cluster
+[查看排障截图: image194.png]
+--host=192.168.10.113
+指定目标服务器的 IP 地址，这里是与哪台服务器进行通信的具体 IP。
+--port=9061
+服务器监听的端口号，工具通过该端口与服务器通讯。
+--model=cluster
+表示当前操作涉及的对象是集群。
+--username=thanos 和 --password=Yeyehuo163.com2
+用于用户身份验证的信息，确保具备执行此操作的权限。
+--acceptAgreement=true
+需要明确接受使用协议才能执行此命令。
+--action=list
+指定的操作为列出，即查询集群信息的操作。
+targetType=cluster
+目标类型为集群，表明要列出与集群相关的内容。
+targetName=cluster
+这是要查询的具体集群名称（或全局标识符），用于指定在哪个集群上执行操作。
+集群中部署应用（需保证应用都在同一个目录且集群是正常运行状态）
+需保证应用都在不同服务器的同一个目录之下，不然很容易出各种问题。
+./commandstool.sh --host=192.168.10.113 --port=9060 --model=app --action=add --username=thanos --password=Yeyehuo163.com --acceptAgreement=true targetType=cluster targetName=clustertest01 appFrom=fromServer  filename=/opt/examples.war    cacheMaxSize=1024000 contextRoot=/
+[查看排障截图: image195.png]
+# tw8服务器ip
+--host=192.168.10.113：目标主机的 IP 地址是 192.168.10.113。
+# 控制台端口
+--port=9060：连接目标主机使用的端口号为 9060。
+--model=app：操作的模型为 app，即应用。
+--action=add：执行的动作是添加（add）。
+--username=thanos：用于连接的用户名为 thanos。
+--password=Yeyehuo163.com：用于连接的密码为 Yeyehuo163.com。
+--acceptAgreement=true：表示用户已接受必要的协议或条款。
+targetType=cluster：目标类型为集群。
+targetName=clustertest01：目标集群的名称为 clustertest01。
+appFrom=fromServer：表示应用来源是服务器（fromServer）。
+filename=/opt/examples.war：应用的文件路径为 /opt/examples.war。
+cacheMaxSize=1024000：指定缓存的最大大小为 1,024,000（单位可能是字节，需根据系统文档确认）。
+contextRoot=/：应用的部署路径为根路径 /
+集群查看应用
+./commandstool.sh -host=192.168.10.113 --port=9060 --model=app  --username=thanos --password=Yeyehuo163.com  --acceptAgreement=true  --action=list targetType=cluster targetName=clustertest01
+[查看排障截图: image196.png]
+-host=192.168.10.113：指定目标服务器的 IP地址为 192.168.10.113。
+--port=9060：指定连接到目标服务器的端口号为 9060。
+--model=app：操作的对象类型是应用程序。
+--username=thanos：用于认证的用户名为 thanos。
+--password=Yeyehuo163.com：用于认证的密码。
+--acceptAgreement=true：确认接受协议或条款。
+--action=list：指定动作为列出当前已经部署的应用程序。
+targetType=cluster：指定目标的类型是集群。
+targetName=clustertest01：指定目标集群的名称为 clustertest01。
+输出信息解析：
+应用信息：
+""name"":""examples""：应用名称是 examples。
+""autoDeploy"":""false""：自动部署选项被禁用。
+""appFrom"":""fromServer""：应用来自服务器。
+""filename"":""\/opt\/examples""：应用文件的路径。
+""springBootCompatible"":""true""：应用与Spring Boot兼容。
+""contextRoot"":""\/""：应用部署在根路径（即 /）。
+部署与启动：
+""host"":""localhost""：运行应用的主机为 localhost。
+""startupPriority"":""99""：启动优先级为99。
+缓存配置：
+""cacheMaxSize"":""1024000""：缓存的最大大小为 1,024,000。
+""cacheObjectMaxSize"":""1024""：单个缓存对象的最大大小为 1,024。
+""cacheTtl"":""60""：缓存存活时间为 60 秒。
+CORS设置：
+""enableCORSAccess"":""false""：CORS访问未启用。
+""corsAllowedMethods"":""GET,POST,HEAD,OPTIONS""：允许的HTTP方法。
+状态信息：
+""type"":""war""：应用的类型是 WAR 文件。
+""state"":""STARTED""：应用当前的状态为已启动。
+输出元数据：
+""success"":""true""：操作成功。
+""msg"":""应用列表成功""：操作成功的信息提示。
+""attachments""：分页相关信息，这表示当前返回的应用列表的大小与分页情况
+集群启动应用
+./commandstool.sh  --host=192.168.10.113 --port=9060 --model=app --action=start --password=Yeyehuo163.com --acceptAgreement=true --username=thanos targetName=clustertest01 name=examples targetType=cluster
+[查看排障截图: image197.png]
+--host=192.168.10.113:
+指定目标服务器的 IP 地址，工具将连接到此主机。
+IP 地址 192.168.10.113 是本地网络中的服务器。
+--port=9060:
+指定目标服务器的端口号，工具将在此端口上与服务器通信。
+--model=app:
+模块名称，表示此次操作针对的模块为 app。
+app 可能是某种服务、应用或组件的逻辑名称。
+--action=start:
+操作名称，此处表示执行“启动”操作。
+start 可能是启动应用或服务的指令。
+--password=Yeyehuo163.com:
+用户的密码，通常用于身份验证。
+注意：在实际场景中，建议避免直接在命令行中明文写密码，以免泄露。可以改用配置文件或环境变量。
+--acceptAgreement=true:
+表示接受某种协议或条款，一般用于软件许可协议的确认。
+--username=thanos:
+用户名，表示执行此次操作的用户是 thanos。
+targetName=clustertest01:
+目标名称，此处为集群的名称 clustertest01。
+可能表示操作的对象是一个特定的集群实例。
+name=examples:
+应用或服务的名称，此处为 examples。
+具体可能是部署的某个应用程序名称或服务实例的标识。
+targetType=cluster:
+目标类型，此处指定目标为 cluster（集群）。
+表示这次操作针对的是集群类型的目标，而非单独的节点。
+输出内容分析：
+Application Model Details
+name: examples
+应用程序的名称。
+autoDeploy: ""false""
+是否允许自动部署。
+appFrom: ""fromServer""
+应用程序的来源，也许是从服务器获取的。
+filename: ""/opt/examples""
+部署的应用程序文件路径。
+springBootCompatible: ""true""
+该应用是否兼容Spring Boot。
+contextRoot: ""/""
+应用的上下文根，通常在Web服务器中用于定义应用的访问路径。
+host: ""localhost""
+主机，这里指应用服务运行的主机。
+startupPriority: ""99""
+启动优先级。
+其余字段大多数是应用程序的特性配置，涉及类加载、缓存、编码、CORS 配置、线程池等与应用服务部署相关的细节。
+Configuration Options
+虽然其中许多选项是布尔值（true或false）和数值配置，但这些都用于控制应用程序的各个方面，如是否启用Web Socket，HTTP cookie的相关配置，是否启用CORS访问等。
+archiveIndexStrategy, cacheMaxSize, sessionTimeout,等参数决定了如何处理应用内部的资源管理和计算。
+Operational Result
+success: ""true""
+表明操作执行成功。
+msg: ""应用启动成功""
+具体的操作结果信息，这里表示应用程序成功启动。
+Unused Fields
+attachments, redirectURL, dataTime 在此JSON响应中是空或未被使用变量，可能在其他上下文中有用。
+集群停止应用
+./commandstool.sh  --host=192.168.10.113 --port=9060 --model=app --action=stop --password=Yeyehuo163.com --acceptAgreement=true --username=thanos targetName=clustertest01 name=examples targetType=cluster
+[查看排障截图: image198.png]
+--host=192.168.10.113:
+目标服务器的 IP 地址。
+用于指示在哪里连接进行操作。
+--port=9060:
+目标服务器的端口号。
+--model=app:
+指明所涉及的模块是 app，可能是对此模块的管理操作。
+--action=stop:
+这次执行“停止”操作，表示要停止运行的应用或服务。
+--password=Yeyehuo163.com:
+用于身份验证的密码。
+实际应用中推荐使用更安全的方式管理密码。
+--acceptAgreement=true:
+是否接受协议，一般是许可协议确认。
+--username=thanos:
+用于操作的用户名。
+targetName=clustertest01:
+目标对象的名称，这里是一个叫 clustertest01 的集群。
+name=examples:
+要进行操作的应用或服务的名称。
+targetType=cluster:
+指定目标类型为 cluster（集群）。
+集群卸载应用（谨慎操作，卸载后应用就没有了,建议备份后操作）
+./commandstool.sh  --host=192.168.10.113 --port=9060 --model=app --action=delete --password=Yeyehuo163.com --acceptAgreement=true --username=thanos targetName=clustertest01 name=examples targetType=cluster
+[查看排障截图: image199.png]
+--host=192.168.10.113:
+目标主机的 IP 地址，表示操作的目标服务器。
+--port=9060:
+目标服务器的端口号。
+--model=app:
+指定操作的模型是 app，即对应用进行管理操作。
+--action=delete:
+操作类型是 delete，表示删除应用或服务。
+--password=Yeyehuo163.com:
+用于身份验证的密码。需要确保密码管理的安全性。
+--acceptAgreement=true:
+表示已经接受了操作协议，通常这是一个许可协议。
+--username=thanos:
+用于执行操作的用户名。
+targetName=clustertest01:
+目标对象名称，这里是 clustertest01，可能是一个集群的名称。
+name=examples:
+要删除的应用或服务名称，examples 是该应用的名称。
+targetType=cluster:
+指定目标类型为 cluster，即该操作是对集群进行管理"
+TongWeb8如何使用TLQ进行点对点发送接收？,"部署TongJMS_ra.rar
+[查看排障截图: image200.png]
+部署JCA连接池
+[查看排障截图: image201.png]
+部署JCA托管对象：
+[查看排障截图: image202.png]
+四、重启TongWeb8
+五、部署应用
+JmsDemoTLQRA.war
+六、访问
+http://10.10.81.161:8088/JmsDemoTLQRA/MessageSend
+[查看排障截图: image203.png]
+http://10.10.81.161:8088/JmsDemoTLQRA/MessageReceive
+[查看排障截图: image204.png]"
+能否介绍一下TongWeb的部署场景及迁移方案？,"中间件部署场景
+1.1单机部署场景
+1.1.1架构图
+[查看排障截图: image205.png]
+1.1.2架构特点
+缺点：存在单点故障，中间件或数据库服务器如果宕机就会🎧现应用系统的中断导致用户访问的不连续性。当用户访问量较大和🎧现繁多的业务时，由单台机器提供服务，有可能会🎧现负载过大，造成系统的运行缓慢、业务缓慢，如 CPU，内存、磁盘 IO 等，导致整个应用系统运行中断。
+1.1.3应用场景
+适合应用于应用系统并发量不大，可靠性要求不高的系统。
+1.2TongWeb+THS  高可用集群场景
+1.2.1架构图
+[查看排障截图: image206.png]
+1.2.2架构特点
+优点：通过 THS+HA 实现了负载反向代理入口的浮动 IP 的高可用（屏蔽了负载入口的单节点故障），THS 通过反向代理将请求转发到 Backend 的后端服务（Application Server） TongWeb（企业版或者内嵌版都可）上，如果，Backend 的TongWeb-1 进程或者TongWe- 1 进程所在的服务器宕掉，后续新的请求会被转发到另一个可用的 TongWeb-2 上，继续处理，这个假设场景中，如果，还选择集成了 TDG 做了SESSION 的高可用场景的话，TongWeb- 2 会从 TDG 中取🎧 TongWeb-1 冗余存储的SESSION 对象，来继续对 TongWeb-1 的存量用户继续提供服务，用户无感知，整体部署架构对应用系统的可靠性做了最大的保障。
+1.2.3应用场景
+适用于并发量比较大，需要中间件提供最大化高可用方案的场景，每个环节都不存在单节点故障，不会影响应用系统稳定对外运行。如，集成方还考虑双层负载，负载软件前还需要加硬负载，只要让硬负载配置 THS 对应浮动 IP 的代理规则即可。
+1.3Heimdall 搭建上述集群过程
+上述集群中的软件资源，可以分配到不同的物理服务器或者虚拟机上，也可根据物理服务器或者虚拟机的多少来做灵活的分割组合。如下，以本地两台虚机为例介绍下搭建和注册过程。
+1.3.1TongWeb、THS 安装
+TongWeb 安装：
+将 TongWeb 绿色版安装包 TongWeb7.0.4.8_M1_Enterprise_Linux.tar.gz 上传到 33 和 34 服务器/opt 目录下，执行解压缩命令，
+tar -xzvf TongWeb7.0.4.8_M1_Enterprise_Linux.tar.gz，修改如下配置文件完成 Agent 注册信息的配置
+1 、分别修改 33 、34 上的/opt/TongWeb7.0.4.8_M1_Enterprise_Linux/Agent/bin 中的
+external.vmoptions，将启动参数适当调大
+-Xms512M
+-Xmx2048M
+2、分别修改 33、34 上的/opt/TongWeb7.0.4.8_M1_Enterprise_Linux/Agent/config 中的 agent.xml，主要修改 agentIp、masterIp 对应的 ip 值，agentIp 为节点 IP，masterIp 为做 master 管理的heimdall 的 IP。
+33 节点
+<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?>
+<configFile>
+<agentIp>192.168.137.33</agentIp>
+<agentPort>7070</agentPort>
+<fileReceiverPort>19090</fileReceiverPort>
+<masterIp>192.168.137.33</masterIp>
+<masterPort>9060</masterPort>
+<masterContextRoot>/heimdall</masterContextRoot>
+</configFile> 34 节点
+<?xml version=""1.0"" encoding=""UTF-8"" standalone=""yes""?>
+<configFile>
+<agentIp>192.168.137.34</agentIp>
+<agentPort>7070</agentPort>
+<fileReceiverPort>19090</fileReceiverPort>
+<masterIp>192.168.137.33</masterIp>
+<masterPort>9060</masterPort>
+<masterContextRoot>/heimdall</masterContextRoot>
+</configFile>
+3、（可选）修改 33master 节点/opt/TongWeb7.0.4.8_M1_Enterprise_Linux/bin下的external.vmoptions 文件，
+添加-Dnever.expire=on	(关闭首次登陆改密码和 90 天修改密码功能)
+适当根据环境调整jvm 堆内存启动参数（一般推荐 4096m,不建议设置很大值）
+-Xms2048m
+-Xmx2048m
+THS 安装：
+将 THS 绿色版安装包 TongHttpServer_6.0.0.1_x86_64.tar.gz（需要根据 CPU 的 arch 来进行选择安装包）上传到 33 和 34 服务器/opt/TongWeb7.0.4.8_M1_Enterprise_Linux 目录下，执
+行解压缩命令，
+tar -xzvf TongHttpServer_6.0.0.1_x86_64.tar.gz
+上传授权文件：
+将license.dat(一定要是这个文件名称)上传到/opt/TongWeb7.0.4.8_M1_Enterprise_Linux 下
+1.3.2TongWeb、Agent 启动
+1、进入 33 主节点的/opt/TongWeb7.0.4.8_M1_Enterprise_Linux/bin 下执行如下命令，启动
+TongWeb 做为集群heimdall 的管理进程
+./startservernohup.sh
+2、进入 33 和 34 的/opt/TongWeb7.0.4.8_M1_Enterprise_Linux/Agent/bin 下执行如下命令，启动各节点的Agent，Agent 会通过上述修改过的agent.xml 配置文件注册到 33 的 9060 对应的heimdall
+./startbg.sh
+完成上述动作之后，就可以通过访问如下地址，对 33、34 的集群资源进行管理
+http://192.168.137.33:9060/heimdall/
+用户名：rig
+密 码：rig123.com
+[查看排障截图: image207.png]
+1.3.3heimdall 配置集群
+1、访问 http://192.168.137.33:9060/heimdall/，按照如下顺序可以创建集群资源，每个步骤对涉及到的集群资源进行勾选，即可在最后点击完成的时候，按照配置进行集群资源的生成和扩展
+[查看排障截图: image208.png]
+[查看排障截图: image209.png]
+[查看排障截图: image210.png]
+[查看排障截图: image211.png]
+[查看排障截图: image212.png]
+[查看排障截图: image213.png]
+[查看排障截图: image214.png]
+按照上面截图过程操作完之后，即可完成集群资源的创建，点击上图集群管理列表中的实例管理，然后分别对集群资源进行启动（后续所有的集群资源管理都通过这里作为入口）启动 tongweb-x，即最 backend 去部署应用干活儿的 tongweb 进程
+[查看排障截图: image215.png]
+[查看排障截图: image216.png]
+启动 tdg，内存服务器，做 session 高可用，存取冗余session 对象的内存服务器
+[查看排障截图: image217.png]
+[查看排障截图: image218.png]
+配置并启动负载均衡器
+Heimdall 可以对THS6 进行启停操作，HA 及其他配置的修改需要借助THS6 自己的 console来进行， 分别进入 33 、 34 的 /opt/TongWeb7.0.4.8_M1_Enterprise_Linux/THS/bin 执行./startConsole.sh 启动 THS6 自己的控制台
+http://192.168.137.33:8000
+用户名：admin
+密 码：ths#123.com
+分别修改 33、34 的HA 配置：
+[查看排障截图: image219.png]
+[查看排障截图: image220.png]
+修改负载规则的主配置文件，检查如下标记位置，监听端口，以及 ip
+[查看排障截图: image221.png]
+[查看排障截图: image222.png]
+[查看排障截图: image223.png]
+上述配置完成后，可以回到 heimdall 如下界面进行启动负载均衡器，以及启动 HA(也可以通过THS6 自己的控制台完成主程序的启动和HA 进程的启动)
+[查看排障截图: image224.png]
+[查看排障截图: image225.png]
+[查看排障截图: image226.png]
+[查看排障截图: image227.png]
+执行如下命令检查 33、34 的浮动ip 是否正常
+[root@kubemaster logs]# ip a|grep 137.35
+inet 192.168.137.35/32 scope global ens33
+1.3.4heimdall 创建数据源
+经过上述操作之后，heimdall 就完成了两个工作节点的集群资源创建和启动，后续可以通过 heimdall 来创建数据源（如果应用需要用到中间件的数据源情况，可以通过 heimdall 来进行创建，来代替去访问每个 tongweb-x 的 console 去创建），操作步骤如下（以 mysql 为例） 1、上传mysql-connector-java-5.1.42.jar 驱动包到 33 节点，/opt 目录下
+2、按照如下截图进行操作
+[查看排障截图: image228.png]
+[查看排障截图: image229.png]
+[查看排障截图: image230.png]
+[查看排障截图: image231.png]
+[查看排障截图: image232.png]
+经过上述操作，即完成了数据源的创建
+可以通过点击如下位置，对部署在集群中的 jdbc 进行连通性验证，也可点击目标调整，来对部署目标进行调整。
+[查看排障截图: image233.png]
+1.3.5heimdall 部署应用
+按照如下截图操作，可以完成应用部署到 33 和 34 上
+[查看排障截图: image234.png]
+[查看排障截图: image235.png]
+[查看排障截图: image236.png]
+[查看排障截图: image237.png]
+[查看排障截图: image238.png]
+2、部署成功之后，可以通过如下方式进行访问测试
+[查看排障截图: image239.png]
+[查看排障截图: image240.png]
+[查看排障截图: image241.png]
+[查看排障截图: image242.png]
+[查看排障截图: image243.png]
+还可以访问下浮动ip，看是否可以访问到
+[查看排障截图: image244.png]
+至此，集群搭建和验证完成（其他高可用场景的验证，暂不赘述）。
+应用迁移
+2.1企业版应用迁移
+从 tomcat 下迁移过来的应用，大部分可以平滑部署到 TongWeb 上即可运行，如果碰到报错，可以第一时间联系 TongWeb 支持人员，或者参考如下总结内容，进行初步的排查定位。
+2.1.1迁移前信息收集
+应用迁移之前，需要先对应用之前部署的中间件以及应用系统研发，做如下信息的收集和确认
+•中间件侧相关信息
+1、确定迁移源服务器的版本，比如: apache-tomcat-8.5.40、weblogic14c
+2、编码设置确认（tomcat 的主配置文件server.xml 和 context.xml 配置信息）如:tomcat 默认的URIEncoding 是 ISO-8859-1，是否设为其它编码
+3、启动参数
+tomcat 的启动脚本（setclasspath.sh，或者 catalina.sh）是否添加特性的启动参数，其他应用服务器（weblogic 或者was）的管理控制台做了哪些配置，如:配数据源、设置应用访问端口、访问前缀等。
+•应用侧相关信息
+•应用开发框架使用：
+1.关于应用层面所使用的 Java 框架，应用系统的开发人员熟悉，建议直接咨询。
+2.或者技术人员可以查看应用包的 lib 目录，使用了哪些依赖包来确定使用了那些框架。
+3.确认JavaEE 规范。
+•JNI 动态库及特殊API
+1.建议开发人员直接分析相关应用系统得🎧结论。
+2.在不能确定的情况下，可以直接部署 TongWeb，通过日志分析是否使用了特殊 API。
+3.如果使用了如Tomcat、WebLogic 中的 API，需要更换成TongWeb 中的API。
+•数据源管理：
+1.应用程序集成了开源数据源，则无需使用 TongWeb 的数据源。
+2.迁移前应用中使用了中间件的数据源，如：Tomcat 数据源；则需要更换 TongWeb 数据源。
+3.若服务节点较多，也可以考虑将数据源部署在 TongWeb 中统一管理。
+数据源判断
+判断要点：查看应用配置文件
+大多数采用Spring 等框架开发的应用，在其 spring 或hibernate 配置文件中有相关配置如下，若配置了JNDI 则表示使用了中间件的数据源。
+<!—应用服务器数据源，需在 中间件上配置数据源。 -->
+<bean id=""dataSource"" class=""org.springframework.jndi.JndiObjectFactoryBean"">
+<property name=""jndiName""> <value>dbtest</value> </property>
+</bean>
+部署方式判断
+判断要点：查看最终部署的应用包扩展名。
+根据更新频繁程度判断；TongWeb 提供了war 包部署和目录部署，如果更新频度较高，建议采用目录部署，更新时更新应用目录里的文件，重启服务即可，无需重复部署；反之任意方式即可。
+采用Spring 或Springboot 等框架开发的应用，通过maven 打包后得到应用部署包，如果为jar 包，建议采用嵌入版部署；如果为 war 包，则建议采用企业版部署。
+2.1.2兼容性参数
+针对一般 war 应用（不包含 EJB 的 jar），此类应用，TongWeb 提供了一个最大兼容性参数，-DWebModuleOnly=true，来只启动 WEB 容器，最大程度兼容 tomcat 的web 应用，此参数配置后，可以解决大部分迁移过程碰到的 CDI 加载，类冲突等问题。
+[查看排障截图: image245.png]
+2.1.3正式投产建议
+对于经过测试环境迁移测试的应用，并且做过目标压力测试之后的应用，在正式投产时，建议备份旧系统环境，用于应急切换
+TongWeb 基本配置及优化
+•生产系统应用 log4j 日志级别不要开DEBUG 测试，改成INFO 或WARN。
+•参考移植前使用的 Tomcat 里的配置来设置中间件的参数。
+•应用所使用的数据库驱动包放在中间件的 lib 下重启中间件，再进行数据源配置。
+•监视配置中的""开启监视"" 在性能测试时不用可将其关闭，减少对资源的占用。
+•系统日志配置 ""命令行输🎧"" 关闭， 生产系统 nohup 方式启动会使 nohup.out 日志文件变大
+•若用中间件数据源，测试 SQL 语句。可配置连接验证，避免得到无效连接。新版本中“测试SQL 语句” 只写表名即可。
+•使用中间件数据源查看 SQL 执行时间，可帮助用户优化应用，但性能测试及生产环境不建议开启。
+2.2内嵌版应用迁移
+针对应用开发框架的变化趋势，springboot 和 springcloud 的广泛被应用厂商使用，内
+嵌方式和应用集成到一起的部署形态越来越被广泛使用，针对此，TongWeb 也推🎧了针对内嵌形式集成的版本。针对使用到的 JAVAEE 模块不同，迁移过程和具体步骤可以参考如下内容进行迁移。
+2.2.1JavaEE 标准容器
+TongWeb 嵌入式版 Web 容器需要结合 Spring Boot 框架应用，TongWeb 应用服务器运行所需的jar 资源包，您可以根据不同的场景进行引入。
+1.导入 Maven 仓库
+您可以将嵌入式版 Tongweb 产品资源Jar 包安装入本地Maven 仓库。通过维护pom.xml 文件，管理Tongweb 嵌入式版产品资源Jar 包依赖
+使用阶段
+当应用产品尚处于开发阶段，或开发工程师仍未离场。
+前置条件
+将嵌入式版TongWeb 产品资源jar 包安装入本地maven 仓库前，您需要提前准备maven
+构建管理工具。
+操作步骤：
+下载并安装maven 管理工具。
+配置maven 环境变量。
+Windows 环境
+在“环境变量”的Path 里添加maven 的安装路径。
+Linux 环境
+执行如下命令，打开“/etc/profile”文件。
+sudo vi /etc/profile
+b)按“i”进入编辑模式，在文件中，添加如下环境变量信息。
+export MAVEN_HOME={maven 安装地址}
+export PATH=${PATH}:${MAVEN_HOME}
+c)配置完成后，按“Esc”退🎧编辑，输入“:wq!”，保存并退🎧。
+执行如下命令，查看maven 是否安装成功。
+mvn -v
+若回显信息如下所示，则说明maven 管理工具安装成功。
+Apache Maven 3.6.0 (97c98ec64a1fdfee7767ce5ffb20918da4f719f3; 2018-10- 25T02:41:47+08:00)
+Maven home: D:\software\apache-maven-3.6.0\bin\..
+Java version: 1.8.0_191, vendor: Oracle Corporation, runtime: D:\Java\jdk1.8.0_191\jre Default locale: zh_CN, platform encoding: GBK
+OS name: ""windows 10"", version: ""10.0"", arch: ""amd64"", family: ""windows""
+安装资源依赖
+支持安装“本地仓库”与“企业私仓”两种方式。
+本地私仓
+使用脚本将TongWeb 嵌入式版所有资源jar 包安装入本地仓库中。
+操作步骤
+1.解压嵌入式版TongWeb 产品资源包。
+2.进入解压后的根目录。
+为了便于描述，本章节后文中将以“ ${TongWeb_HOME} ” 指代嵌入式版
+tongweb 的安装目录。
+3.运行安装脚本，将lib 下的jar 包安装入本地Maven 仓库。
+Windows 环境
+./installMavenJar.bat
+Linux 环境
+installMavenJar.sh
+验证安装
+访问 maven 的本地仓库地址“.../repository/com/tongweb/”，可以在对应仓库地
+址中找到上述的jar 包，此时即表示jar 包部署到本地仓库成功。
+注意：
+本地私仓地址由maven  目录“/conf/serttings.xml”中“<localRepository>”配置项指定。
+企业私仓
+使用 deployMavenJar 脚本将嵌入式版 TongWeb 所有资源 jar 包上传至企业私仓中。
+语法说明
+deployMavenJar.sh [url] [sid]
+url：需要上传的企业私仓地址。注：必须输入企业私仓完整路径信息。
+sid：在 maven setting.xml 中配置的server 部分 id 信息。注：必须在 setting.xml
+中配置企业私仓秘钥信息。
+操作步骤
+1.解压嵌入式版TongWeb 产品资源包。
+2.进入解压后的根目录。
+3.运行上传脚本，将lib 下的jar 包安装入本地Maven 仓库中。
+Windows 环境
+deployMavenJar.bat
+http://127.0.0.1:8081/nexus/content/repositories/central/ central
+Linux 环境
+deployMavenJar.sh
+http://127.0.0.1:8081/nexus/content/repositories/central/ central
+验证方法
+访问maven 的企业私仓地址，可以在对应仓库地址中找到上述的 jar 包，此时即表
+示jar 包部署到本地仓库成功。
+注意：
+本地私仓地址由 maven 目录“/conf/serttings.xml”中“<localRepository>”配置项指
+定。
+引入资源依赖
+Tongweb-Spring-Boot-Starter
+直接在 pom.xml 中添加 tongweb-spring-boot-starter 和嵌入式版TongWeb 的依赖，同时排除掉springboot 自带的 tomcat 的依赖。
+springboot1.x
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-web</artifactId>
+<exclusions>
+<exclusion>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-tomcat</artifactId>
+</exclusion>
+</exclusions>
+</dependency>
+<dependency>
+<groupId>com.tongweb.springboot</groupId>
+<artifactId>tongweb-spring-boot-starter-1.x</artifactId> <version>7.0.E.{n}</version>
+</dependency>
+<dependency>
+<groupId>com.tongweb</groupId>
+<artifactId>tongweb-embed</artifactId>
+<version>7.0.E.{n}</version>
+</dependency>
+⚫ springboot2.x
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-web</artifactId> <exclusions>
+<exclusion>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-tomcat</artifactId>
+</exclusion>
+</exclusions>
+</dependency>
+<dependency>
+<groupId>com.tongweb.springboot</groupId>
+<artifactId>tongweb-spring-boot-starter-2.x</artifactId> <version>7.0.E.{n}</version>
+</dependency>
+<dependency>
+<groupId>com.tongweb</groupId>
+<artifactId>tongweb-embed</artifactId>
+<version>7.0.E.{n}</version>
+</dependency>
+若项目中还需要用到 jsp 规范，则需要在 pom.xml 文件中引入 tongweb-jsp 的依赖。
+<dependency>
+<groupId>com.tongweb</groupId>
+<artifactId>tongweb-jsp</artifactId> <version>7.0.E.{n}</version>
+</dependency>
+Tongweb-Spring-Boot-WebSocket
+在 pom.xml 中在引入 Tongweb-Spring-Boot-Starter 的相关依赖的基础上，再引入
+tongweb-spring-boot-websocket 的依赖。
+⚫ springboot1.x
+<dependency>
+<groupId>org.springframework.boot</groupId> <artifactId>spring-boot-starter-websocket</artifactId>
+</dependency>
+<dependency>
+<groupId>com.tongweb.springboot</groupId>
+<artifactId>tongweb-spring-boot-websocket-1.x</artifactId>
+<version>7.0.E.{n}</version>
+</dependency>
+<dependency>
+<groupId>com.tongweb</groupId>
+<artifactId>tongweb-embed</artifactId>
+<version>7.0.E.{n}</version>
+</dependency>
+<dependency>
+<groupId>com.tongweb.springboot</groupId>
+<artifactId>tongweb-spring-boot-starter-1.x</artifactId> <version>7.0.E.{n}</version>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-web</artifactId>
+<exclusions>
+<exclusion>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-tomcat</artifactId>
+</exclusion>
+</exclusions>
+</dependency>
+⚫ **springboot2.x**
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-websocket</artifactId>
+</dependency>
+<dependency>
+<groupId>com.tongweb.springboot</groupId>
+<artifactId>tongweb-spring-boot-websocket-2.x</artifactId> <version>7.0.E.{n}</version>
+</dependency>
+<dependency>
+<groupId>com.tongweb</groupId>
+<artifactId>tongweb-embed</artifactId> <version>7.0.E.{n}</version>
+</dependency>
+<dependency>
+<groupId>com.tongweb.springboot</groupId> <artifactId>tongweb-spring-boot-starter-2.x</artifactId>
+<version>7.0.E.{n}</version>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-web</artifactId>
+<exclusions>
+<exclusion>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-tomcat</artifactId>
+</exclusion>
+</exclusions>
+</dependency>
+如果项目中还需要用到 jsp 规范，则需要在 pom.xml 文件中引入 tongweb-jsp 的依赖。
+<dependency>
+<groupId>com.tongweb</groupId>
+<artifactId>tongweb-jsp</artifactId> <version>7.0.E.{n}</version>
+</dependency>
+Tongweb-Spring-Boot-Data-Jdbc-Starter
+1. 首先确保您的项目中已经引入了嵌入式运行所必须的依赖。
+2. 在确保所必须的依赖已经引入的前提下，再加入 jdbc 配置需要的依赖，如下所示。
+⚫ springboot1.x
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+<dependency>
+<groupId>com.tongweb.springboot</groupId>
+<artifactId>tongweb-spring-boot-data-jdbc-starter-1.x</artifactId>
+<version>7.0.E.{n}</version>
+</dependency>
+<dependency>
+<groupId>mysql</groupId>
+<artifactId>mysql-connector-java</artifactId> <version>5.1.40</version>
+</dependency>
+⚫ springboot2.x
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-data-jpa</artifactId>
+</dependency>
+<dependency>
+<groupId>com.tongweb.springboot</groupId>
+<artifactId>tongweb-spring-boot-data-jdbc-starter-2.x</artifactId> <version>7.0.E.{n}</version>
+</dependency>
+<dependency>
+<groupId>mysql</groupId>
+<artifactId>mysql-connector-java</artifactId> <version>5.1.40</version>
+</dependency>
+3. 在项目中的 application.properties 文件中，增加以下必选配置项。
+#指定数据源为 tongweb 自带的数据源server.tongweb.datasource.type=com.tongweb.hulk.HulkDataSource #数据库连接 url server.tongweb.datasource.url=jdbc:mysql://localhost:3306/my_test #数据库连接用户名server.tongweb.datasource.username=your_username
+#数据库连接密码server.tongweb.datasource.password=your_password #数据库驱动类
+server.tongweb.datasource.driver-class-name=com.mysql.jdbc.Driver
+注意：
+server.tongweb.datasource.type=com.tongweb.hulk.HulkDataSource，指定数据源为 hulk 数据源。
+若缺少此配置，tongweb 嵌入式服务器会根据 springboot 当前版本默认的数据源进行装配。
+2. 嵌入已编译 jar 包
+若用户的应用已经编译为可运行资源 jar 包，且采用的是 Spring Boot 内置的 Tomcat 服务器，您需要把 Tomcat 嵌入式的 jar 包删除，然后根据不同的 Spring Boot 版本把 TongWeb嵌入式所需的 jar 包添加进去。
+使用阶段
+应用开发完成后，已编译为可运行资源 jar 包。
+剔除弃用依赖
+1. 用 rar 或 7zip 等压缩工具打开已编译完成的 jar 包。
+2. 进入“BOOT-INF/lib”目录。
+3. 删除如下 jar 包。
+tomcat-embed-core-x.x.x.jar tomcat-embed-el-x.x.x.jar tomcat-embed-websocket-x.x.x.jar
+引入资源依赖
+1. 用 rar 或 7zip 等压缩工具打开已编译完成的 jar 包。
+2. 进入“BOOT-INF/lib”目录。
+3. 添加如下 jar 包。
+tongweb-embed-7.0.E.{n}.jar tongweb-embed-javax-7.0.E.{n}.jar tongweb-embed-servlet-7.0.E.{n}.jar tongweb-javax-annotation-1.2.jar tongweb-javax-el-3.0.0.jar tongweb-javax-security-auth-message-api-1.1.0.jar tongweb-javax-servlet-4.0.0.jar tongweb-jaxws-api-2.3.1.jar
+#springboot1.x 版本使用tongweb-spring-boot-starter-1.x-7.0.E.{n}.jar #springboot2.x 版本使用tongweb-spring-boot-starter-2.x-7.0.E.{n}.jar
+4. （可选）若需要用到 jsp 或 el 规范，则需要放入如下 jar 包。
+tongweb-jsp-7.0.E.{n}.jar tongweb-javax-jsp-2.1.jar
+5. （可选）若项目中需要用到国密规范，则需要放入如下 jar 包。
+tongweb-gmjsse-7.0.0.jar tongweb-gmssl-1.0.0.jar
+6. （可选）若原项目中用到了 websocket 规范，在删除了包 tomcat-embed-
+websocket-x.x.x.jar 之后，还需要放入如下 jar 包。
+tongweb-javax-websocket-1.1.jar tongweb-embed-websocket-7.0.E.{n}.jar #springboot1.x 版本使用tongweb-spring-boot-websocket-1.x-7.0.E.{n}.jar #springboot2.x 版本使用tongweb-spring-boot-websocket-2.x-7.0.E.{n}.jar
+3. 嵌入已编译 war 包
+若用户的应用已经编译可部署的 war 包，且采用的是 Spring Boot 内置的 Tomcat 服务器，需要把 Tomcat 嵌入式的 jar 包删除，根据不同的 Spring Boot 版本把 TongWeb 嵌入式所需的 jar 包添加进去。
+使用阶段
+应用开发完成后，已编译为可运行资源 war 包。
+剔除弃用依赖
+1. 用 rar 或 7zip 等压缩工具打开工程 war 包。
+2. 进入路径“WEB-INF/lib”目录。
+3. 删除如下 jar 包。
+spring-boot-starter-tomcat-x.x.x.RELEASE.jar tomcat-embed-core-x.x.x.jar tomcat-embed-el-x.x.x.jar tomcat-embed-websocket-x.x.x.jar
+引入资源依赖
+1. 用 rar 或 7zip 等压缩工具打开工程 war 包。
+2. 进入路径“WEB-INF/lib”目录。
+3. 添加如下 jar 包。
+tongweb-embed-7.0.E.{n}.jar tongweb-embed-javax-7.0.E.{n}.jar tongweb-embed-servlet-7.0.E.{n}.jar tongweb-javax-annotation-1.2.jar tongweb-javax-el-3.0.0.jar tongweb-javax-security-auth-message-api-1.1.0.jar tongweb-javax-servlet-4.0.0.jar tongweb-jaxws-api-2.3.1.jar
+#springboot1.x 版本使用tongweb-spring-boot-starter-1.x-7.0.E.{n}.jar #springboot2.x 版本使用tongweb-spring-boot-starter-2.x-7.0.E.{n}.jar
+4. （可选）若需要用到 jsp 或 el 规范，则需要放入 jar 包。
+tongweb-jsp-7.0.E.{n}.jar tongweb-javax-jsp-2.1.jar
+5. （可选）若项目中需要用到国密规范，则需要放入如下 jar 包。
+tongweb-gmjsse-7.0.0.jar tongweb-gmssl-1.0.0.jar
+6. （可选）原项目中用到了 websocket 规范，在删除了包 tomcat-embed-
+websocket-x.x.x.jar 之后，需要放入如下 jar 包。
+tongweb-javax-websocket-1.1.jar tongweb-embed-websocket-7.0.E.{n}.jar #springboot1.x 版本使用tongweb-spring-boot-websocket-1.x-7.0.E.{n}.jar #springboot2.x 版本使用tongweb-spring-boot-websocket-2.x-7.0.E.{n}.jar
+4. 作为外部 Jar 包
+直接在项目工程中使用嵌入式 TongWeb 产品 lib 下的 jar 包，用户无需在 pom.xml 文件中添加对应的依赖。
+使用阶段
+当应用产品处于开发阶段，或开发工程师仍未离场推荐使用。
+安装资源依赖
+1. 在项目的 src/main 目录下创建 lib 目录，并放入以下产品介质。
+tongweb-embed-7.0.E.{n}.jar tongweb-embed-javax-7.0.E.{n}.jar tongweb-embed-servlet-7.0.E.{n}.jar tongweb-javax-annotation-1.2.jar tongweb-javax-el-3.0.0.jar tongweb-javax-security-auth-message-api-1.1.0.jar tongweb-javax-servlet-4.0.0.jar tongweb-jaxws-api-2.3.1.jar
+#springboot1.x 版本使用tongweb-spring-boot-starter-1.x-7.0.E.{n}.jar #springboot2.x 版本使用tongweb-spring-boot-starter-2.x-7.0.E.{n}.jar
+2. （可选）若需要用到 jsp 或 el 规范，则还需要放入如下 jar 包。
+tongweb-jsp-7.0.E.{n}.jar tongweb-javax-jsp-2.1.jar
+3. （可选）若项目中需要用到国密规范，则需要放入如下 jar 包。
+tongweb-gmjsse-7.0.0.jar tongweb-gmssl-1.0.0.jar
+4. （可选）若需要用到 websocket 规范，则还需要放入如下 jar 包。
+tongweb-javax-websocket-1.1.jar tongweb-embed-websocket-7.0.E.{n}.jar #springboot1.x 版本使用tongweb-spring-boot-websocket-1.x-7.0.E.{n}.jar #springboot2.x 版本使用tongweb-spring-boot-websocket-2.x-7.0.E.{n}.jar
+引入资源依赖
+需要在项目的 pom.xml 文件中的 标签中指定 jar 包资源所在的路径。
+<resources>
+<resource>
+<!--  指定 resources 插件处理哪个目录下的资源文件 -->
+<directory>src/main/lib</directory>
+<targetPath>BOOT-INF/lib/</targetPath>
+<includes>
+<include>\*\*/\*.jar</include>
+</includes>
+</resource>
+</resources>
+2.2.2 响应式编程
+5. 安装资源依赖
+使用脚本将嵌入式版 TongWeb 的“tongweb-spring-boot-reactor-7.0.E.{n}.zip”中资源
+jar 包安装入本地仓库中。
+操作步骤
+1. 解压嵌入式版 TongWeb 产品资源包。
+2. 进入解压后的根目录。
+3. 执行如下命令，运行安装脚本，将 lib 下的 jar 包安装入本地 Maven 仓库中。
+⚫ Windows 环境
+./installMavenJar.bat
+⚫ Linux 环境
+./installMavenJar.sh
+6. 引入依赖资源
+Spring boot 中默认使用 netty 作为支持响应式编程的容器，首先修改dependencyManagement，后排除掉 netty，再引入 tongweb 即可将容器切换为tongweb。
+◼ spring boot 使用响应式 tongweb 的配置示例，如下所示。
+<dependencyManagement>
+<dependencies>
+<!--  确保在 spring-boot-dependencies 前面 --> <dependency>
+<groupId>io.netty</groupId>
+<artifactId>netty-bom</artifactId> <version>4.1.81.Final</version>
+<type>pom</type>
+<scope>import</scope>
+</dependency>
+<dependency>
+<groupId>io.projectreactor</groupId>
+<artifactId>reactor-core</artifactId>
+<version>3.4.23</version>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-dependencies</artifactId> <version>2.4.0</version>
+<type>pom</type>
+<scope>import</scope>
+</dependency>
+</dependencies>
+</dependencyManagement>
+◼ spring boot 2.1.X 版本使用响应式 tongweb 的配置示例，如下所示。
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-webflux</artifactId> <exclusions>
+<exclusion>
+<groupId>io.projectreactor.netty</groupId>
+<artifactId>reactor-netty-http</artifactId>
+</exclusion>
+<exclusion>
+<groupId>io.projectreactor.netty</groupId>
+<artifactId>reactor-netty</artifactId>
+</exclusion>
+<exclusion>
+<groupId>io.projectreactor</groupId>
+<artifactId>reactor-core</artifactId>
+</exclusion>
+<exclusion>
+<groupId>io.projectreactor.ipc</groupId>
+<artifactId>reactor-netty</artifactId>
+</exclusion>
+</exclusions>
+</dependency>
+<dependency>
+<groupId>com.tongweb</groupId>
+<artifactId>tongweb-spring-boot-reactor-starter</artifactId> <version>7.0.E.{n}</version>
+</dependency>
+2.2.3 网关
+TongWeb 嵌入式版 tongweb-spring-boot-reactor-starter 组件提供对 Spring Cloud
+![ref35]![ref3]![ref4]![ref35]![ref35]![ref5]![ref6]![ref36]![ref37]![ref36]![ref37]
+Gateway 适配支持。
+7. 安装资源依赖
+使用脚本将 TongWeb 嵌入式版 tongweb-spring-boot-reactor-7.0.E.{n}.zip 中网关资
+源 jar 包安装入本地仓库中。
+操作步骤：
+1. 解压 TongWeb 嵌入式版产品资源包。
+2. 进入解压后的根目录。
+3. 执行如下命令，运行安装脚本，将 lib 下的 jar 包安装入本地 Maven 仓库中。
+◼ Windows 环境
+./installMavenJar.bat
+◼ Linux 环境
+./installMavenJar.sh
+8. 引入依赖资源
+首先需要排除 gateway 中 netty 的相关依赖，再引入 tongweb-spring-boot-reactor-
+starter。
+配置示例如下所示。
+<dependency>
+<groupId>org.springframework.cloud</groupId>
+<artifactId>spring-cloud-starter-gateway</artifactId>
+<exclusions>
+<exclusion>
+<groupId>io.projectreactor.ipc</groupId>
+<artifactId>reactor-netty</artifactId>
+</exclusion>
+<exclusion>
+<groupId>io.projectreactor.addons</groupId> <artifactId>reactor-extra</artifactId>
+</exclusion>
+<exclusion>
+<groupId>io.projectreactor.netty</groupId>
+<artifactId>reactor-netty-http</artifactId>
+</exclusion> <exclusion>
+<groupId>io.projectreactor.netty</groupId>
+<artifactId>reactor-netty</artifactId>
+</exclusion>
+<exclusion>
+<groupId>io.projectreactor</groupId>
+<artifactId>reactor-core</artifactId>
+</exclusion>
+</exclusions>
+</dependency>
+<dependency>
+<groupId>com.tongweb</groupId>
+<artifactId>tongweb-spring-boot-reactor-starter</artifactId> <version>7.0.E.{n}</version>
+</dependency>"
+这是关于TongWeb的技术工作指南吗？,"在工作中遇到 TongWeb 相关问题时，先按此文档要求描述处理问题，提供相关信息和
+日志。内容要详细清楚，禁用模糊词语表达，且描述内容必须为测试确认。以下所列出相关
+工作问题及处理方式。
+一 常见错误工作方式
+1.群里发一个日志，然后就什么话也不说了，让别人猜吗？
+2.描述问题时直接转发用户的聊天记录、聊天截图。
+3.提供日志给不到主要信息，日志拍照水平差。
+4.电话念日志信息。您的英文水平很高吗？
+5.处理不了直接把同事电话给用户，还有让用户打 400 的。
+6.处理不了的事找同事私聊，不知人家有没有空。
+7.沟通碎片化，不能一次把事情说清楚，反复的问。
+8.不反馈原始的需求和问题，直接让别人分析自己认为的问题点，容易把人带偏。
+9.外出支持没有带好必要的产品安装包、工具、充电宝等，上战场不带枪的。
+10.支持项目时，不知道对方的姓名、公司、职务，干完活就走人。事后问这事跟谁谁确认
+的，不知道。
+11.常打交道的公司销售、售前、开发人员、人力、财务，有了问题都不知道该找谁，谁是
+哪个部门的都不知道、联系方式也不留。
+12.跟非技术人员说明技术问题，不会用通俗的语言表达。
+13.下了班不想接电话，不接电话就会投诉领导那，你是亏了还是赚了。
+回忆一下，自己中了以上哪几条。
+二 基本信息描述内容
+在项目支持过程中，无论遇到什么问题，以下信息都需要了解清楚：
+1.相关的 CPU 类型、操作系统版本号。
+2.JDK 的版本号、TongWeb 的具体版本号。
+3.问题现象的文字描述，现象截图。说明问题是必然出现，还是偶然出现，若偶然出现说
+1
+明出现规律和时间时隔。
+4.若有异常日志，TongWeb 的日志以附件形式提供，收集日志规范。
+(1) 若问题是必然出现则清理一下 TongWeb 日志，重新启动 TongWeb，运行应用后收集
+从 TongWeb 启动后的整个日志。
+(2) 若问题是偶然出现，则保留 TongWeb 从开始运行后的所有日志，且需要注明问题出现
+的时间点或异常日志行数。最忌讳发一堆日志，不告诉时间点或异常日志行数。
+(3) 禁止只收集一、两句的报错信息，要保证日志的完整性，应该收集 TongWeb 从启动开
+始到出现问题时的整个日志。日志拍照要清晰，拍到准确位置。
+#这里是已经失败在解部署，再看下面无意义。很多人还是喜欢拍这里。
+[2020-11-16 14:41:11] [SEVERE] [core] [Context [dportal] startup failed due to previous errors]
+[2020-11-16 14:41:11] [INFO] [core] [Closing Spring root WebApplicationContext]
+[2020-11-16 14:41:11] [INFO] [deployment] [Undeploying app: /opt/TongWeb7.0/deployment/dportal]
+[2020-11-16 14:41:12] [SEVERE] [web-container] [Error deploying web application directory
+/opt/TongWeb7.0/deployment/dportal]
+java.lang.RuntimeException: Start context failed. at com.tongweb.web.thanos.startup.ThanosHostConfig.deployWar(ThanosHostConfig.java:231)
+(4) 通常应用采用 log4j 日志输出，保证应用的 log4j 配置正确，让应用日志输出在 TongWeb
+日志中。
+(5) 大日志必须通过压缩方式传输。
+三 应用移植和应用异常
+当遇到应用移植和应用异常问题时，需检查并提供以下信息：
+1.注意应用使用了哪些框架，如：使用了 spring boot、CXF 等。列出所有 jar。
+2.了解应用以前是在何种应用服务器上正常运行的，并且一定要确认：其它应用服务器的
+运行环境，保证与 TongWeb 在同一台机器、 使用同一 JDK、同一数据库、同一应用包。否
+则不能说明其它应用服务器没问题。
+3.说明应用在其它应用服务器上的配置步骤，以及在 TongWeb 上的配置步骤，TongWeb 做
+了哪些参数配置。
+4.收集 TongWeb 日志，通常设为 INFO 级别日志就可以。
+5.若应用有异常，但没什么日志输出，则设置应用的 log4j 日志级别为 DEBUG。运行后再
+收集 TongWeb 的日志。
+6.若应用中有异常堆栈输出，则从异常堆栈中查看哪些是应用代码，收集这些相关应用代
+码的 java 或 class 文件都可以。
+7.尽可能将问题模拟成 demo 或能搭建出复现问题的环境，并提供复现问题的文档。
+8.对于要分析请求包的情况，还需要使用抓包工具。
+四 以前运行稳定，最近才有问题的问题
+1.这种问题主要是检查出现问题之前，对整个系统做过什么修改。特别是与 TongWeb 和应
+用相关的修改。
+2.询问相关人员最近是否修改过什么配置、使用情况有什么变化。
+3.根据文件时间确定问题出现前配置是否改动过，例如：查看 TongWeb 的 startserver.sh、
+external.vmoptions、tongweb.xml 的文件时间，确认 TongWeb 何时被修改过。
+4.不能以他人说：“什么都没改动过”，而自认为没有改动过任何配置，要以亲自检查为准。
+而且即使没有人为的改动，系统本身也在发生改变，所以要仔细检查问题前后的改变。例如：
+随着机器时间运行临时软件的 license 过期可能产生问题、随着日志写满磁盘出现问题、数
+据库数据的变化造成问题、访问量的陡然增加造成性能问题。
+五 乱码问题
+遇到乱码问题时通常不会有日志输出，主要提供以下信息。
+1.环境变量的 LANG 值和 locale –a 查看字符集。参数-Dfile.encoding=以及其设置值。
+2.TongWeb 的 Web 容器编码设置。
+3.对于 URL 的编码，在 TongWeb 的 http 通道中设置，默认 GBK。“URL 编码格式”相当于
+tomcat 的 URIEncoding。“uri 处理”相当于 tomcat 的 useBodyEncodingForURI。
+4.应用以前在何种应用服务器上运行而没有乱码问题，并询问此应用服务器的编码设置。
+5.提供应用的编码设置，以及确认是否通过 filter 等做了应用转码。
+6.搜集相关的应用源码，这一点很重要，否则无法协助处理问题。
+六 TongWeb 宕机、假死、应用不能访问问题
+遇到 TongWeb 宕机、假死、应用不能访问问题，千万不要先重启 TongWeb 解决。需提供以
+下信息:
+1.确认 TongWeb 的 java 进程是否还存在。
+2.若 java 进程存在，而应用不能访问，检查 TongWeb 控制台是否能访问。
+3.若 java 进程存在、控制台访问正常，则线程原因比较多，通过 kill -3、jstack 生成堆栈信
+息来分析。
+4.若 java 进程存在、控制台访问也慢，则内存原因比较多，通过 jstat、jmap 查看 JVM 内
+存信息，并打出内存镜像。
+5.若 java 进程已不存在，则检查 TongWeb 的 bin 目录下有没有 hs 或 javacore 开头的文件生
+成，并提供此文件。并查看此时 TongWeb 的日志有没有 TongWeb 的正常停止信息，若有说
+明是有人运行停止命令或应用中有 System.exit()代码。
+6.确认应用有没有使用 java 调本地接口的代码，通常这部分使用不当会造成 TongWeb 宕机。
+七 性能测试
+在性能出现问题时，需提供以下信息：
+1.硬件配置和网络拓扑图、通过 FTP 测试网络之间的实际带宽。
+2.记录测试时的 CPU 和网络带宽使用情况。
+3.说明已经优化的操作系统和 TongWeb 参数。
+4.说明测试场景，压测的规则、脚本、并发量。
+5.记录 JVM 的 GC 日志、jstack 日志、TongWeb 日志。
+6.尽可能配成 TongWeb 的连接池以便监控，或优化开源数据源。
+7.记录 TongWeb 线程池、数据库连接池、SQL 语句的监控结果。
+8.提供测试结果报告。
+学习 TongWeb，你需要掌握的内容：
+1.Java 及 JavaEE 知识、Linux、数据库的基本操作。
+2.TongWeb 各个版本的差别、license 绑定规则。TongWeb 手册中的内容要熟悉，不要走马
+观花。产品目录：\168.1.1.200\产品目录_内部试用\TongWEB 。
+3.bin/external.vmoptions 中各个参数的作用、conf/tongweb.xml 与控制台的对应关系、
+conf/tongweb.properties、conf/default-web.xml 配置参数的功能要知道。
+4.samples 目录下的用例要跑一遍，代码最好能看懂。
+5.学习使用 Apache、nginx 配置 TongWeb 集群，此为常用负载软件, THS 即为 Apache proxy。
+THS 配置 http://httpd.apache.org/docs/2.4/mod/mod_proxy.html 。
+6.Spring mvc、Spring boot、hibernate 框架。做一个 Spring+hibernate 测试用例, 熟悉 bean
+xml 文件中开源数据源（c3p0,dbcp,durid）与 TongWeb 数据源的切换。SpringBoot+TongWeb
+嵌入版的用例。Spring JMS+TongLINK/Q 用例。
+7.性能分析两大招：内存和线程。 学习 JVM 内存优化，jstack 线程分析，jmap 内存分析。
+图书《Java 程序性能优化》。
+8.容 器 docker 教 程 https://www.runoob.com/docker/docker-tutorial.html k8s 教
+程 https://kubernetes.io/zh/docs/contribute/generate-ref-docs/quickstart/ 。
+9.TongWeb 安全版 ASDP， 参考：https://rasp.baidu.com/#section-intro
+10.国密证书 http://gmssl.org/， 生成国密证书分别在 THS 和 TongWeb 嵌入版上运行。 可
+以用密信国密浏览器。
+11.性 能 分 析 工 具 ： (1) TongAPM 最 起 码 演 示 会 用 这 个 。 (2) 阿
+里 TProfiler https://github.com/alibaba/TProfiler, (3) 阿 里 开 源 的 java 诊 断 工 具
+—Arthas https://github.com/alibaba/arthas"
+validation类冲突问题应该怎么解决？,"问题描述
+应用部署在TongWeb8.0.8.0,显示部署成功，但是访问应用异常。日志中有报错：
+java.lang.AbstractMethodError: org.hibernate.validator.engine.ConfigurationImpl.getDefaultParameterNameProvider()Ljavax/validation/ParameterNameProvider;
+排查到是类冲突问题，最终通过“强制从应用加载javax.validation”和 “Web兼容模式” 解决了问题。
+以下为本地搭建测试用例进行了测试，对问题进行梳理。
+本地测试
+本地搭建了测试用例demo_ssm，成功了复现问题，并对问题进行了梳理如下：
+问题梳理
+java.lang.AbstractMethodError 通过百度，搜索到该错误通常发生在运行时，当某个类试图调用一个在其父类或接口中声明为抽象的方法，但在子类或实现类中却没有被正确实现或覆盖时。
+根据报错信息 “org.hibernate.validator.engine.ConfigurationImpl.getDefaultParameterNameProvider()Ljavax/validation/ParameterNameProvider”，实现类org.hibernate.validator.engine.ConfigurationImpl应该是没有实现接口或类的getDefaultParameterNameProvider方法。
+应用目录下搜索到类org.hibernate.validator.engine.ConfigurationImpl所属jar为hibernate-validator-4.2.0.Final.jar：
+[查看排障截图: image246.png]
+通过反编译，可以看到继承关系：
+org.hibernate.validator.engine.ConfigurationImpl 实现了接口org.hibernate.validator.HibernateValidatorConfiguration;
+[查看排障截图: image247.png]
+而接口org.hibernate.validator.HibernateValidatorConfiguration又继承了接口javax.validation.Configuration
+[查看排障截图: image248.png]
+应用目录下搜索到javax.validation.Configuration所属jar为validation-api-1.0.0.GA.jar：
+[查看排障截图: image249.png]
+而反编译该validation-api-1.0.0.GA.jar，可以看到是没有getDefaultParameterNameProvider方法的。所以实际加载的类并不是这个jar的。
+[查看排障截图: image250.png]
+tongweb目录下搜索javax.validation.Configuration所属jar为tongweb-jee-api.jar。
+[查看排障截图: image251.png]
+反编译tongweb-jee-api.jar可以看到在javax.validation.Configuration存在getDefaultParameterNameProvider方法。
+[查看排障截图: image252.png]
+所以实际应加载应用lib下的validation-api-1.0.0.GA.jar，通过应用部署的“资源加载”中的“强制从应用加载javax.validation。
+[查看排障截图: image253.png]
+但是部署失败了，有报出如下日志，这种感觉是需要关闭ejb。
+[查看排障截图: image254.png]
+打开“Web兼容模式”后可以正常部署。
+最终通过“强制从应用加载javax.validation”和 “Web兼容模式” 解决了问题。
+分别在TongWeb7.0和TongWeb8.0中部署测试用例javax.validation.Configuration类加载分析对比
+将测试用例demo_ssm在TongWeb7.0中部署，默认配置下可以正常部署并正常访问应用，“类资源分析”：
+[查看排障截图: image255.png]
+TongWeb8.0中应用问题时，“类资源分析”：
+[查看排障截图: image256.png]
+TongWeb8.0中应用正常部署时，“类加载分析”：
+[查看排障截图: image257.png]
+问题总结
+tongweb8.0.8.0自带的validation api（tongweb-jee-api.jar中javax.validation包） 版本比应用hibernate validator依赖的validation api（validation-api-1.0.0.GA.jar） 的版本高，而且实际加载了tongweb自带的validation api，这导致了本次的问题，最终通过“强制从应用加载javax.validation”和 “Web兼容模式” 解决了问题。"
+websocket连接创建失败问题怎么解决？,"问题描述
+浏览器发起websocket请求后，TongWeb已经响应了101状态码，说明握手成功。但随后TongWeb发送关闭连接的数据包，终止继续通讯，无任何异常信息。
+浏览器F12查看请求情况：
+[查看排障截图: image258.png]
+Wireshark工具抓包情况：
+[查看排障截图: image259.png]
+问题分析
+由于没有明显的日志信息，无法准确的定位问题，只能猜测以下几种情况：
+websocket包冲突，应用自带实现和TongWeb的实现冲突；
+缺少websocket相关的依赖包；
+业务系统权限认证失败，主动关闭连接
+解决方案
+由于缺少必要的日志信息，只能通过对比、排除、添加log的方式进行排查：
+搭建Tomcat9对比环境，测试无问题
+打开、关闭TongWeb的websocket自身实现，关闭后应用部署报错，证明应用要使用容器的websocket实现
+在TongWeb相关websocket代码中，添加调试信息
+在应用代码中的onError方法里打印，失败信息(客户不配合，不认为是应用的问题)
+在TongWeb的调试日志中打印的失败信息如下：
+[查看排障截图: image260.png]
+明显看出来是应用的框架里抛出来的异常，未找到tomcat的相关依赖类。原则上NoClassDefFoundError的错误应该抛出来才对，这是由于容器将异常信息抛给了应用层，应用层需要在onError方法里处理并抛出来，但应用的代码了没有实现onError方法，导致异常没有抛出来。
+对于以上的情况，需要开发商做两方面的代码调整：
+需要修改org.apache.tomcat.websocket.WsSession为com.tongweb.web.websocket.WsSession
+异常处理，将异常信息在onError抛出来，方便查看日志
+总结
+有些问题只有现象，无任何日志。需要从多个维度进行分析，如抓包、对比、调试信息等，最终确定导致问题的根本问题。针对该类型的问题可以尝试检测是否有冲突类或者打开、关闭TongWeb实现进行尝试。"

@@ -1,0 +1,383 @@
+﻿关键字,问题描述,思考过程,答案
+IO模式 (ioMode),在高负载的生产环境下，TongWeb 通道的 `ioMode` 应该如何选择以实现性能最优化？,中间件的网络处理效率取决于底层的 IO 模型。NIO 是同步非阻塞模型，适合一般并发；而 NIO2 基于 Java 的 AIO（异步 IO），在处理大量长连接且 I/O 密集型任务时，能够通过操作系统的异步通知机制减少线程阻塞等待，从而提高吞吐量。,推荐将 `ioMode` 设置为 `NIO2`。在 TongWeb 中，`ioMode` 的取值范围包括 `NIO`（默认值）和 `NIO2`。配置为 `NIO2` 后，通道能更有效地利用现代操作系统的异步 I/O 能力，特别是在 Linux 环境下处理高并发连接时，可以显著降低 CPU 的上下文切换开销，提升网络 I/O 的响应效率。
+虚拟线程 (useVirtualThreads),针对存在大量 I/O 等待的应用场景，TongWeb 通道的 `useVirtualThreads` 参数如何提升性能？,虚拟线程是 Java 21 引入的轻量级线程。传统的平台线程（Platform Thread）与系统内核线程一一对应，开销较大。虚拟线程旨在解决大量阻塞式 I/O 导致的任务等待问题，通过提高线程利用率来突破传统线程池的并发上限。,配置 `useVirtualThreads=true`，生效前提是 `useSelfTuned=false`。虚拟线程主要解决 I/O 密集型任务导致的性能瓶颈，如长事务、远程服务调用等。它并不会增加实际的 CPU 核心处理能力，但在面对海量并发请求导致的线程阻塞时，它能以极低的内存和调度开销维持数万乃至数百万的活跃连接。如果应用涉及频繁的数据库访问或微服务调用，开启此项可大幅提升 QPS。
+自调节线程 (useSelfTuned),在业务流量波动剧烈的场景下，如何通过 `useSelfTuned` 优化系统资源利用率？,传统的静态线程池配置（固定最大线程数）在低负载时浪费资源，在高负载时响应不及时。自调节线程机制通过监控实时请求速率动态调整线程池规模，实现性能与资源的平衡。,设置 `useSelfTuned=true`，此时 `maxThreads` 变为自调节允许创建的最大线程上限。开启后，TongWeb 会根据业务请求处理的实时速率，自主、动态地调节线程池的大小。这种调优方式能确保在流量洪峰到来时迅速扩容线程，而在业务低谷时及时释放闲置线程，持续优化系统资源的使用率并防止线程饥饿。
+最大线程数 (maxThreads),如何科学配置通道的 `maxThreads` 参数以平衡高并发处理能力与系统稳定性？,`maxThreads` 决定了服务器并发处理网络请求的最大能力。设置过小会导致请求排队甚至超时；设置过大（超过物理内存和 CPU 承载力）会导致频繁的 Full GC 或系统假死。,`maxThreads` 默认值为 200，支持的大小限制上限极高。在高性能调优时，推荐根据 CPU 核心数和内存大小进行梯度测试：一般中等负载推荐 500-1000，高并发场景可配置为 2000 甚至更高。注意，若 License 为测试版，该值可能被强制限制为 5。配置时需同步监控 `submittedCount`（当前请求总数）监视项，确保处理能力与业务压力匹配。
+等待队列 (acceptCount),当线程池全部忙碌时，如何通过 `acceptCount` 防止请求被直接拒绝？,`acceptCount` 是操作系统 Socket 层的连接等待队列。它是应对瞬间突发流量的最后一道防线。队列满后，新的连接请求将被系统拒绝。,推荐将 `acceptCount` 从默认值 500 调优至 1000 或更高。该参数控制当处理请求的线程数达到上限时，可以在操作系统队列中积压的请求数。在高并发吞吐场景下，调大此值可以提高系统的负载容忍度，减少因线程瞬时占满导致的“连接被拒绝”异常，但过大的队列会增加请求的整体排队时长。
+TCP_NO_DELAY,对于实时性要求极高的交互式业务，`tcpNoDelay` 参数应如何调优？,Nagle 算法旨在通过合并小数据包减少网络流量，但这会导致微量的数据延迟。对于高性能、低延迟的 Web 服务，通常需要禁用该算法以实现即时发送。,确保 `tcpNoDelay` 设置为 `true`（默认即为 true）。开启此属性后，系统将禁用 Nagle 算法，强制 Socket 立即发送数据包而不等待缓冲区填满。这在处理高频、小报文交互的业务（如实时查询、在线交易）中非常关键，能有效降低数据传输的毫秒级延迟。
+长连接超时 (keepAliveTimeout),在高并发场景下，如何通过调优 `keepAliveTimeout` 回收无效的连接资源？,长连接能减少 TCP 手握开销，但空闲连接会占用通道的 `maxConnections` 配额。在高负载时，需要更激进地回收空闲连接以腾出配额给新请求。,`keepAliveTimeout` 默认值为 60000 毫秒（60 秒）。在高并发吞吐环境下，推荐将此值缩短至 15000ms - 30000ms。该参数定义了长连接建立后，在没有新请求进来的情况下断开连接前的等待时间。缩短此时间可以加快空闲连接的回收速率，防止大量僵尸连接占满通道，提升系统的并发接入容量。
+最大POST字节 (maxPostSize),涉及大数据上传的业务，如何调优 `maxPostSize` 防止上传失败并控制风险？,默认情况下，服务器会对 POST 请求体大小做限制以防范恶意的大数据攻击。但对于合法的业务（如文件上传、大型 JSON 提交），需根据实际需求放宽限制。,`maxPostSize` 默认值为 2097152 字节（2MB）。调优时应根据业务文件大小上限（如 100MB）进行设置，配置为 -1 则表示不限制解析大小。调优此项的同时应配套配置 `maxSwallowSize`（上传文件溢值），如果上传文件超过 `maxPostSize` 且超过溢值，服务器会主动断开连接以保护系统不被海量无效数据阻塞。
+异步日志 (enableAsynchronousLogging),高并发访问时，日志写入导致业务线程频繁阻塞，应如何优化系统日志配置？,同步日志写入会触发磁盘 I/O，在大并发下磁盘 I/O 往往成为瓶颈。业务线程若等待 I/O 完成会产生极大的响应延迟。异步日志通过独立的低优先级线程进行刷盘，将业务逻辑与 I/O 操作解耦。,配置 `enableAsynchronousLogging=true`。开启异步日志后，系统会将日志信息先放入内存缓冲队列，由专用写入线程负责持久化到磁盘。其核心优势在于业务线程无需等待缓慢的磁盘 I/O 操作，从而显著提升系统的响应速度和吞吐能力。
+缓冲队列大小 (bufferQueueSize),在开启异步日志后，如何配置 `bufferQueueSize` 以应对日志洪峰并防止内存溢出？,异步日志队列的大小决定了它能缓冲的日志条数。如果队列过小，在瞬间产生大量日志时会导致缓冲溢出；如果队列过大，则会消耗过多堆内存。,`bufferQueueSize` 默认值为 100000 条。调优建议：对于高频访问的应用，可根据每条日志平均字节数计算内存占比，将此值调优至 200000-500000 之间。该参数设定了内存中暂存日志条数的上限，合理调大此值可以平滑磁盘 I/O 尖峰，但需确保 JVM 内存有足够余量承载这些对象。
+缓冲写入 (buffered),如何通过 `bufferedSize` 减少系统日志记录过程中的物理磁盘访问频率？,频繁的小字节写入会导致大量的系统调用和磁盘寻址，效率极低。通过积攒一定量的数据后再进行一次性批量写入，可以极大地优化 I/O 效率。,确保 `buffered=true`，并将 `bufferedSize` 配置为 65536（即 64KB）。该参数控制当持续记录的日志内容累积达到设定字节数时，才执行一次真实的文件写入操作。这种“批量刷盘”的模式可以显著减少磁盘磁头的频繁移动，保护磁盘寿命并提高高负载下的系统稳定性。
+轮询间隔 (checkInterval),异步日志配置中，`checkInterval` 对性能和日志实时性有何影响？,异步日志线程需要定期检查是否有新日志需要处理。间隔太短会空耗 CPU；间隔太长会导致日志记录在内存中滞后严重，不利于实时监控。,`checkInterval` 默认值为 500 毫秒。在高性能场景下，若 CPU 资源充裕且对日志实时性要求较高，可将此值缩短为 100-200ms；若业务极其繁忙且 CPU 压力大，维持默认 500ms 或适当延长可微量减少 CPU 调度损耗。该参数决定了 TongWeb 检测并输出缓冲日志的频率，是平衡实时性与 CPU 损耗的调优杠杆。
+日志级别 (logLevel),生产环境下如何通过 `logLevel` 和模块化调优策略最大化提升吞吐量？,日志级别对性能影响巨大。`DEBUG` 级别的日志量通常是 `INFO` 级别的数倍乃至数十倍，会产生极大的字符串拼接开销和 I/O 负担。,生产环境必须将默认 `logLevel` 设置为 `INFO` 或 `WARN`。进阶调优方案是利用 `enabledModuleLogLevel=true` 实现精细化控制：将相对稳定的 `moduleLogLevelWebContainer` 设为 `WARN`，而对业务关键的 `moduleLogLevelDatasource` 保持 `INFO`。这能从源头上减少非必要日志的产生，将宝贵的计算和 I/O 资源留给核心业务逻辑。
+最大连接数 (maxActive),在高并发场景下，如何配置数据源的 `maxActive` 以避免系统瘫痪？,连接池的核心是避免频繁创建/关闭连接。`maxActive` 决定了应用能同时发起的最大并发 SQL 请求数。配置不足会导致线程在 `maxWait` 时间内排队直到报错；配置过大则会撑爆数据库的最大连接数限制。,`maxActive` 默认值为 100。调优公式应遵循：(数据库最大可用连接数 / 节点数) - 预留量。在 TongWeb 高性能配置中，一般建议设置为 300-500。配置后应通过监视项中的 `active`（活跃连接数）和 `waitCount`（线程等待数）进行实时验证，若 `waitCount` 频繁非零，说明此值仍需调大或需优化慢 SQL。
+最小空闲数 (minIdle),如何通过调优 `minIdle` 消除业务高峰期初期的响应毛刺（延迟）？,当业务请求突然增加时，如果池内空闲连接不足，应用必须等待数据源与数据库完成 TCP 三次握手和身份验证，这会造成秒级的响应延迟。,推荐将 `minIdle` 设置为平稳期并发量的 20%~50%，例如在高负载系统设置为 30-50。该参数确保连接池始终维持一定数量的已就绪物理连接。通过维持较高的热启动连接，可以确保在流量波峰到达时，请求能瞬间获取连接并执行，从而消除系统扩容时的性能抖动。
+初始连接数 (initialSize),在中间件启动调优中，`initialSize` 的配置策略是什么？,`initialSize` 决定了应用服务器启动时立即创建的连接量。如果设置太小，启动后的第一波流量会面临性能瓶颈；如果设置太大，会延长中间件的启动时间。,推荐将 `initialSize` 设置为与 `minIdle` 相等的值，如 30。这样可以保证数据源在初始化完成的那一刻起，就已经准备好了足够的预热连接，避免了运行初期因动态创建连接而带来的系统性能开销。
+等待超时 (maxWait),如何利用 `maxWait` 参数防止数据库响应慢导致的应用服务器“雪崩”？,当连接池耗尽时，业务线程会进入等待状态。如果 `maxWait` 为默认的 30 秒或无限（0），大量线程会卡死在等待连接上，最终占满 Web 通道的线程池，导致整个服务不可用。,在高性能调优中，建议将 `maxWait` 从默认的 30000ms 缩短为 3000ms - 5000ms。这样在数据库负载过高无法及时提供连接时，应用线程能快速失败并释放，从而保护 Web 线程池不被耗尽，维持系统的基本可访问性，并能通过异常日志快速定位数据库侧的压力点。
+空闲时验证 (testWhileIdle),针对因防火墙超时或数据库端主动断开导致的“连接失效”问题，如何进行调优？,长连接在闲置一段时间后，可能会被中间网络设备静默丢弃。应用获取到这种连接时会报连接重置错误。定期异步验证可以维持连接活性并在失效时自动重连。,必须设置 `testWhileIdle=true`。同时需配套设置 `timeBetweenEvictionRunsMillis`（检查周期，建议 60000ms）和 `validationInterval`（验证间隔，建议 30000ms）。这是一种异步非阻塞的验证机制，TongWeb 的回收器线程会周期性检测空闲连接的健康状况，确保应用借出的始终是经过校验的有效连接，同时不增加业务线程的同步开销。
+缓存语句 (enableStatementCache),高频 SQL 执行场景下，如何通过语句缓存提升数据库访问性能？,重复执行同一条 SQL（如 `SELECT * FROM users WHERE id=?`）时，数据库侧需要反复解析执行计划。通过在驱动层缓存 `PreparedStatement` 对象，可以实现“一次解析，多次执行”，极大节省数据库 CPU 资源。,配置 `enableStatementCache=true`。调优建议：设置 `max`（单连接最大缓存数）为 50-100 左右，并确保 `prepared=true`。这种调优方式对于高频重复执行 SQL 的 OLTP 系统提速效果显著，能有效减少应用服务器与数据库之间的协议交互成本。
+监视慢SQL (enableSlowQueryReport),如何在生产环境下实时捕获并优化对业务性能造成阻塞的 SQL 语句？,慢 SQL 是数据源性能下降的元凶。必须有机制能够自动记录执行时长超过业务红线的 SQL，并输出到日志以便后期审计与分析。,设置 `enableSlowQueryReport=true`，并将 `threshold`（测量阈值）设置为业务可忍受的最大时长（如 1000ms）。同时开启 `logSlow=true` 将慢 SQL 记录到独立的 `logs/sql` 目录。这能让开发人员迅速识别出耗时异常的业务点，通过优化索引或重构 SQL 来根治连接池占满的问题。
+检查连接泄漏 (removeAbandoned),应用由于代码编写不规范（未关闭 Connection）导致连接池枯竭，应如何设置参数进行熔断补救？,连接泄漏是灾难性的性能问题。在无法立即修改代码的情况下，必须依靠中间件的强制回收机制，设定超时红线，强行收回由于泄密或死锁导致的未归还连接。,配置 `removeAbandoned=true`，并将 `removeAbandonedTimeout`（泄漏判定时间）设为业务最长事务的 1.5 倍（例如 60-120 秒）。为防止误杀，TongWeb 8.0 建议配合 `abandonWhenPercentageFull`（泄漏判定比例，建议设为 80%）使用。同时开启 `logAbandoned=true` 打印调用栈信息，这对于开发定位代码中未执行 `connection.close()` 的位置至关重要。
+验证方式 (connectionVerificationMode),在大吞吐量场景下，哪种数据源连接验证方式对性能的损耗最小？,传统的 `table` 验证模式需要发送 `SELECT 1 FROM dual` 到数据库，存在网络往返和 SQL 解析开销。JDBC 4.0 引入的 `isValid` 接口通过驱动底层实现，效率更高。,推荐设置 `connectionVerificationMode=isValid`。相比 `table` 模式，`isValid` 调用的是 JDBC 驱动提供的轻量级心跳检测，通常不需要发送完整的 SQL 语句，从而减少了应用与数据库之间的交互负载。但需注意，若采用极老版本的数据库驱动（不支持 JDBC 4.0），则需退回 `table` 模式并确保 `tableName` 配置为数据库中最简单的系统表（如 `DUAL`）。
+单批次创建数 (batchSize),在高并发请求瞬时涌入时，如何通过 `batchSize` 参数防止数据库端压力过载？,如果连接池发现连接不足并尝试瞬间补齐（如从 10 扩容到 500），会瞬间向数据库发起数百个物理连接请求，可能导致数据库 CPU 瞬间冲高。分批次创建可以平滑这种扩容压力。,将 `batchSize` 调优为非零值，如 20，并配套设置 `batchInterval`（批次间隔，建议 1 秒）。这样当连接池需要大量扩充物理连接时，会以每秒 20 个的速度平稳增加，避免了瞬时海量握手请求对数据库及中间网络设备造成的冲击，提升了扩容过程中的系统整体稳定性。
+即时回收 (instantRecycling),对于无法管控应用子线程代码连接关闭的场景，如何通过 `instantRecycling` 机制防止资源长期占用？,中间件默认管理的连接生命周期通常跟随 HTTP 线程。通过在 HTTP 请求处理结束后立即强制检查并回收未关闭的连接对象，可以大幅提升连接池的周转率。,配置 `instantRecycling=true`，该功能在 `threadBinding=false` 时生效。开启后，TongWeb 核心引擎会在应用处理完 HTTP 请求并准备响应客户端的那一刻，自动探测该线程占用的数据库连接状态，如果应用漏掉了关闭操作，中间件会立即将其回收至池内，从而极大减少了“幽灵连接”对连接池配额的长期非法占用。
+线程绑定 (threadBinding),在高性能、多事务交互的请求中，`threadBinding` 参数对性能提升有何作用？,如果一个 HTTP 请求中需要多次获取/归还连接（例如使用了多个 DAO），频繁的池内申请会有竞争开销。通过连接与线程的亲和性绑定，可以实现连接复用。,配置 `threadBinding=true`，前提是 `JtaManaged=false`。开启后，通过此数据源获取的连接会绑定到当前 HTTP 工作线程。在单次请求处理完成前，多次获取连接将直接返回同一个物理连接对象，直到请求结束才自动解绑。这消除了高频借还连接的池化开销，同时也解决了一些由于应用提前关闭连接导致后续逻辑无法访问的问题，是极致压测下的重要调优项。
+连接雪崩 (maxThreads & maxWait),当数据库响应极慢时，通道的 `maxThreads` 与数据源的 `maxWait` 如何协同配置以防止全站瘫痪？,这是一个典型的维度交叉问题。如果数据源获取连接的超时时间 `maxWait` 过长（如默认 30 秒），在高并发下，大量的 Web 线程会卡在等待数据库连接上，迅速耗尽通道的 `maxThreads`。这会导致新的请求甚至无法进入服务器，产生“雪崩”效应。,推荐采取“快速失败”策略。将数据源的 `maxWait` 从 30000ms 缩短至 3000ms-5000ms。同时，根据应用的业务处理能力配置通道的 `maxThreads`（如 500-1000）。这样当数据库出现瓶颈时，应用能快速抛出异常并释放 Web 线程，保证非数据库业务（如静态资源、内存查询）仍能正常服务，防止整个中间件被拖死。
+异步日志与并发吞吐 (AsynchronousLogging & maxThreads),在高并发吞吐场景下，开启“异步日志”对通道线程池的压力有何缓解作用？,同步日志记录在每次处理请求时都会触发文件 I/O。在高并发下，通道线程会因为等待磁盘写入而处于 `BLOCKED` 状态，导致 `maxThreads` 虽高但处理效率极低。异步日志则利用内存队列解耦。,必须开启系统日志的 `enableAsynchronousLogging=true`。这允许通道线程在将日志条目放入 `bufferQueueSize`（推荐调优至 200000 条）后立即返回处理下一个请求。这种交叉调优能使通道线程的周转率（Turnover Rate）提升 30% 以上，显著降低线程因 I/O 等待而产生的上下文切换开销，使 `maxThreads` 的配置更加轻量高效。
+线程关联与事务一致性 (threadBinding & JtaManaged),开启数据源的“线程绑定”模式时，如何兼顾 JTA 分布式事务的性能？,`threadBinding` 允许同一线程在一次 HTTP 请求中复用同一个数据库连接，减少借还开销。但 JTA 事务通常管理多个资源，其工作机制与简单的线程绑定存在冲突。,根据文档，若开启了 `JtaManaged=true` 以支持分布式事务，则不支持 `threadBinding` 设置。调优建议：对于非分布式事务的纯 Web 业务，开启 `threadBinding=true` 可极大提升复杂 DAO 操作的性能。若必须使用 JTA 事务，则应侧重调优 `minIdle` 以保证池内有充足的热连接，并确保 `tmJoinEnabled=true` 以便合并同一数据库的事务分支。
+虚拟线程与连接池适配 (useVirtualThreads & maxActive),在 Java 21 环境下开启通道“虚拟线程”后，数据源的 `maxActive` 应该如何相应调整？,虚拟线程（Virtual Threads）旨在处理海量并发 I/O 阻塞。传统模式下 `maxThreads` 限制了并发数，但虚拟线程模式下并发数可能瞬间激增至数万。此时，如果数据源的 `maxActive` 仍保持默认的 100，会导致海量虚拟线程因抢不到连接而大量堆积在 `waitCount` 监视项中。,开启 `useVirtualThreads=true` 后，必须同步调大数据源的 `maxActive` 限制（建议根据数据库承载能力上调至 500+）或在应用层引入限流机制。否则，通道侧的并发能力提升会被数据源侧的连接枯竭彻底抵消，甚至引发应用 OOM。
+慢线程监控与慢SQL联动 (slowThreadEnabled & SlowQueryReport),如何结合应用的“慢线程检测”与数据源的“慢 SQL 监视”来精确定位性能瓶颈？,单纯看慢 SQL 只能知道数据库查询慢，单纯看慢线程只能知道业务处理慢。两者联动可以判定瓶颈是在 DB 侧还是在业务逻辑计算侧。,"在应用配置中开启 `slowThreadEnabled=true` 并设置 `threshold`（如 2000ms）；同时在数据源配置中开启 `enableSlowQueryReport=true` 并设置 `threshold`（如 1000ms）。
+    *   **联动分析**：若 `server.log` 中慢线程告警频繁且伴随 `logs/sql` 中的慢 SQL 记录，说明主因是数据库索引或 SQL 效率问题；若仅有慢线程告警而无慢 SQL，则应排查应用内部是否存在计算死循环、第三方接口调用阻塞或线程锁竞争。"
+即时回收与 Web 响应 (instantRecycling & response),对于代码质量参差不齐的应用，如何通过“即时回收”机制保障数据源在高并发下的稳定性？,如果开发人员漏写了 `connection.close()`，连接会发生泄漏直到池干。传统的 `removeAbandoned` 依赖超时检查，而 `instantRecycling` 则是在请求结束时立即介入。,配置 `instantRecycling=true`。该参数与 Web 容器高度集成：当 TongWeb 处理完 HTTP 响应准备结束该线程任务时，会自动检查并强制归还此线程借出但未关闭的连接。在高并发环境下，这能比“泄漏判定”更早、更精准地回收资源，是提升连接周转率的最佳“容错”调优项。
+响应压缩与 CPU 负载 (compression & cpuUsage),通道开启 HTTP 压缩后，如何根据系统的 `cpuUsage` 监视数据进行参数微调？,压缩能节省带宽并提升前端加载速度，但 GZIP 算法极其消耗 CPU 资源。,配置 `compression=on`，但必须配套设置 `compressionMinSize=2048`（2KB 以下不压缩）。同时应通过 `overview` 监视器观察 `cpuUsage`。若 CPU 使用率经常超过 80%，应通过 `compressibleMimeType` 缩小压缩范围，仅保留 `text/html` 和 `application/json`，移除对图片或大文件的压缩处理，以平衡 I/O 效率与计算损耗。
+预编译线程与启动性能 (jspPrecompile & threadsCount),在大规模 JSP 应用部署时，如何优化 `jspPrecompileThreadCount` 以缩短应用就绪时间？,JSP 首次访问会触发编译，导致首访卡顿。预编译能解决此问题，但会延长部署时长。,配置 `jspPrecompile=true` 并将 `jspPrecompileThreadCount` 调优为服务器 CPU 核心数的 2 倍（默认 4）。这种交叉调优利用了多核处理器的并发能力。注意，预编译是异步进行的，不会阻塞部署流程，能显著提升应用重启后的首次用户访问体验。
+日志轮转与磁盘 IO 预警 (rotationBySize & diskThreshold),如何配置系统日志的轮转策略，以配合“预警策略”中的 `diskThreshold` 确保系统不因磁盘写满而宕机？,日志文件若无限增长，会迅速触发磁盘空间预警并最终导致进程挂起。,开启日志轮转 `rollingFile=true`，设置 `rotationBySize=100`（单位 MB）并配置 `keepMaxFiles=50` 以限制日志总占用空间。在“预警策略”中同步配置 `diskThreshold=80`。这样当磁盘占用达到 80% 触发预警时，管理员可以通过手动清理 `logs` 目录下的老旧压缩文件来释放空间，而轮转机制则确保了单日志文件的高效检索。
+获取连接公平性 (fair & queueSize),在高并发排队场景下，开启数据源的“线程公平等待”对性能有何负面影响？,公平锁通过维护一个有序队列保证先到先得，但会产生大量的线程上下文切换和锁竞争损耗。,默认配置 `fair=false`。在追求极致吞吐量的性能调优中，通常不建议开启公平等待，因为不确定的获取顺序能带来更高的整体并发效率。只有在业务逻辑极其强调请求顺序且 `queueSize` 较大导致排队严重的特殊场景下，才考虑开启 `fair=true`，但需做好 QPS 下降 10%-20% 的准备。
+语句缓存与元空间内存 (StatementCache & Metaspace),开启数据源 `enableStatementCache` 后，为何必须关注 JVM 的 `MaxMetaspaceSize`？,SQL 语句缓存不仅存储在连接池内，还会占用 JVM 的非堆内存用于存放反射和类元数据。,开启 `enableStatementCache=true` 后，每个连接会缓存 `max`（默认 20）个语句对象。若应用 SQL 种类繁多且连接池较大，会导致元空间占用快速升高。调优建议：同步在 `jvmconfig` 中设置 `MetaspaceSize` 和 `MaxMetaspaceSize` 为 256MB 或更高，防止因语句缓存过多触发频繁的 Full GC 或元空间 OOM。
+并发安全控制与通道线程 (concurrency & maxThreads),应用级别的“并发安全控制”如何作为通道线程池的“二级闸门”？,通道线程池是个全局资源。如果某个应用发生死循环或极慢请求，会占满所有线程。,开启 `semaphoreEnabled=true`。通过设置 `concurrency`（限制最大并发访问量）来约束单个应用对全局 `maxThreads` 的占用。当请求达到阈值时，选择 `block=true` 进行等待或 `block=false` 直接终止请求并记录日志。这种交叉控制实现了应用间的“资源隔离”，是多应用部署环境下最重要的调优手段之一。
+长连接复用与获取连接超时 (maxKeepAliveRequests & maxWait),在高频率短连接交互中，如何通过调优 `maxKeepAliveRequests` 降低数据源的获取压力？,虽然这是两个层面的连接，但网络长连接能维持用户会话的连贯性。如果 `keepAlive` 设置合理，应用层的 `threadBinding` 就能更有效地发挥作用。,在高频访问场景，将通道的 `maxKeepAliveRequests` 从 1000 调高至 2000+。这能减少 TCP 频繁建连的开销。配合数据源的 `threadBinding=true`，使得用户在一次长连接生命周期内的多次请求能更稳定地复用物理连接，从而缓解数据源 `maxWait` 等待连接的压力。
+慢请求阈值与网络监控 (slowTime & useNetworkMonitor),开启通道的“网络数据监控”对定位网络延迟导致的性能问题有何帮助？,有时性能慢不是因为 CPU 或数据库，而是因为网络链路不稳定。,配置 `useNetworkMonitor=true` 并设置 `slowTime` 为合适的值（如 5 秒）。通过监视项中的 `bytesReceived` 和 `bytesSent` 观察吞吐量变化，结合 `slowCount` 判断是否存在大量网络 I/O 耗时过长的请求。注意：此功能会有轻微性能消耗，仅在进行网络性能排查时建议开启。
+分批连接创建与 JVM 预热 (batchSize & initialSize),在大规模集群启动时，如何通过 `batchSize` 优化数据源初始化对系统的冲击？,如果 `initialSize` 很大，启动时会瞬间产生海量网络握手，导致 CPU 尖峰。,将 `initialSize` 设置为 50 以上时，推荐配合设置 `batchSize=10` 和 `batchInterval=1`。这使得数据源以每秒 10 个的速度分批创建连接。这种调优方式能确保中间件在启动过程中，CPU 和网络带宽资源被平滑利用，避免因瞬间负载过高导致的心跳检测失败或集群成员加入超时。
+JDBC 4.0 验证与 CPU 指标 (isValid & cpuUsage),为何在追求极致性能时，`connectionVerificationMode` 应首选 `isValid`？,`table` 模式需要发送 `SELECT 1 FROM DUAL`，这涉及 SQL 解析、语法树构建等。,推荐配置 `connectionVerificationMode=isValid`。`isValid` 是 JDBC 规范中的轻量级心跳，直接由驱动程序在 Socket 层发送极其简单的数据包。相比 `table` 模式，它能降低数据库侧 5% 以上的 CPU 负载，并减少网络报文交互量。在高吞吐场景下，这种微小的 CPU 节省能转化为更高的并发处理能力。
+日志追加模式与系统恢复 (append & serverlog),在高频重启调优阶段，为何 `append=true` 对性能和问题回溯至关重要？,如果每次重启都覆盖日志，调优过程中的历史报错会丢失。,确保 `append=true`。在频繁调整参数并重启测试性能时，追加模式能保留完整的启动堆栈和参数生效记录。配合 `rotationDay=true`，可以清晰地按天分析不同调优参数组合下的性能表现差异。
+资源缓存上限与应用内存 (cacheMaxSize & heapUsed),在 TongWeb 7/8 中，如何通过 `cacheMaxSize` 提升静态资源访问性能而不引发 OOM？,静态资源缓存能减少磁盘 I/O，但占用的是 JVM 堆内存。,配置 `cachingAllowed=true`，设置 `cacheMaxSize` 大于应用所有静态资源的总和。通过监视项 `cachedSize` 实时观察缓存消耗的内存量（单位 KB）。若 `heapUsed` 接近 `Xmx` 限制，应优先调小 `cacheObjectMaxSize`，防止单个巨型文件挤占了业务逻辑的运行内存。
+URI 编码与性能 (URIEncoding & charsets),指定明确的 `URIEncoding` 为何比使用 JVM 默认编码性能更好？,JVM 默认编码转换涉及复杂的字符集查找逻辑。,在通道配置中显式设置 `URIEncoding=UTF-8`。这样 TongWeb 在解析 URI 参数时无需通过系统调用查询操作系统的默认编码。虽然单次请求节省的时间微乎其微，但在 TPS 超过 1000 的场景下，这种“零拷贝”思想的调优能累积出可观的吞吐提升。
+AJP 协议与集群内网优化 (AJP & secret),在 TongWeb 与 THS 组成的内网集群中，使用 AJP 协议相比 HTTP/1.1 有何性能优势？,AJP 是一种二进制协议，比文本型的 HTTP 更紧凑，解析速度更快。,将通道的 `protocol` 配置为 `AJP`。AJP 协议在处理大量短连接请求时效率更高，且支持将 Web 服务器端的认证信息直接透传。调优建议：务必配置 `secret` 以开启协议传输加密，并设置 `allowedRequestAttributesPattern` 正则表达式以保障安全性。
+连接寿命检查与慢 SQL 拦截 (maxAge & queryTimeout),如何利用 `maxAge` 配合 `queryTimeout` 解决数据库连接长连接“老化”导致的偶发性慢查询？,有的连接在数据库侧可能存在内存碎片或由于防火墙长时间未动导致的半断开状态。,设置 `maxAge`（如 3600000ms，即 1 小时）强制周期性销毁并重建物理连接。同时配合数据源语句管理的 `queryTimeout`（如 5 秒），确保单条异常 SQL 不会因为连接老化或死锁而无限制运行。这种组合调优能将数据库侧的风险“隔离”在可控的时间窗内。
+自定义 Valve 与请求链路损耗 (addValve & processingTime),在虚拟主机中添加“自定义 Valve”时，如何评估其对 `averageProcessingTime` 的影响？,Valve 类似于应用层的拦截器，每增加一个都会在请求主链路上增加逻辑开销。,添加自定义 Valve 需继承 `ValveBase` 并重写 `invoke` 方法。调优建议：通过监视项 `averageProcessingTime` 对比添加前后的数据。若处理时间增长超过 5ms，说明 Valve 内部逻辑（如复杂的正则匹配或外部 RPC 调用）过于沉重，应考虑将其异步化或移至 THS 负载均衡层处理。
+WebSocket 内存调优 (webSocketEnabled & cachingAllowed),对于不使用长连接的应用，为何建议关闭 `webSocketEnabled`？,WebSocket 模块在启动时会初始化缓冲区并占用一定的内存开销。,若业务不涉及实时推送，配置 `webSocketEnabled=false`。这能释放 Web 容器初始化相关 Handler 的开销。在多实例高密度部署环境下，这能节省约 10-20MB 的 Metaspace 和部分堆内存，为 `cachingAllowed` 预留更多空间。
+单线程池 vs 三线程池策略 (threadPoolPolicy & otherThreadPool),在包含混合业务（极短请求与极长事务）的应用中，如何配置多线程池策略？,传统的单线程池无法避免长事务请求把短请求线程占满的问题。,配置 `threadPoolPolicy=3`（三线程池策略）。利用 `taskRule` 将高频、耗时的长事务（如报表生成）路由到 `threadPool` 处理；利用 `exclusionRule` 将低频业务路由到 `otherThreadPool`；剩下的普通业务由通道内置线程池处理。这种调优能彻底解决“老鼠屎拖垮一锅汤”的性能隔离问题。
+连接泄漏熔断比例 (abandonWhenPercentageFull & size),如何通过 `abandonWhenPercentageFull` 参数实现智能的连接泄漏自我保护？,如果一检测到泄漏就强制回收，可能会误杀高负载下的正常长请求。,配置 `removeAbandoned=true` 并将 `abandonWhenPercentageFull` 设置为 80%。这意味着只有当连接池的活跃连接数达到总 `size` 的 80% 时，中间件才会启动“强制回收”逻辑。这种调优方式在系统低负载时给予业务更大的自由度，在系统高负载风险期则实施铁腕控制，是性能与稳定性的完美折中。
+资源加载策略 (archiveIndexStrategy),对于包含大量外部类库（JAR包）的应用，如何通过 `archiveIndexStrategy` 优化启动速度和资源查找效率？,应用启动时需要扫描大量的类路径资源，如果索引策略效率低，会导致启动耗时极长。TongWeb 提供了基于布隆过滤器（Bloom Filter）的优化方案，可以在不加载全部文件的情况下快速判定资源是否存在，从而减少磁盘 I/O。,推荐将 `archiveIndexStrategy` 从默认的 `SIMPLE` 调优为 `BLOOM` 或 `PURGED`。`BLOOM` 模式会在应用启动时利用布隆过滤器优化索引查找，而 `PURGED` 则更进一步，允许在运行时清除不再需要的归档查找缓存。这种调优对于那些依赖包体积巨大、且在运行中频繁触发类加载或资源获取的复杂应用（如大型 ERP 系统）性能提升尤为显著。
+请求头大小限制 (maxHttpHeaderSize),当业务涉及超长 Cookie 或复杂的 OAuth2 认证信息时，通道的 `maxHttpHeaderSize` 参数应如何调整？,如果请求头超过默认限制，服务器会直接报错 `Request header is too large`，导致业务中断。在追求高性能的同时，必须确保报文解析器能够容纳合法的业务数据，避免频繁的解析失败重试。,TongWeb 的默认值为 8192 字节（8KB）。在处理大型分布式系统或微服务网关时，若出现 PWC4662 错误或 400 响应码，应将此值手动调大数据源（如调至 16384 或更大）。该参数在 `tongweb.xml` 中配置，调优时需注意，若在控制台修改通道其他属性，该手工修改值可能会恢复原值，需在智能体逻辑中特别提醒用户。
+连接寿命检查 (maxAge),在云原生或数据库负载均衡环境下，如何利用 `maxAge` 解决物理连接老化导致的偶发性性能抖动？,长时间存活的物理连接可能会因为云环境的静默超时（如云 SLB 的空闲连接清理）而失效，或者在数据库端产生内存碎片。传统的空闲检查（testWhileIdle）只能检查死活，而无法解决“老化”导致效率下降的问题。,设置数据源的 `maxAge` 为非零值，推荐范围为 30 分钟到 2 小时（如 3600000ms）。开启此项后，TongWeb 会周期性地销毁并重建超时的物理连接，确保连接池中的对象始终保持“年轻”状态，从而规避由于底层驱动或网络链路长期维持同一连接而累积的性能风险。
+内存溢出自动转储 (HeapDumpOnOutOfMemoryError),如何配置 JVM 参数以确保在发生“假死”或 OOM 时，能自动保存现场以便后续进行精准性能分析？,性能调优不仅要看运行时的“快”，还要看故障后的“准”。如果发生 OOM 没能留下镜像，调优就成了盲人摸象。通过 JVM 的自动转储功能，可以实现故障现场的完整复现。,在 `jvmconfig` 中必须开启 `HeapDumpOnOutOfMemoryError=true`。同时，通过 `HeapDumpPath` 指定转储文件的存储路径，推荐配置为 `../logs/heap-dump.hprof`。这种配置在生产环境下至关重要，它能让运维人员利用 Memory Analyzer (MAT) 工具，在不影响服务恢复的前提下，事后通过分析堆快照定位导致内存占满的元凶（如缓存过大或集合类持续增长）。
+日志保留策略 (keepMaxFiles),如何通过协同配置 `rotationBySize` 和 `keepMaxFiles` 优化磁盘 I/O 稳定性并防止日志爆满导致的停机？,如果单文件日志过大，检索和读写效率会大幅下降。如果文件总数不加控制，磁盘写满后，TongWeb 进程会因为无法写入日志而挂起。,推荐配置 `rotationBySize` 为 50 到 100（MB），同时设置 `keepMaxFiles` 为 100。这种组合能确保磁盘空间被循环利用，单个日志文件维持在便于分析的大小，从而避免因磁盘满导致的系统级阻塞，保证日志子系统的高效吞吐。
+通道请求总数监视 (submittedCount),在排查系统响应慢时，监视项 `submittedCount` 和 `activeCount` 的差值对判断瓶颈所在有何指导意义？,性能监控不能只看 CPU。线程池内部的排队情况是判断并发能力的真实指标。通过比较这两个数值，可以判断系统是处理得慢，还是连接接进来的速度太快。,`activeCount` 反映的是正在执行业务逻辑的活跃线程数，而 `submittedCount` 则是活跃线程数与排队等待线程数的总和。当 `submittedCount` 远大于 `activeCount` 且 `waitingCount` 升高时，说明 Web 通道已达到最大承载能力，存在明显的排队阻塞，此时应考虑调大 `maxThreads` 或优化后端业务逻辑的执行时间。注：使用虚拟线程时，由于不限制线程池规模，该项监视值将永久显示为 -1。
+轻量模式 (liteMode),在仅需 Web 容器能力的场景下（如简单静态页面或纯 Spring Boot 打包），开启 `liteMode` 如何提升整体性能？,TongWeb 作为全功能 Java EE 服务器，默认会启动 EJB 容器、JCA 资源、WebService 引擎等多个子系统，这些都会消耗初始内存和 CPU 预热时间。,在“全局配置”中开启 `liteMode=true`。此模式下，TongWeb 将屏蔽自带的 JPA、CDI、EJB、Mail 等企业级模块，仅启动核心的 Web 容器。对于不使用 Java EE 复杂技术的互联网应用，开启轻量模式可以显著降低 JVM 的元空间（Metaspace）占用，缩短启动时间，提高内存利用率。
+心跳检测间隔 (validationInterval),为了在极致性能场景下减少连接验证对业务请求的侵入，如何优化数据源的 `validationInterval` ？,如果每次获取连接（testOnBorrow）都去校验物理连接的有效性，会增加一次网络往返损耗。通过设置间隔时间，可以在保证连接基本健康的前提下，大幅削减校验 SQL 的执行频次。,设置 `testOnBorrow=true` 或 `testWhileIdle=true` 的同时，必须配置 `validationInterval`（推荐设为 30000ms，即 30 秒）。这意味着在指定的间隔内，系统不会重复对同一个连接进行有效性验证，从而将校验操作对 TPS 的影响降至最低，在高频访问场景下可提升约 5%-10% 的连接周转效率。
+ES 日志推送 (logpush),开启“ES 推送”功能时，如何配置以避免在日志服务器故障时拖累本地 TongWeb 的性能？,日志集中化是主流，但远程推送涉及网络 I/O。如果配置不当，当 ES 挂掉时，可能会导致本地线程因等待推送确认而阻塞。,开启 ES 推送后，日志除了本地存储外会异步推送到远端服务器。调优建议：务必确保 `enabled=true` 配置正确，并注意目前 TongWeb 不会对失败的日志进行补充推送。在搭建智能体时，应提醒用户在网络不稳或 ES 负载过高时，由于推送逻辑存在些许开销，若业务极其敏感，应首选 Syslog 协议推送或侧重于本地异步刷盘配置（enableAsynchronousLogging）以隔离风险。
+元空间监控 (nonHeapUsed),为什么在使用大量 `PreparedStatement` 缓存时，必须重点关注监视项中的 `nonHeapUsed` ？,数据库连接池的语句缓存（Statement Cache）会在内存中保留大量的 SQL 元数据。由于这些元数据和反射对象往往存放在 JVM 的非堆（Metaspace）区域，过小的元空间限制会导致频繁的 Full GC。,通过 JVM 监视获取 `nonHeapUsed` 的实时数据。在使用 `enableStatementCache=true` 时，每个连接缓存的语句数（max 参数）会直接增加非堆内存的负担。如果观察到非堆内存持续接近 `MaxMetaspaceSize` 且 Full GC 频繁，应同步调大 JVM 的元空间参数，以支撑语句复用带来的性能增益，否则会因小失大导致系统假死。
+零拷贝传输 (useSendfile),在部署包含大量图片、视频等静态资源的 Web 应用时，如何开启 `useSendfile` 实现极速文件传输？,传统的文件读取需要经过“内核态-用户态-内核态”的多重拷贝。Send File 技术（零拷贝）允许操作系统直接将磁盘数据发送到网卡，极大地降低了 CPU 的拷贝开销。,在通道配置中将 `useSendfile` 设置为 `true`。同时设置 `sendFileSize`（推荐 48KB 以上的文件才触发）。开启后，大文件将通过高效的操作系统内核接口直接发送给客户端。注意：开启此项后，该类文件将不再支持 HTTP 响应压缩功能，调优时需在“带宽占用”与“CPU 拷贝损耗”之间做权衡。
+智能判定比例 (abandonWhenPercentageFull,为了防止在业务高峰期出现“误杀”正常长事务连接，如何精细化配置 `abandonWhenPercentageFull` ？,连接泄漏检查是双刃剑。如果单纯按时间（removeAbandonedTimeout）回收，可能会切断正常的耗时报表导出请求。通过引入池使用率比例，可以实现“只有在危急时刻才强制回收”。,配置 `removeAbandoned=true`，并将 `abandonWhenPercentageFull` 设置为 80 到 90 之间的值。这样，即使某个连接超过了 `removeAbandonedTimeout`（如 60 秒），只要当前连接池的整体使用率没达到 80%，TongWeb 也不会强制关闭它，从而最大限度地保护了极端高负载下正常业务的连续性。
+开发模式开关 (jspDevelopment),为何在高性能生产环境中必须关闭应用的 `jspDevelopment` 属性？,开发模式下，服务器会周期性（约每 5 秒）扫描 JSP 文件的最后修改时间。这种频繁的磁盘轮询在高并发下会产生不必要的 I/O 竞争和 CPU 损耗。,必须确保生产环境 `jspDevelopment=false`。关闭后，JSP 仅在初次访问时编译并持久化在内存和磁盘 class 中，不再进行重复扫描。若需要更新应用，应采用“重部署”或通过脚本重启实例，而不是依靠开发模式的自动加载，以换取最高的运行效率。
+可压缩类型定义 (compressibleMimeType),如何针对业务报文格式（如 application/json）定制通道压缩范围以优化移动端响应？,默认的压缩配置可能不包含 JSON 或 XML 等现代 API 格式。如果不手动添加这些类型，API 接口的大量数据传输就无法享受带宽节省带来的速度优势。,"将 `compression` 设为 `on`，并在 `compressibleMimeType` 中显式包含业务使用的所有 MIME 类型，如 `text/html,text/xml,application/json,application/javascript`。同时通过 `compressionMinSize`（建议 2048 字节）过滤掉过小的报文，防止压缩产生的 CPU 开销超过其带来的网络加速收益。"
+GC 日志轮转 (UseGCLogFileRotation),在高频率 GC 调优期间，如何防止 GC 日志文件体积过大撑爆磁盘？,详细的 GC 日志包含大量时间戳和内存分布信息，积攒数天后体积可能达到数 GB。,在 `jvmconfig` 的启动参数中追加 `-XX:+UseGCLogFileRotation`，并配合 `-XX:NumberOfGCLogFiles=10` 和 `-XX:GCLogFileSize=10M`。这样 JVM 只会保留最近的 100MB GC 日志记录，既能满足性能回溯分析的需求，又能从根源上消除磁盘爆满带来的宕机隐患。
+SQL 参数打印正则 (sqlForParamPrintRegex),在生产环境下，开启慢 SQL 监视时如何平衡“故障排查精准度”与“安全性”？,慢 SQL 日志通常只显示带问号的预编译语句。虽然开启参数记录（sqlForParamPrintRegex）能看清真实数值，但这会造成严重的性能下降和敏感数据（如密码、金额）泄露风险。,默认配置下 `sqlForParamPrintRegex` 为空，且官方出于安全和性能考虑不建议使用此功能。调优建议：除非在受控的性能压测环境中进行深度诊断，否则生产环境应保持此项为空，仅开启 `logSlow=true` 以记录 SQL 语句本身，以此在保障安全的前提下获取优化慢查询所需的关键线索。
+异步请求超时 (asyncTimeout),在使用异步 Servlet（AsyncContext）处理长轮询或耗时推送业务时，如何优化通道的 `asyncTimeout` ？,异步处理旨在释放容器线程，但如果请求在等待后端异步结果时过早触发了通道超时，会导致客户端收到异常。,TongWeb 的默认异步超时时间为 30000 毫秒（30 秒）。对于预计执行时间超过 30 秒的任务（如复杂数据处理或 AI 推理接口），必须调大此阈值。需要注意的是，该全局配置可以被应用内部通过代码 `setTimeout()` 进行覆盖，因此调优时应与开发团队对齐业务场景的真实耗时需求。
+周期性重载 (reloadable),为何在 TongWeb 的性能页签下，“资源缓存”和“热加载（reloadable）”不能同时高效共存？,这两个功能本质上是冲突的。缓存是为了减少 IO、提高响应，而 reloadable 是为了检测修改、销毁缓存并重新加载。,必须在生产环境确认 `reloadable=false`。根据官方补充说明，若开启了资源缓存，则 `reloadable` 功能将失效。为了极致性能，应开启 `cachingAllowed=true` 并将 `reloadable` 彻底关闭，以消除服务器周期性检查文件变动带来的开销。
+日志加载行数控制 (pullLogLines),在大规模运维监控时，如何通过 `pullLogLines` 防止控制台日志页面拖慢应用实例？,当管理员从 Web 端查看实时日志时，服务器需要从磁盘读取数据并通过 HTTP 发送。如果单次拉取行数过大，会瞬间占用大量网络带宽和应用内存。,在系统日志配置中设置 `pullLogLines` 为较低值（默认 20 行）。该参数限制了浏览器每次从服务器拉取的最大行数。在高性能应用中，应严禁为了方便调试而将其调至上千，以防止因 Web 日志展示产生的辅助开销反客为主，挤占正常的业务处理资源。
+初始连接数预热 (initialSize),针对“冷启动”响应慢的 Java 应用，如何利用 `initialSize` 配合 `minIdle` 消除启动初期的性能鸿沟？,应用启动后的前几个请求往往会面临连接建立的开销。通过预先建立好的一批热连接，可以直接跳过握手阶段。,推荐将 `initialSize` 设置为与 `minIdle` 相同的值（如 30）。这样在数据源初始化完成时，连接池已经根据配置同步创建好了物理连接。这种调优方式能确保应用在启动完毕正式对外提供服务的那一秒，就已经具备了处理并发流量的能力，消除了新连接创建带来的首秒访问卡顿。
+长连接服务阈值 (maxKeepAliveRequests),在遭遇由于客户端恶意占用长连接导致连接池耗尽时，如何利用 `maxKeepAliveRequests` 进行防御性调优？,长连接虽然好，但如果一个连接被无限次使用，可能会导致负载不均衡或被慢速攻击（Slow HTTP Attack）利用。,默认值为 1000 次。在高性能环境下，建议维持在 1000 到 2000 次。该参数规定了单个长连接在被强制关闭前允许处理的最大请求数。到达阈值后，服务器会主动断开连接，强制客户端重新建立连接并可能被负载均衡器（如 THS）重新分配到其他节点，从而实现了某种程度上的动态负载再平衡和资源强制回收。
+慢线程堆栈检测 (slowThreadEnabled),如何利用 TongWeb 自带的“慢线程检测”功能实现性能调优的“自动化取证”？,手动打 jstack 往往抓不到偶发的卡顿。通过中间件层面的实时监控，可以在线程阻塞达到阈值的一瞬间，自动捕获并记录完整的代码调用栈。,开启 `slowThreadEnabled=true`，并将 `threshold` 设置为业务红线值（如 1000ms 或 2000ms）。当线程处理请求时间超过此阈值，TongWeb 会在 `server.log` 中自动输出包含业务包名的详细线程堆栈信息。调优人员只需定期收集该日志样本，就能清晰看出业务阻塞是由于代码锁竞争、BeanUtils 拷贝性能差、还是外部接口调用超时引起的。
+归还连接时回滚 (rollbackOnReturn),在高性能非分布式事务场景下，如何配置 `rollbackOnReturn` 确保连接池的安全与状态纯净？,应用执行完逻辑后，如果没有显式 commit 或 rollback，连接会带着未完成的事务状态回到池中。下一个使用者获取到该连接时，可能会引发极其诡异的数据一致性问题或事务锁死。,必须确保 `rollbackOnReturn=true`（默认开启）。该功能在“自动提交（defaultAutoCommit）”关闭时生效，它会在连接归还入池时自动执行一次回滚，清理掉任何残留的未决事务。这一调优步骤虽然有极微小的性能开销，但它是保障高并发下连接复用安全、防止脏数据干扰后续业务处理的核心防线。
+启用访问日志 (accessLogEnabled),在生产环境下追求 TPS 峰值时，应如何配置“访问日志”以最小化其对磁盘 I/O 的占用？,访问日志记录了每一次 HTTP 请求的详情。在每秒上万次请求的场景下，同步记录访问日志会成为严重的性能累赘。,如果业务非必须，建议在追求极致性能时保持 `accessLogEnabled=false`。若必须审计，则应配套开启文件缓冲写入（buffered=true）并调大缓冲大小（bufferedSize=65536 字节）。这样通过批量落盘技术，可以显著减轻磁盘磁头的物理寻址压力，让 CPU 能更专注于处理业务报文解析。
+Java Logger 接管 (takeoverJUL),在 TongWeb 系统日志配置中，`takeoverJUL` 选项对减少全局日志开销有何作用？,Java 默认自带一套日志系统（JUL）。TongWeb 内部也有一套高效的日志框架。如果不接管，两套系统同时运行会造成重复的字符串处理和对象创建。,推荐保持 `takeoverJUL=true`（默认开启）。开启后，TongWeb 将接管 Java 原生的 Logger 接口，统一调度日志输出路径和格式。这种调优能够通过合并日志管线，减少多套日志系统并存时的 CPU 上下文切换和内存缓冲占用，使整体的日志吞吐更加轻量化。
+连接后进先出 (usingLIFOQueue),在数据库连接池压力均衡与应用性能响应之间，如何权衡是否开启 `usingLIFOQueue` 参数？,默认情况下连接池采用 FIFO（先进先出）。但在高性能场景下，LIFO（后进先出）意味着最近刚被归还、极大概率仍处于 CPU 缓存和数据库活跃会话中的“热连接”会被优先再次借出。这能减少物理连接的冷热切换开销，但缺点是会导致部分连接由于长期不被使用而老化。,在追求极致响应时间的互联网业务中，建议将 `usingLIFOQueue` 设置为 `true`。配合 `testWhileIdle=true` 进行后台心跳维护，可以确保“热连接”支撑高频业务，同时那些处于排队后端的“冷连接”能通过异步验证机制保持健康。这种调优方式能提升约 3%-5% 的 SQL 执行响应效率。
+JTA 事务支持 (JtaManaged),当应用涉及跨库操作且必须保证分布式事务一致性时，数据源的 `JtaManaged` 应如何配置，有哪些限制？,JTA 事务由中间件容器统一协调。开启此项后，自动提交会被强制关闭，且驱动类型必须为 XA。由于 JTA 事务需要管理连接的生命周期，它与简单的“线程绑定（threadBinding）”机制在逻辑上是互斥的。,若应用需要应用于 EJB 事务或用户管理的 JTA 事务，必须配置 `JtaManaged=true`。**注意**：开启此项后，`threadBinding` 将不再受支持，且 `defaultAutoCommit` 会被系统强制设为 `false`。调优时需确保数据库驱动已更换为对应的 XA 驱动类，否则会报 0202 错误码。
+HTTP/2.0 支持 (http2Enabled),开启 TongWeb 的 HTTP/2.0 协议支持需要满足哪些前置条件，对前端并发有何提升？,HTTP/2 通过多路复用（Multiplexing）解决了 HTTP/1.1 的线头阻塞问题。但其协议规范强制要求使用加密连接。,在通道配置中设置 `http2Enabled=true`。生效前置条件：1. 必须开启 SSL（`SSLEnabled=true`）；2. 推荐使用 `NIO2` 或 `NIO` 模式；3. 必须在 `external.vmoptions` 中确保相关的 ALPN 依赖库已加载。调优开启后，浏览器与服务器之间仅需建立一个 TCP 连接即可并行传输数十个资源，极大提升了含大量小图片/脚本的页面加载性能。
+代理协议头解析 (X-Forwarded-For),当 TongWeb 部署在 Nginx 或 F5 负载均衡器后方时，如何配置参数以确保应用获取到真实的客户端 IP？,在代理环境下，`request.getRemoteAddr()` 默认获取的是代理服务器的 IP。为了获取真实 IP，必须解析负载均衡器透传的 `X-Forwarded-For` 头信息。,在 Web 容器配置中开启相关属性。1. 设置 `protocolHeader` 为 `X-Forwarded-Proto`；2. 设置 `remoteAddrHeader` 为 `X-Forwarded-For`。同时，必须在 `internalProxies` 中配置负载均衡器的 IP 地址（支持正则表达式），告知 TongWeb 信任这些代理发来的 IP 头信息。如果不配置信任 IP，TongWeb 出于安全考虑会忽略该头。
+DNS 反向查找 (enableLookups),为何在高性能生产环境下，强烈建议将通道的 `enableLookups` 参数保持为 `false`？,若开启此项，每次记录日志或调用 `getRemoteHost()` 时，服务器都会尝试向 DNS 服务器发起反向查询以获取客户端域名。如果 DNS 响应慢，业务线程会发生严重的同步阻塞。,必须确保 `enableLookups=false`。在 TPS 较高的环境下，关闭 DNS 反向查找可以规避潜在的网络 I/O 阻塞，减少请求处理的平均时延。获取客户端身份应仅依赖 IP 地址，若应用确实需要域名，建议由应用层异步处理或在前端代理层解析。
+慢攻击防御 (maxSwallowSize),如何利用 `maxSwallowSize` 配合 `maxPostSize` 防范针对 POST 请求的大数据恶意占用攻击？,如果恶意客户端发送超过限制的文件，服务器会尝试拒绝。但如果服务器不主动切断连接，而是继续“吞掉”后续数据，连接就会一直被占用。,将 `maxSwallowSize` 设置为合理的字节数（默认 2MB）。调优逻辑：若上传数据超过 `maxPostSize` 且超过此溢值，TongWeb 会在响应头中添加 `Connection:close` 并立即中断连接，而不是继续接收无效数据，从而保护通道线程不被此类慢速攻击（SDOS）长期非法挂起。
+解析方法扩展 (parseBodyMethods),在 RESTful 架构中，如何配置 TongWeb 支持 PUT 或 DELETE 方法下的正文参数自动解析？,默认情况下，Java EE 容器仅对 POST 方法进行请求体参数解析。这会导致 RESTful 接口无法通过 `request.getParameter()` 获取 PUT 请求的正文数据。,"在通道配置中修改 `parseBodyMethods` 参数。推荐配置为 `POST,PUT,DELETE,PATCH`。调优开启后，服务器会将这些方法的请求体也视为 POST 进行正文解析，极大方便了采用 Spring MVC 等现代框架开发的微服务应用的参数获取逻辑。"
+自定义访问日志 (customPattern),在复杂的业务审计场景下，如何自定义访问日志格式以记录响应延迟和具体的 Cookie 值？,默认的 Common 或 Combined 格式信息有限。调优监控需要知道每个请求的具体耗时（%D）和会话标识。,将 `customMode` 设置为 `true`。在 `customPattern` 中配置格式化字符串，例如：`%h %l %u %t "%r" %s %b %D "%{JSESSIONID}c"`。其中 `%D` 记录处理请求的微秒数，`%c` 记录特定 Cookie 值。这种详细的日志配置是生产环境进行“离线性能回溯”的最强工具。
+启用模块日志级别 (enabledModuleLogLevel),如何实现在不改变全局日志级别的情况下，单独开启数据源模块的 DEBUG 日志以排查性能连接问题？,将全局调为 DEBUG 会瞬间撑爆磁盘。模块化控制可以精准地“只打开一扇窗”。,开启 `enabledModuleLogLevel=true`。将 `logLevel` 维持在 `info`，而将 `moduleLogLevelDatasource` 单独调优为 `debug`。这样可以精准捕获连接池的借还轨迹和慢 SQL 预警，而不会受到 Web 容器等其他模块海量心跳日志的干扰。
+Java Logger 接管 (takeoverJUL),开启 `takeoverJUL=true` 对减少多应用并发环境下的 CPU 竞争有何贡献？,Java 默认的 JUL (java.util.logging) 内部存在大量的同步锁竞争。,必须开启 `takeoverJUL=true`。开启后，所有通过 JUL 接口输出的日志都会被 TongWeb 重定向到其高效的异步日志处理管线中。这不仅能通过 `bufferedSize` 减少系统调用，还能消除 JUL 原始 Handler 在高并发下的锁瓶颈，使 CPU 能够更纯粹地服务于业务逻辑。
+优雅停机 (gracefulStopAwaitMillis),在云原生频繁扩缩容环境下，如何调优 `gracefulStopAwaitMillis` 以保证正在处理的订单请求不被强行中断？,直接杀进程会导致正在进行中的数据库事务回滚，影响业务。优雅停机允许服务器停止接收新请求，但给存量请求留出退出时间。,在全局配置中设置 `gracefulStopAwaitMillis` 为非零值（推荐 15000ms 到 30000ms）。该参数指定了实例在收到停止信号后等待活跃线程完成的最长时间。超过此阈值仍未结束的线程会被强制释放，并记录 0503 错误，确保系统更新时的业务平滑度。
+JSP 输出 NULL 串 (jspPrintNull),如何通过 `jspPrintNull` 参数优化 JSP 页面的视觉表现并微量减少网络带宽消耗？,默认情况下，JSP 遇到对象为 null 会输出字符串 "null"，这不仅不美观，还增加了响应体的长度。,推荐将 `jspPrintNull` 设置为 `false`。调优关闭后，遇到 null 对象时将不输出任何内容。虽然单次减少的字节有限，但在海量列表数据展现场景下，这种“零冗余”配置能累积出明显的网络 IO 节省，并避免因页面出现大量“null”文字导致的售后投诉。
+类加载扫描优化 (jarsToSkip),应用启动报 `StackOverflowError` 导致部署失败，如何通过 `jarsToSkip` 进行针对性调优？,TongWeb 在启动时会扫描所有 JAR 包以寻找 Servlet 注解。如果某些包（如 BC 加密包）存在极其复杂的父子循环继承，会导致扫描算法递归过深。,"在全局配置的 `jarsToSkip` 中添加冲突包的模式串，如 `bcprov*.jar,derby*.jar`。通过跳过这些无需容器处理的工具类 JAR 包，不仅能规避扫描引发的 JVM 栈溢出异常，还能缩短应用部署时间 10% 以上。"
+并行部署 (useParallel),针对单机部署了 10 个以上重型应用的场景，如何缩短 TongWeb 启动的总就绪时长？,默认部署是串行的，即一个应用加载完再加载下一个。多核 CPU 在此期间利用率极低。,在全局配置中开启 `useParallel=true`。开启并行部署后，TongWeb 会利用 `utilityThreads`（推荐调优为 4-8 之间）指定的并发数同时加载多个应用。这在微服务单机多实例环境下能将整体启动耗时压降 50% 左右。
+启动顺序调优 (delayStartConnector),在高负载集群环境下，如何防止 TongWeb 启动瞬间“假死”导致的负载均衡心跳误判？,如果端口先启但应用还没加载完，负载均衡器（如 THS）发来的请求会返回 404 或超时。,推荐将 `delayStartConnector` 设置为 `true`。调优后，TongWeb 会先完成所有 Web 应用的初始化，待一切就绪后再开启监听端口。这样可以确保外界请求进来的第一秒钟，服务器就能提供完整、有效的响应，是集群环境“预热部署”的关键参数。
+SQL 拦截器 (customInterceptor),如何在不修改业务源码的情况下，实现全局的数据源访问权限审计？,应用往往是第三方提供的。通过连接池底层的拦截器机制，可以像 AOP 一样切入所有的 SQL 执行点。,开发一个继承自 `AbstractCreateStatementInterceptor` 的类并打成 JAR 包放入 `lib`。在数据源配置的 `customInterceptor` 中填入该类全路径。该调优技术常用于实现生产环境的动态脱敏、SQL 耗时统计或防范特定模式的 SQL 注入攻击。
+语句末尾化器 (enableStatementFinalizer),如何解决由于应用未显式关闭 `Statement` 导致的数据库“游标超出上限（ORA-01000）”异常？,虽然关闭 Connection 会关闭相关的 Statement，但有的代码逻辑在一个长连接中循环创建 Statement。,必须开启 `enableStatementFinalizer=true`。调优项建议同步开启 `trace=true`。这不仅能确保在 Connection 关闭时强制回收游标资源，还能通过日志输出未关闭堆栈，指引开发团队定位并修复具体的 SQL 调用链。
+轻量模式 (liteMode) 模块屏蔽,开启 `liteMode` 后，TongWeb 究竟具体屏蔽了哪些子系统以换取极致性能？,了解屏蔽清单有助于判断应用是否适合开启该模式。,配置 `liteMode=true` 后，TongWeb 将彻底屏蔽自带的 **validation、JPA、CDI、EJB、mail** 模块。此时系统会尝试从应用自身的 `WEB-INF/lib` 中加载这些技术的私有实现。对于 Spring Boot 打包的 WAR 应用，开启轻量模式可以避免 JNDI 初始化冲突，提升约 20MB 的 Metaspace 内存利用率。
+网络监控数据归零 (resetMonitorData),长期运行的 TongWeb 实例，其通道监视项 `bytesSent` 显示异常巨大且失去统计意义，该如何处理？,数值类型存在溢出风险，且累积值无法体现近期的网络负荷波动。,开启 `resetMonitorData=true` 并设置 `resetMonitorDataPeriod`（推荐 3600 秒，即 1 小时）。调优开启后，监控数据会每小时自动归零。这能确保管理员在控制台看到的流量统计始终反映的是当前的、有参考价值的实时动态值。
+跨应用 Session 共享 (SharedSessionContext),同一物理机下两个不同的 WAR 应用（A 和 B）如何实现在不引入 Redis 的情况下共享登录状态？,Session 默认受 ContextRoot 隔离。,在启动参数中配置 `-DSharedSessionContext=true`。若要连同 Session 内部的 Attribute 对象也同步共享，需配套配置 `-DSharedSessionEnable=true`。注意：这要求两个应用的 Cookie 路径配置（SessionCookiePath）能够覆盖彼此，通常需统一设置为 `/`。
+Session 复制与 TongDataGrid,在大规模 TongWeb 集群中，为何推荐使用 TongDataGrid 替代传统的内存 Session 广播？,传统的广播模式在节点增多时，同步流量会呈指数级增长，占用大量内网带宽。,通过集中管理控制台创建集群并勾选“开启 session 复制”。调优建议：后端挂接 TongDataGrid 服务器。Session 数据会均匀分布在分布式网格中，而不是广播到每个实例。这种架构在节点数超过 4 个后，能显著降低 Web 实例的内存压力和内网延迟。
+Prometheus 推送间隔 (interval),接入 Prometheus 监控后，如何配置推送频率以平衡“监控灵敏度”与“CPU 开销”？,推送太快会频繁触发指标计算和网络发送。,在 Prometheus 服务配置中调优 `interval`（推荐 15 秒到 60 秒之间）。若应用对延迟极其敏感，可缩短至 15s；一般业务建议设为 30s。同步需在 `monitor` 中选定指定的“组合监视”ID，避免全量指标扫描带来的计算开销。
+SSL 公共密钥强度 (DH key),针对漏洞扫描出的“SSL 服务器瞬时 Diffie-Hellman 公共密钥过弱”问题，应如何调优？,这是因为默认的 DH 密钥长度不足（通常为 1024 位）。,必须在 `external.vmoptions` 中增加启动参数：`-Djdk.tls.ephemeralDHKeySize=2048`。调优重启后，服务器会使用 2048 位的增强型 DH 交换算法，从而满足等保三级及以上安全规范对加密链路强度的要求。
+文件打开过多 (lsof),应用并发升高后报 `java.net.SocketException: Too many open files`，除了改 ulimit 还有哪些调优手段？,ulimit 是系统上限。中间件侧也需要通过控制连接数进行前端拦截。,1. 确保 Linux 执行了 `ulimit -n 65535`；2. 将通道的 `maxConnections` 调优为 10000 左右，使其略小于系统句柄上限，防止因句柄被 Web 端口占满导致应用无法打开本地配置文件；3. 开启数据源的 `removeAbandoned` 以回收僵死的 Socket 连接。
+启动参数标签规范 (#),为何在编辑 `external.vmoptions` 时，严禁在 `#` 符号后添加多余空格？,该文件是给 TongWeb 启动器（launcher）解析的，其解析逻辑与标准 properties 不同。,TongWeb 的启动参数解析引擎将 `#` 视为功能性标签栏标识（如 `#GLOBAL`）。若在 `#` 后误加空格或特殊符号，解析器将无法识别对应的参数区块，导致 JVM 无法获取正确的内存设置，启动时会弹出报错要求手工输入 java 参数。调优建议：保持文件原始格式，仅在对应标签下方按行增删具体参数。
+元空间溢出 (MaxMetaspaceSize),某用户在 JDK 8 环境下运行 TongWeb，并未在 `external.vmoptions` 中手动配置任何 Metaspace 参数。但在连续运行一周或频繁进行应用重部署后，系统突然抛出 `java.lang.OutOfMemoryError: Metaspace` 异常并宕机。,"1.  **默认逻辑核查**：虽然 JVM 默认不限制 Metaspace 大小，但 TongWeb 在启动时会根据检测到的 JDK 版本自动注入保护性参数。
+    2.  **隐形限制发现**：在 JDK 8 环境下，TongWeb 会自动在启动参数中加入 `-XX:MaxMetaspaceSize=192m`，这一动作对普通用户是透明的。
+    3.  **泄漏诱因分析**：频繁重部署会导致旧的 ClassLoader 无法被回收，产生的类元数据不断累积，最终突破了这 192MB 的隐形上限。","1.  **确认参数**：通过 `ps -ef | grep java` 查看进程，确认是否存在 192MB 的限制。
+    2.  **手动覆盖**：在 `bin/external.vmoptions` 中显式配置更大且合理的阈值，例如 `-XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m`。
+    3.  **根治策略**：检查应用代码中是否在 `contextDestroyed` 时关闭了自定义线程池或 JDBC 驱动注销逻辑，防止类加载器由于残留引用而无法回收。"
+连接池耗尽 (maxActive & waitCount),监控显示 TongWeb CPU 占用极低，但业务响应极慢，日志中频繁出现 `PoolExhaustedException` 且提示 `none available [size:100; busy:100]`。,"1.  **容量评估**：当前的 `maxActive` 设为 100。如果是 TPS 突然激增导致，仅需调大此值。
+    2.  **泄漏排查**：如果调大至 500 后，短时间内依然占满，则必然存在连接泄漏或极其严重的慢 SQL。
+    3.  **监控取证**：需通过监视项 `waitCount` 判断线程排队的严重程度。","1.  **开启泄漏追踪**：设置 `removeAbandoned=true` 且 `logAbandoned=true`，通过输出的 stack trace 定位未执行 `close()` 的代码位置。
+    2.  **防御性回收**：临时配置 `instantRecycling=true`，利用 TongWeb 容器在 HTTP 请求结束时强制清理未归还连接的特性进行兜底。
+    3.  **SQL 审计**：同步开启 `enableSlowQueryReport=true`（阈值设为 1000ms），确认是否是数据库端锁表或缺失索引导致连接被长时间挂起。"
+JSP 编译长度超限 (mappedFile),用户迁移一个超大型 JSP 页面（包含海量 HTML 文本和复杂的 Scriptlet），访问时报错：`HttpServletResponse is exceeding the 65535 bytes limit`。,"1.  **字节限制原理**：JSP 编译成 Java 后，所有的 HTML 输出都在 `_jspService` 方法中。Java 字节码规范限制单个方法的大小不得超过 65535 字节。
+    2.  **合并策略**：TongWeb 默认会对每一行 HTML 生成一个 `out.print()` 调用，这会产生大量字节码指令。
+    3.  **优化路径**：通过关闭 `mappedFile`，可以将多行 HTML 文本连接在一起通过一个 `out.print()` 输出，从而大幅压缩方法体积。","1.  **全局调整**：修改 `conf/default-web.xml`，在 `ThanosJspServlet` 对应标签下添加 `<init-param>`，设置 `mappedfile` 为 `false`。
+    2.  **应用级调整**：在部署应用的“JSP 属性”页签中，直接将 `Mapped File` 参数关闭。
+    3.  **重生效**：重启 TongWeb 或重新部署应用以触发重新编译。"
+DNS 阻塞 (enableLookups),系统性能测试中，在高并发场景下，访问日志记录过程出现明显延迟，且通过 `jstack` 发现大量线程阻塞在 `java.net.Inet6AddressImpl.lookupAllHostAddr` 方法上。,"1.  **日志记录点**：访问日志格式中若包含 `%h`（客户端主机名），TongWeb 会尝试将 IP 解析为域名。
+    2.  **底层调用**：系统调用了 `request.getRemoteHost()`，若 `enableLookups` 开启，会触发 DNS 反向查询。
+    3.  **阻塞链**：若 DNS 服务器响应慢或网络不通，每个请求都会在反查环节卡住数秒，导致 HTTP 线程池迅速占满。","1.  **参数禁用**：在通道配置（Connector）中，明确设置 `enableLookups=false`。
+    2.  **日志格式优化**：将访问日志格式从 `%h`（域名）改为 `%a`（客户端 IP）。
+    3.  **系统级规避**：检查 Linux 系统的 `/etc/hosts` 文件，确保本机主机名配置正确，防止数据库驱动初始化时获取 `getLocalHost` 失败导致的启动慢。"
+语句缓存 OOM (enableStatementCache),开启了数据源的语句缓存功能，希望提升高频 SQL 执行效率。运行一段时间后，非堆内存（Non-Heap）占用持续升高，并伴随频繁的 GC 抖动。,"1.  **缓存机制**：`enableStatementCache` 会在每个物理连接上缓存 `PreparedStatement` 对象。
+    2.  **内存公式**：总缓存语句数 = 物理连接数（maxActive） × 每个连接缓存数（max）。
+    3.  **资源开销**：每个语句对象不仅占用堆内存，其元数据会存放在元空间（Metaspace）。若 SQL 语句种类非常多且 `max` 值设得过大，会导致非堆内存耗尽。","1.  **精细化配置**：将 `max`（单连接缓存数）从默认的 20 调整为应用真实核心 SQL 的种类数，不宜盲目追求全量缓存。
+    2.  **JVM 联动**：若业务必须维持大规模缓存，需同步调大 JVM 的 `-XX:MaxMetaspaceSize` 至 512MB 或更高。
+    3.  **监控观察**：通过监视项 `cacheSize` 观察当前缓存的总语句数，防止出现爆涨现象。"
+慢速 HTTP 攻击防御 (maxSwallowSize),安扫发现 TongWeb 容易受到 SDOS（慢速拒绝服务）攻击。攻击者通过声明巨大的 Content-Length 但以极其缓慢的速度发送 Body 字节，占用大量通道线程不释放。,"1.  **攻击特征**：长连接被非法占用，由于读取不到数据，线程一直处于等待状态。
+    2.  **溢出保护**：系统需要一种机制，当检测到请求体超过 `maxPostSize` 限制时，不再被动地接收后续数据。
+    3.  **切断逻辑**：`maxSwallowSize` 定义了在拒绝请求前允许“吞掉”的额外数据量。超过此阈值即切断 Socket。","1.  **设置上限**：在通道配置中合理配置 `maxPostSize`（如 2MB），并同步设置 `maxSwallowSize` 为 2097152（2MB）。
+    2.  **超时控制**：缩短 `connectionTimeout` 或 `keepAliveTimeout` 到 20 秒左右，加速回收低效连接。
+    3.  **攻击识别**：通过开启 `useNetworkMonitor=true` 并观察 `slowCount` 指标，实时监控是否存在异常的网络耗时请求。"
+文件句柄枯竭 (open files),高并发压测时，TongWeb 日志报 `java.net.SocketException: Too many open files`，此时新的 Socket 无法建立，系统拒绝服务。,"1.  **系统限制**：Linux 默认的文件描述符限制通常是 1024，在高并发 Web 场景下极易突破。
+    2.  **应用行为**：检查是否存在文件 I/O 泄漏（如流未关闭）或过多的数据库物理连接。
+    3.  **多层调优**：不仅要改系统内核参数，还需在 TongWeb 层进行限流保护。","1.  **OS 层优化**：修改 `/etc/security/limits.conf`，将 soft/hard nofile 设置为 65535 并执行 `ulimit -n 65535`。
+    2.  **中间件层配合**：配置通道的 `maxConnections` 为 10000 左右，确保其略低于系统的物理上限，为应用读写配置文件留出系统句柄余量。
+    3.  **精确定位**：若配置后仍报错，需执行 `lsof -p <PID>` 分析到底是哪些文件（如大量的 .mapper 或 .jar 文件）占用了句柄未释放。"
+REST 方法扩展解析 (parseBodyMethods),用户开发了一个 RESTful API 接口，使用 `PUT` 方法提交参数。在代码中调用 `request.getParameter("key")` 时却发现获取不到值，返回为 null。,"1.  **规范行为**：Servlet 规范默认只在 `POST` 方法且 Content-Type 为 `application/x-www-form-urlencoded` 时才解析正文参数。
+    2.  **REST 冲突**：现代框架（如 Spring MVC）虽然支持多方法，但在底层依然依赖容器的解析能力。
+    3.  **参数介入**：TongWeb 提供 `parseBodyMethods` 参数来强制将其它方法的 Body 视为 POST 处理。","1.  **添加方法**：在通道（Connector）的 HTTP 属性中，找到 `parseBodyMethods` 参数，默认只有 `POST`，手动添加为 `POST,PUT,DELETE,PATCH`。
+    2.  **配合编码**：确保 `URIEncoding` 设置为 `UTF-8` 以防止解析出来的参数出现中文乱码。
+    3.  **生效验证**：该配置支持实时生效，修改后无需重启即可测试。"
+JTA 事务资源冲突 (JtaManaged & threadBinding),应用由于业务需求，将数据源的 `JtaManaged` 设为 `true`。随后发现 `threadBinding` 功能失效，且报 `IllegalStateException: Local transaction already has 1 non-XA Resource`。,"1.  **JTA 管控逻辑**：JTA 事务由 TongWeb 的 TransactionManager 协调，要求资源必须由容器生命周期管理。
+    2.  **互斥原理**：`threadBinding` 旨在绕过常规的借还逻辑，这与 JTA 需要精确控制事务分支的开始和结束相冲突。因此文档明确指出开启 JTA 后不支持此设置。
+    3.  **XA 规范要求**：在多资源协作下，必须使用支持 XA 的数据库驱动，否则无法保证原子性。","1.  **取舍建议**：若业务涉及跨库分布式事务，必须维持 `JtaManaged=true`，并弃用 `threadBinding` 调优项。
+    2.  **驱动升级**：确保数据库驱动类型改为 XA 类型（如 OracleXADataSource），否则无法满足 JTA 规范要求。
+    3.  **性能补救**：在关闭线程绑定的情况下，通过调大 `minIdle`（维持热连接）来弥补频繁借还连接带来的性能开销。"
+异步日志性能拐点 (AsynchronousLogging),在高并发高吞吐（TPS > 1000）场景下，即使日志级别设为 INFO，系统仍然出现 CPU 使用率周期性波动的现象，且业务响应时间呈现不稳定的锯齿状。,"1.  **同步锁竞争**：传统的同步日志写入（FileOutPutStream）在多线程并发时，会产生严重的锁竞争，导致线程在此处频繁挂起。
+    2.  **缓冲压力**：虽然有 `buffered` 缓冲写入，但如果缓冲区满了或触发强制刷盘，依然会产生瞬间的 I/O 阻塞。
+    3.  **解耦方案**：异步日志将写操作从业务线程剥离到后台低优先级线程，通过内存队列平滑磁盘峰值。","1.  **开启异步**：配置 `enableAsynchronousLogging=true`，通过启动参数 `-DlogThreads=1` 实现。
+    2.  **队列调优**：将 `bufferQueueSize` 调大至 200000 甚至 500000，以应对极高 TPS 下产生的日志爆发。
+    3.  **监控闭环**：通过监视项 `bufferQueueUsed` 实时观察异步队列的积压情况，若长期处于高位，说明磁盘写入速度已彻底跟不上产生速度，需升级存储介质或进一步优化日志级别。"
+升级后启动异常 (realm can not be null),用户从 TongWeb 7.0.4.9_M1 升级到 M3 版本，启动时报错 `realm can not be null` 导致启动中断。,"1.  **配置缺失**：该错误通常由于 `tongweb.xml` 内部的安全域配置（Realm）丢失导致。
+    2.  **原因追溯**：升级包可能未将新版本的默认配置节点合并到旧的配置文件中。
+    3.  **对比修复**：需要寻找新版本的模板文件进行差异化补全。","1.  **寻找模板**：在安装目录下的 `domain_template/conf/tongweb.xml` 中找到缺失的 `<realm>` 节点配置。
+    2.  **手动合并**：备份原有文件，将模板中的 Realm 相关信息手动补全到 `conf/tongweb.xml` 中。
+    3.  **环境清理**：确保 `conf/security` 目录下没有残留的备份文件，以防止重置失败。"
+REST 请求 405 错误 (parseBodyMethods),客户前端部署在 Nginx，后端部署在 TongWeb 8.0。登录时请求报 `HTTP 状态码 405`（Method Not Allowed）。,"1.  **协议头解析**：405 意味着目标资源不支持当前使用的 HTTP 方法（如 OPTIONS, PUT 等）。
+    2.  **通道限制**：TongWeb 通道的 HTTP 属性中默认限制了支持的方法列表。
+    3.  **集成需求**：现代前端框架常会先发一个 OPTIONS 预检请求。","1.  **放开方法**：进入“Web容器配置 > 通道 > 目标通道 > HTTP属性”，在“支持的方法”中勾选 `GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD` 等全选方法。
+    2.  **配置生效**：点击更新，该操作立即生效，无需重启。
+    3.  **跨域配合**：若涉及跨域，还需在通道配置中允许跨域相关的 Header 信息。"
+JSP 超长方法 (mappedFile),部署应用时控制台正常，但在访问某一 JSP 页面时，页面加载不全，日志报错 `_jspService` 方法大小超过 65535 字节。,"1.  **底层原理**：Java 编译器对单个方法有 64KB 的硬性限制。
+    2.  **编译冗余**：默认每行 HTML 产生一条指令，大页面指令数会瞬间超标。
+    3.  **指令压缩**：通过减少 `out.print` 的调用频次来规避此问题。","1.  **修改配置**：在 `conf/default-web.xml` 的 `development` 标签下加入 `<init-param>`，设置 `mappedfile` 为 `false`。
+    2.  **清理缓存**：删除对应的 work 目录下的临时编译类，强制触发重新编译。
+    3.  **代码优化**：建议开发人员将超长页面拆分为多个 `<jsp:include>` 片段，从架构层面解决单方法超长问题。"
+内存泄漏警告 (To prevent a memory leak),"应用卸载时，TongWeb 日志报 `The web application [xxx] registered the JDBC driver but failed to unregister it. To prevent a memory leak, the JDBC Driver has been forcibly unregistered.`。","1.  **JVM 留痕**：JDBC 驱动一旦通过 `DriverManager` 注册，就是全局单例的。如果应用自带驱动且卸载时不注销，该驱动会持有当前应用 ClassLoader 的引用。
+2.  **容器介入**：TongWeb 在卸载应用时会扫描存活的引用。为了防止 ClassLoader 无法被回收（进而引发 Metaspace OOM），会尝试强制解除这些引用。
+3.  **根因判定**：这是应用代码编写不规范导致的，中间件在进行自愈处理。","1.  **代码修正**：在应用的 `ServletContextListener.contextDestroyed` 方法中，手动调用 `DriverManager.deregisterDriver()` 注销驱动。
+    2.  **库移动**：将 JDBC 驱动包从应用的 `WEB-INF/lib` 移动到 TongWeb 全局的 `lib` 目录下，让容器统一管理驱动生命周期。
+    3.  **屏蔽警告**：若无法修改代码，可在配置中关闭此检测功能，但这只是屏蔽了日志输出，无法消除内存碎片风险。"
+WebDAV 功能支持 (WebdavServlet),用户需要利用 TongWeb 对外提供类似网盘的文件共享协议服务（WebDAV），但默认情况下访问相关路径报 404。,"1.  **功能实现**：WebDAV 由专门的 Servlet 实现，而非普通的静态资源处理器。
+    2.  **配置位置**：需在应用的 `web.xml` 或全局的 `default-web.xml` 中显式开启。
+    3.  **权限控制**：开启后需注意 `readonly` 属性以控制是否允许写入。","1.  **注册 Servlet**：在 `default-web.xml` 中配置 `WebdavServlet` 映射。
+    2.  **参数设置**：设置 `debug=0`，`listings=true`，并将 `readonly` 设置为 `false` 以允许文件上传。
+    3.  **映射路径**：配置 `<servlet-mapping>` 将其指向特定的 URL 模式（如 `/*` 或 `/webdav/*`）。"
+SSL 密钥强度调优 (DH key size),内网漏洞扫描显示：SSL/TLS 服务器瞬时 Diffie-Hellman 公共密钥过弱。,"1.  **加密强度**：默认的瞬时 DH 密钥长度不足（常为 1024 位），不符合高安全等级规范。
+    2.  **JDK 属性**：该参数属于 JDK 的底层安全配置，不直接在 TongWeb 控制台展示。
+    3.  **参数注入**：需要在启动参数中手动覆盖。","1.  **修改启动配置**：打开 `bin/external.vmoptions` 文件。
+    2.  **添加参数**：增加一行 `-Djdk.tls.ephemeralDHKeySize=2048`。
+    3.  **生效**：重启 TongWeb 以使加密链路采用更高强度的交换算法。"
+负载均衡下的真实 IP (X-Forwarded-For),TongWeb 部署在 F5 或 Nginx 后方，应用通过 `request.getRemoteAddr()` 永远只能拿到 192.168.1.100（负载均衡器的内网 IP），无法统计真实客户分布。,"1.  **报文透传**：负载均衡器必须将真实 IP 放入 `X-Forwarded-For` HTTP 头中。
+    2.  **容器解析**：TongWeb 必须被配置为“信任代理”并解析该头信息。
+    3.  **安全防护**：不能盲目解析，必须指定合法的内网代理服务器地址段。","1.  **开启解析**：在 Web 容器配置中，设置 `remoteAddrHeader` 为 `X-Forwarded-For`。
+    2.  **设置信任名单**：在 `internalProxies` 中填写负载均衡器的 IP 或正则表达式，防止伪造 IP 攻击。
+    3.  **日志联动**：在访问日志格式中加入 `%{X-Forwarded-For}i`，确保在 `access.log` 中也能记录下真实来源。"
+JMX 监控性能损耗 (JMX threads),开启 JMX 监控后，通过 `jstack` 发现 JMX 相关的线程数在长时间运行后逐渐增加（多达数百个），并最终导致 `unable to create new native thread` 异常。,"1.  **连接维持**：JMX 客户端连接后，若未正确关闭或超时机制设置过长，会导致 Server 端线程持续挂起。
+    2.  **参数失效**：默认的 Timeout 值可能在大并发采集环境下变得不合理。
+    3.  **底层优化**：需通过注入系统属性加速连接回收。","1.  **缩短超时**：在启动参数中增加 `-Dtongweb.jmx.remote.connection.timeout=100`（单位：毫秒）。
+    2.  **限制采集频率**：建议外部监控（如 Zabbix/Prometheus）的采集间隔不低于 15 秒，避免产生过多的瞬时 JMX 连接。
+    3.  **开启权限校验**：确保 JMX 接口开启了强密码校验，并在 `conf/tongweb.xml` 中将地址绑定为 `127.0.0.1` 或是指定内网 IP，减少非受管请求带来的开销。"
+旧版本 JDBC 驱动兼容 (connectionVerificationMode),配置数据源后点击“测试连接”报错：`java.lang.AbstractMethodError: isValid()`，导致数据源无法启动。,"1.  **规范版本**：`connection.isValid(timeout)` 是 JDBC 4.0 (JDK 1.6+) 引入的新方法。
+    2.  **驱动局限**：如果用户使用的是极其老旧的数据库驱动包，这些驱动类并未实现该接口方法。
+    3.  **模式回退**：需将验证方式从“逻辑校验”回退到“SQL 校验”。","1.  **切换模式**：在数据源的高级属性中，将 `connectionVerificationMode` 从默认的 `isValid` 改为 `table`。
+    2.  **指定表名**：同步配置 `tableName` 参数。推荐填写数据库内置的极简表，如 Oracle/达梦填 `DUAL`，MySQL 填 `1`（空值默认发 `SELECT 1`）。
+    3.  **终极方案**：推荐升级数据库驱动包至支持 JDBC 4.0 以上的版本，以利用 `isValid` 无 SQL 开销的优势。"
+Session 复制不生效 (sticky session),搭建了 TongWeb 集群并开启了 Session 复制，但在某一节点宕机后，用户跳转到另一节点依然需要重新登录。,"1.  **亲和性依赖**：Session 复制通常工作在“Sticky Session”（会话粘滞）模式下，即同一个 Session 尽量由同一个节点处理。
+    2.  **缓存冲突**：TongWeb 为了性能默认不会在每个请求时都去 TongDataGrid 重新拉取 Session 属性。如果前端负载均衡器没做会话保持，就会出现数据不一致。
+    3.  **强同步配置**：若负载均衡器实在无法保证亲和性，需强制开启非亲和模式。","1.  **开启非亲和支持**：在启动参数中加入 `-Dwebcluster.session.sticky=false`。
+    2.  **刷新策略**：配置应用在每个请求结束后强制同步 Session 增量至 TongDataGrid。
+    3.  **负载均衡调优**：推荐在 THS 上配置 `sticky` 负载均衡模式，并在浏览器端验证响应头的 JSESSIONID 路由标识是否与实际处理节点一致。"
+静态资源缓存与热加载冲突 (reloadable),为了调优性能，用户开启了“资源缓存”功能。随后修改了应用中的一个 .html 文件，但访问页面时发现内容一直不更新，即使点击“热重载”也无效。,"1.  **优先级冲突**：文档明确指出：若开启了资源缓存（cachingAllowed），则热加载（reloadable）功能将失效。
+    2.  **生存周期**：资源已进入内存缓存，其更新取决于 `cacheTtl`（缓存时长）到期或应用重启。
+    3.  **性能权衡**：生产环境追求 TPS 应优先使用缓存并关闭热加载。","1.  **开发阶段**：关闭资源缓存 `cachingAllowed=false`，开启 `jspDevelopment=true` 或 `reloadable=true` 进行快速迭代。
+    2.  **生产阶段**：开启资源缓存，设置 `cacheTtl` 为 60 秒以上，并明确关闭 `reloadable` 以节省 CPU 轮询开销。
+    3.  **强制刷新**：若缓存期间必须更新单体文件，建议通过控制台的“重部署”按钮，该操作会清空当前应用的所有缓存条目。"
+并行部署效率 (useParallel),某单机环境部署了 20 个 WAR 包应用，每次启动 TongWeb 都要耗时 10 分钟以上，极大地影响了运维响应速度。,"1.  **串行瓶颈**：TongWeb 默认是按顺序一个个启动应用，无法利用现代多核 CPU 的并行优势。
+    2.  **资源利用**：部署过程包含大量解压、扫描、编译操作，多线程可极大压降时间。
+    3.  **线程配置**：需要开启并行开关并合理设置辅助线程数。","1.  **开启开关**：在全局配置中设置 `useParallel=true`。
+    2.  **线程数调优**：设置 `utilityThreads` 为核心物理 CPU 数的 1 到 1.5 倍（如 8 核机器设为 8 或 12）。
+    3.  **启动延迟配置**：配合 `delayStartConnector=true`，确保所有应用在内部全部并行启动完毕后，再对外开启 8088 监听端口，防止部分应用未就绪导致请求失败。"
+JVM 堆转储路径权限 (HeapDumpPath),配置了 `-XX:+HeapDumpOnOutOfMemoryError`，但在发生 OOM 时发现并没有生成对应的 `.hprof` 文件，导致性能瓶颈无法回溯。,"1.  **路径合法性**：`HeapDumpPath` 若配置的是相对路径，其起点是 TongWeb 启动时的当前目录。
+    2.  **权限校验**：若使用非 root 用户启动，该用户必须对目标目录有 `write` 权限。
+    3.  **文件名动态性**：若不加时间戳，第二次 OOM 可能会因为文件名冲突而无法写入。","1.  **路径规范**：推荐使用绝对路径，例如 `/opt/TongWeb/logs/heapdump/`。
+    2.  **权限预赋**：执行 `chown -R tongweb:tongweb /opt/TongWeb/logs` 确保写入权限。
+    3.  **动态文件名**：在启动脚本中使用 Shell 变量：`-XX:HeapDumpPath=../logs/heap-$(date +%Y%m%d%H%M).hprof`，确保每次生成的文件名唯一。"
+慢 SQL 记录与驱动超时失效 (queryTimeout),配置了数据源的 `queryTimeout=5`（秒），希望能中止执行缓慢的查询。但在执行一个复杂报表 SQL 时，SQL 运行了 5 分钟都没有被杀掉，导致连接池被瞬间占满。,"1.  **协议局限**：`setQueryTimeout` 的实现机制是驱动程序启动一个辅助线程定期检查，或者向数据库发送 Cancel 包。
+    2.  **驱动不兼容**：某些国产数据库或旧版 MySQL 驱动在底层并未真实实现此方法。
+    3.  **多级兜底**：若 JDBC 层失效，需依靠中间件的“泄漏回收”强制干预。","1.  **验证驱动**：联系数据库厂商确认该版本的驱动包是否完整支持 `java.sql.Statement.setQueryTimeout` 接口。
+    2.  **强制回收开启**：在数据源属性中，开启 `removeAbandoned=true`，并将 `removeAbandonedTimeout` 设为 60 秒。
+    3.  **慢查询审计**：必须开启 `logSlow=true`，将执行时间长的 SQL 及其对应的线程名记录下来。通过日志可以分析出究竟是哪段代码在无视超时限制。"
+License 限制并发 (test license),在进行性能压测时，无论如何调大通道的 `maxThreads`（如设为 1000），通过监控发现活跃线程数永远无法超过 5 个，TPS 极低。,"1.  **配置与运行差异**：控制台参数显示已保存为 1000，说明配置生效。
+    2.  **许可硬约束**：TongWeb 在启动时会校验 License 的项目名称。若项目名为“test”，系统会进入演示模式。
+    3.  **日志提示**：启动日志中会有明确的 `License limits the connector to a maximum of 5 threads.` 警告。","1.  **检查启动日志**：在 `server.log` 的头部搜索 `License 信息` 区块，确认项目名称是否为 `test`。
+    2.  **更新授权**：必须更换正式的、或是放开了并发限制的临时测试 License 文件（license.dat）。
+    3.  **确认生效**：替换文件后通常无需重启，TongWeb 会在每日凌晨自动重读。若需立即生效，建议重启实例。"
+虚拟线程与调度参数 (useVirtualThreads & Parallelism),用户在 Java 21 生产环境下开启了 TongWeb 的虚拟线程功能（`useVirtualThreads=true`），原本期望解决 I/O 阻塞问题，但在 CPU 密集型计算任务较多时，系统吞吐量反而下降，且 CPU 上下文切换频繁，甚至出现线程饥饿。,"1.  **特性理解**：虚拟线程虽然轻量，但其背后的调度器依然依赖 ForkJoinPool 平台线程池来执行任务。
+    2.  **瓶颈判定**：当虚拟线程内部执行的是非 I/O 操作（如复杂的 JSON 解析或数学计算）时，它会长时间占用底层工作线程，导致其他虚拟线程无法被调度。
+    3.  **调度策略调整**：如果应用中混合了计算密集型任务，需要调整底层 ForkJoinPool 的并行度，不能仅依赖 TongWeb 的开关。","1.  **基础配置核查**：确认 `useSelfTuned` 已设为 `false`，否则虚拟线程无法生效。
+    2.  **外部参数注入**：在 `external.vmoptions` 中注入 JVM 优化参数：`-Djdk.virtualThreadScheduler.parallelism=N`（N 推荐为 CPU 核数），以及 `-Djdk.virtualThreadScheduler.maxPoolSize`。
+    3.  **业务分流**：对于计算极重的任务，建议通过应用层自定义平台线程池处理，将 TongWeb 的虚拟线程留给高并发的数据库 I/O 访问，实现“长短任务隔离”。"
+布隆过滤器与启动速度 (archiveIndexStrategy),某大型政务系统部署了数个包含上千个 JAR 依赖的应用，每次 TongWeb 启动或重部署应用，磁盘 I/O 均持续保持 100% 达数分钟，导致整个服务器其他服务响应卡顿。,"1.  **扫描机制分析**：TongWeb 默认在启动时会扫描所有类库以构建资源索引。
+    2.  **索引策略对比**：默认 `SIMPLE` 策略可能涉及大量的全量解压和磁盘读取。
+    3.  **优化空间**：利用 `BLOOM`（布隆过滤器）可以快速判断资源是否存在，避免无效的磁盘探查。","1.  **修改加载策略**：在应用或应用模板配置中，将 `archiveIndexStrategy` 设置为 `BLOOM` 或 `PURGED`。
+    2.  **参数释义**：`BLOOM` 会在应用启动时优化索引，而 `PURGED` 则支持在运行时清除已归档文件的查找缓存，进一步节省内存和磁盘 IO 开销。
+    3.  **联动建议**：配合全局配置中的 `jarsToSkip` 跳过已知的、不含 Servlet 声明的工具类 JAR 包（如 `bcprov*.jar`），从源头上减少扫描总量。"
+三线程池策略与业务优先级 (threadPoolPolicy),系统在促销期间，后台的长事务报表导出请求（耗时 10s+）大量堆积，占满了 http 通道线程，导致前端最简单的登录、查询接口也报 503 超时错误。,"1.  **线程池模型缺陷**：默认的单线程池模式下，慢请求会产生“线头阻塞”，快速耗尽 `maxThreads`。
+    2.  **分流方案设计**：需要建立多级防御体系，将“长任务”路由到独立线程池，确保“短请求”依然有资源可用。
+    3.  **规则匹配**：通过正则表达式识别特定 URL 模式进行路由。","1.  **开启高级策略**：在应用属性中设置 `threadPoolPolicy=3`（三线程池模式）。
+    2.  **路由配置**：
+        *   设置 `taskRule` 为 `/report/*`（正则表达式），将其关联到专门的 `threadPool`。
+        *   其他普通业务由 `otherThreadPool` 或通道内置线程池处理。
+    3.  **超时保护**：为长事务线程池配置合理的 `threadPoolTimeout`（如 30000ms），防止由于后端死锁导致该池也被永久占满。"
+失效清理策略与网络波动 (clearPolicy),在网络环境不稳定的云机房，数据库偶尔出现数秒的闪断。网络恢复后，TongWeb 的连接池依然显示大量的“失效连接”且应用持续报错，并未能迅速自愈。,"1.  **验证逻辑核查**：开启了 `testWhileIdle`，但其默认清理策略可能过于保守。
+    2.  **清理深度评估**：如果仅回收“当前检测失败”的一个连接（FAILED 模式），在高并发下，池内其他由于相同网络原因失效的连接依然会被借给应用，导致报错链持续。
+    3.  **全局快速恢复**：在灾难性网络故障后，应采取“激进”的清理方式。","1.  **调整清理范围**：将数据源的 `clearPolicy` 设置为 `ALL`（所有空闲连接）。
+    2.  **逻辑推演**：一旦异步验证发现某个连接失效，池内所有空闲连接都将被强制回收并重建，确保应用获取的一定是恢复网络后的新连接。
+    3.  **配合验证**：确保 `timeBetweenEvictionRunsMillis` 设为 60000 左右，以便及时触发回收逻辑。"
+SpringBoot 兼容性与 JMX 冲突 (InstanceAlreadyExistsException),用户在同一个 TongWeb 实例上部署了两个基于 SpringBoot 开发的微服务 WAR 包。启动第二个应用时，日志抛出 `InstanceAlreadyExistsException` 且应用启动失败。,"1.  **资源重名分析**：SpringBoot 默认会注册名为 `statFilter` 或 `environmentManager` 的 MBean 到 JMX 服务器中。
+    2.  **容器环境特性**：由于 TongWeb 的 JMX 是全局共享的，当第二个应用尝试注册同名 MBean 时就会发生冲突。
+    3.  **隔离方案**：需要通过参数让不同应用拥有唯一的 JMX 标识。","1.  **应用代码调整**：在 SpringBoot 的 `application.properties` 中为每个应用配置唯一的 `spring.jmx.default-domain` 。
+    2.  **容器层控制**：若无法改代码，可以尝试开启应用的“轻量模式”或“web 兼容模式”，限制容器级 JMX 注册器的干预。
+    3.  **最终方案**：在 JVM 启动参数中加入 `-Dspring.jmx.enabled=false` 彻底关闭自动注册，除非应用确实需要外部 JMX 监控。"
+JSP 标签缓冲区与内存碎片 (limitJSPTagBuffer),某应用包含大量使用嵌套自定义标签（Taglib）的复杂 JSP 页面。系统运行数天后，虽然 Heap 内存未满，但 Eden 区频繁触发 Minor GC，影响响应时间。,"1.  **缓存机制探寻**：TongWeb 默认会缓存 JSP 标签的执行对象，且缓冲区会随着请求复杂度动态增长。
+    2.  **内存滞留风险**：默认配置不限制缓冲区重置，导致一些单次超大复杂请求后的缓存对象被长期留在内存中。
+    3.  **重置权衡**：开启重置可以节省内存，但会有极微小的重新初始化开销。","1.  **开启重置开关**：在全局配置中将 `limitJSPTagBuffer` 设置为 `true`。
+    2.  **参数协同**：设置 `JSPTagBufferSize`（推荐 512 字符）作为初始空间。
+    3.  **调优效果**：当实际执行超出 512 字符后，系统会在请求结束后强制将缓存重置回初始状态，有效防止了大报文 JSP 处理后的“内存残留”。"
+跨应用 Session 共享陷阱 (SharedSessionEnable),配置了 `-DSharedSessionContext=true` 和 `-DSharedSessionEnable=true` 期望实现 A、B 应用免登录跳转。但访问 B 时发现虽然 SessionID 一致，但获取到的 User 对象属性偶尔发生 `ClassCastException`。,"1.  **Session 存储实质**：`SharedSessionEnable` 让两个应用在内存中读写同一个 Map。
+    2.  **类加载器隔离**：应用 A 存入的对象是由 A 的 ClassLoader 加载的。当应用 B 尝试读取并强制转换时，由于 B 的 ClassLoader 找不到对应的 A 内部类定义，或认为类型不匹配，从而抛出异常。
+    3.  **解耦建议**：共享数据应为 Java 核心库类型（如 String, Map）。","1.  **参数确认**：确认已配置 `-DSharedSessionContext=true` 复用 Cookie 中的 ID。
+    2.  **架构规范**：不要将自定义的 POJO 类对象直接存入共享 Session。推荐将用户信息序列化为 JSON 字符串存入，或将相关的 DataTransferObject (DTO) 类库放入 TongWeb 的 `lib` 全局公共目录，由 `CommonClassLoader` 加载。"
+老版 Cookie 处理器与特殊字符 (useLegacyCookieProcessor),应用在某些浏览器下获取 Cookie 失败，或者报 `IllegalArgumentException: An invalid path [/;httponly]`。,"1.  **标准差异**：新版 `RFC6265` 严格限制了 Cookie 的路径、值中不能包含逗号、分号、等号等特殊字符。
+    2.  **兼容性需求**：很多老应用在路径中使用了非法符号或特殊的属性组合。
+    3.  **处理器切换**：TongWeb 提供了基于 RFC2109 的老版处理器。","1.  **开启兼容模式**：在应用配置或模板中将 `useLegacyCookieProcessor` 设置为 `true`。
+    2.  **细项调优**：若需支持未加引号的值中包含等号，需配套开启 `allowEqualsInValue=true`。
+    3.  **注意**：启用老版处理器后，需手工检查是否符合业务要求的 `HttpOnly` 标志。"
+慢 SQL 监视与参数正则 (sqlForParamPrintRegex),开启慢 SQL 监视后，虽然在 `logs/sql` 目录看到了 SQL 语句，但由于语句全是预编译占位符（?），DBA 无法确定是哪个查询参数导致的全表扫描，要求显示真实数值。,"1.  **安全性冲突**：默认出于脱敏考虑不显示真实参数值。
+    2.  **性能开销评估**：正则匹配和参数截取在高并发下非常耗 CPU。
+    3.  **按需开启**：仅针对特定的表或特定模式的 SQL 进行精准记录。","1.  **配置正则**：在 `sqlForParamPrintRegex` 中输入需要捕获参数的 SQL 模式，如 `.*FROM USERS.*`。
+    2.  **条件约束**：该功能必须在 `enableSlowQueryReport=true` 和 `logSlow=true` 开启时才生效。
+    3.  **专家忠告**：生产环境严禁配置为 `.*`（全量记录），以防磁盘瞬间爆满和敏感数据泄露。"
+优雅停机等待与连接隔离 (gracefulStopAwaitMillis),在进行滚动更新时，虽然控制台显示正在停止实例，但用户反馈正在支付的订单还是由于后端“连接被切断”而失败。,"1.  **强制性停机隐患**：默认停止可能是非阻塞或短时间内强杀进程。
+    2.  **存量请求保护**：容器需要等待已接进来的 HTTP 线程完成业务逻辑后再销毁。
+    3.  **超时控制**：必须给一个时间上限，防止挂起的僵尸请求让停机过程无限期延长。","1.  **设置等待阈值**：在全局配置中配置 `gracefulStopAwaitMillis=30000`（即 30 秒）。
+    2.  **内部机制**：服务器收到停止信号后，连接器将停止接收新连接，但会持续监控活跃线程。若 30 秒内线程完成，则平滑退出；若超时，则强行中断。
+    3.  **监控配合**：通过监视项 `activeCount` 观察停止前的负载水平，配合 THS 负载均衡器的故障转移（Failover）机制实现业务 0 中断。"
+资源预压缩与 CPU 卸载 (preCompress),高并发访问静态页面时，服务器 CPU 占用极高且响应变慢。经过分析，大部分 CPU 时间消耗在 GZIP 压缩计算上。,"1.  **实时计算开销**：通道的 `compression=on` 是在每个请求响应时实时进行压缩处理的。
+    2.  **空间换时间**：如果资源是静态的（如 .js, .css），可以在部署时预先生成压缩文件，访问时直接读取。
+    3.  **缓存集成**：需要配合资源缓存功能。","1.  **开启预压缩**：在应用属性中设置 `preCompress=true`。
+    2.  **生效条件**：必须同时开启资源缓存 `cachingAllowed=true`。
+    3.  **调优效果**：系统会优先查找 `.gz` 扩展名的预压缩文件并返回，彻底免除 CPU 实时压缩静态内容的负担，性能提升可达 20% 以上。"
+慢线程告警与中断阈值 (threshold & interruptThreadThreshold),某应用偶尔出现死锁。开启慢线程检测（`threshold=5000`）后，日志确实记录了大量 5 秒后的告警，但由于死锁线程不释放，http 线程池最终还是被占满挂掉了。,"1.  **被动监控不足**：告警只能让管理员事后知道，无法主动介入业务。
+    2.  **主动熔断需求**：需要一种机制在线程阻塞过久且极度危险时尝试“强行中止”。
+    3.  **风险控制**：中断可能导致事务不完整，必须设置大于告警阈值的值。","1.  **配置中断阈值**：在设置 `threshold=5000` 的同时，配置 `interruptThreadThreshold=15000`（15 秒）。
+    2.  **工作原理**：超过 5 秒记日志，超过 15 秒 TongWeb 会尝试发送 `thread.interrupt()`。
+    3.  **专家提醒**：仅针对可中断的任务有效，若应用陷入本地 native 死循环（如 regex 回溯）则无法中断。此时需配合“监视管理”中的“阻塞线程”手动“强停”功能。"
+分布式事务 tmJoinEnabled 与性能 (tmJoinEnabled),在使用 JTA 协调跨库分布式事务时，应用响应极慢。通过数据库审计发现，同一个事务内居然建立了多个数据库物理连接会话。,"1.  **JTA 开销实质**：分布式事务涉及多阶段提交，连接开销巨大。
+    2.  **连接合并逻辑**：当一个事务中多次访问同一个数据库时，若驱动支持探测状态，应当复用同一个事务分支（Branch）。
+    3.  **默认参数检查**：若此开关被误关，会导致物理连接成倍增加。","1.  **确保开启合并**：在 JTA 事务配置中确认 `tmJoinEnabled=true`（默认值）。
+    2.  **工作原理**：该参数允许同一事务内的多个资源分支根据驱动状态归并，从而极大减少事务提交时的两阶段锁定开销。
+    3.  **配套调优**：确保数据源的 `JtaManaged=true` 且驱动为 XA 类型。"
+归还连接时提交策略 (commitOnReturn),为了极致性能，用户关闭了数据源的 `defaultAutoCommit`。随后发现有的应用请求执行完后，数据并未入库，且连接回池后后续请求看到了脏数据。,"1.  **事务未决风险**：应用代码可能忘记显式调用 `connection.commit()`。
+    2.  **清理机制对比**：`rollbackOnReturn`（默认开启）会清理未决事务但数据丢失；`commitOnReturn` 则会在回池时强制提交。
+    3.  **优先级冲突**：这两个参数在逻辑上是互斥的。","1.  **配置提交策略**：若必须在回池时确保数据落盘，设置 `commitOnReturn=true`，此时必须先设置 `rollbackOnReturn=false`。
+    2.  **适用场景**：仅建议用于那些代码中不规范、且确实希望“隐式提交”所有操作的应用场景。
+    3.  **调优建议**：出于安全考虑，生产环境首选 `rollbackOnReturn=true` 强制回滚，迫使开发人员修正代码逻辑，以确保事务的严谨性。"
+SpringBoot 静态资源位置映射 (SpringBoot主资源文件),将 SpringBoot 应用转换为 TongWeb WAR 包部署后，访问静态图片 404，原因是 TongWeb 无法自动识别 SpringBoot 的默认资源路径。,"1.  **打包格式差异**：SpringBoot 习惯将资源放于 `classpath:/static` 下。
+    2.  **容器适配器**：TongWeb 在部署时需要知道哪个文件定义了主资源配置，以便自动挂载资源查找器。","1.  **显式指定文件**：在部署应用时，通过 `applicationPropertiesFile` 参数指定 SpringBoot 的主配置文件路径，如 `WEB-INF/classes/application.properties`。
+    2.  **配合参数**：若涉及 SpringBoot 2.4+ 的属性配置，建议同步检查 `raPros` 应用属性配置，确保容器适配器能够正确解析内嵌容器的配置信息。"
+HTTP/2 优先级与 ALPN (http2Enabled),配置了 `http2Enabled=true` 且开启了 SSL，但 Chrome 开发者工具显示协议依然是 `http/1.1`，无法利用多路复用优势。,"1.  **握手协商原理**：HTTP/2 的建立依赖于 TLS 握手中的 ALPN 扩展。
+    2.  **JDK 版本限制**：早期 JDK 8 的底层安全库可能原生不支持 ALPN。
+    3.  **中间件配置细项**：必须确保协议处理器使用了 `NIO2` 或 `NIO` 。","1.  **检查库依赖**：确保安装目录中包含对应的 ALPN 引导包，并在启动参数中注入。
+    2.  **前置条件自检**：确认 `SSLEnabled=true` 且通道使用的是 `HTTP/1.1` 协议处理器类（H2 会在此基础上升级协议）。
+    3.  **测试验证**：使用 `curl --http2` 命令进行测试，若回显 `h2` 标识则表示中间件层调优成功。"
+,如何将大量依赖 Tomcat `context.xml` 定义 JNDI 资源的旧项目快速迁移到 TongWeb？,"1.  **手动配置成本**：逐个在控制台新建 JNDI 资源极易出错。
+    2.  **工具化路径**：TongWeb 控制台提供了“SpringBoot/转换”功能模块，支持将 Tomcat 或旧版 SpringBoot 的 XML 配置映射为 TongWeb 的 JNDI 树。","1.  **利用转换模块**：进入“SpringBoot/转换”功能模块，上传原始的配置文件。
+    2.  **映射策略**：工具会自动分析资源名称、类型及属性。转换完成后，需在“JNDI 资源”模块进行复核。
+    3.  **JNDI 树验证**：调优后通过“监视管理 > JNDI 树”查看物理对象是否已挂载到 `/jdbc` 或 `/mail` 节点下，确保路径与应用 `lookup()` 代码一致。"
+WebSocket 阻塞超时 (websocketBlockingTimeout),在线股票交易系统在高并发推送时，发现部分 WebSocket 会话由于客户端网络延迟，导致服务器端发送线程长时间处于 WAITING 状态，并占用了大量内存。,"1.  **阻塞发送风险**：默认的 WebSocket 发送操作可能是同步阻塞的。
+    2.  **超时控制缺失**：若客户端不接收数据，服务器缓冲区会持续堆积。
+    3.  **针对性调优**：需要设置发送响应的硬性超时上限。","1.  **配置发送超时**：在全局配置中调整 `websocketBlockingTimeout` 参数（推荐设为 10000ms）。
+    2.  **调优效果**：当推送数据由于客户端不活跃而阻塞超过 10 秒后，TongWeb 会自动强行关闭该会话并释放相关内存资源，有效防止了由“僵尸 WebSocket 连接”引起的内存溢出。"
+按大小轮转与文件个数 (rotationBySize & keepMaxFiles),生产系统开启了详细审计日志，但运维人员发现 `logs/audit` 目录下文件数多达上万个，且每个文件只有几 KB，极大影响了文件系统的 inode 效率。,"1.  **策略冲突分析**：可能同时开启了 `rotationDay`（按天轮转）和过小的 `rotationBySize`。
+    2.  **日志量评估**：若每日产生的日志远小于 50MB，按天轮转产生的碎文件会很多。
+    3.  **合理归并设计**：应增大单文件容量，同时限制总文件数以保障磁盘周转。","1.  **增大单文件限制**：设置 `rotationBySize=100`（100MB）。
+    2.  **精简保留数**：设置 `keepMaxFiles=50`（保留最近 5GB 日志）。
+    3.  **关闭冗余轮转**：若业务量平稳，可关闭 `rotationDay`，仅依靠大小进行物理切割，使单个日志文件包含更长跨度的业务信息，方便 grep 检索。"
+网络数据监控与性能开销 (useNetworkMonitor),在高吞吐压力测试中，开启了通道的“网络数据监控”功能后，TPS 稳定下降了约 8%-12%，CPU 用户态占用（us%）明显上升。,"1.  **监控机制代价**：该功能需要在每次网络包读写时进行字节数累加、时间戳记录及慢请求判定。
+    2.  **数据归零锁定**：长期运行产生的海量原子变量计数操作会产生多核同步锁竞争。
+    3.  **优化策略**：仅在排查阶段开启，或延长数据归零周期。","1.  **生产环境建议**：在平稳运行期建议将 `useNetworkMonitor` 设为 `false`。
+    2.  **必须开启时的优化**：若必须开启监控，设置 `resetMonitorData=true` 且 `resetMonitorDataPeriod=3600`（每小时归零一次）。
+    3.  **调优原理**：定期清理累积的统计对象，可以有效减轻高并发下 64 位长整数原子操作带来的 CPU Cache 命中压力。"
+JSP 首次访问提速 (jspPrecompileThreadCount),由于业务特殊性，开启了应用预编译（`jspPrecompile=true`）。但应用包含 500+ 个 JSP，部署过程极慢，且启动期间服务器 CPU 依然维持在低位，未能充分利用硬件性能。,"1.  **并行度瓶颈**：预编译默认使用 4 个线程。
+    2.  **多核适配**：现代国产服务器核心数较多，4 线程明显无法喂饱 CPU。
+    3.  **动态扩容**：需在部署阶段临时增大并行度。","1.  **配置多线程编译**：在应用模板或属性中，将 `jspPrecompileThreadCount` 调优为服务器核心数的 1.5 到 2 倍（如 32 核设为 48 或 64）。
+    2.  **配套参数**：确保 `jspPrecompile=true` 开启。
+    3.  **效果**：预编译过程将从“单核拖累”变为“全核加速”，大应用部署时长可从数分钟缩短至数十秒。"
+,迁移一个旧版本的 Java EE 项目到 TongWeb 7/8 后，访问 JSP 报 `javax.el.ELException: The identifier [class] is not a valid Java identifier`。,"1.  **规范版本升级**：Java EE 7+ 的 EL 规范增强了对关键字的校验，禁止使用 `class` 等作为属性标识。
+    2.  **重构成本评估**：修改成千上万个 JSP 变量名不现实。
+    3.  **容器级降级**：通过系统属性放宽语法校验。","1.  **注入系统属性**：在 `external.vmoptions` 中增加启动参数。
+    2.  **参数区别**：
+        *   **TongWeb 6**：`-Dcom.tongweb.web.el.parser.SKIP_IDENTIFIER_CHECK=true`。
+        *   **TongWeb 7/8**：`-Dcom.tongweb.el.parser.SKIP_IDENTIFIER_CHECK=true`。
+    3.  **调优效果**：在不修改代码的情况下，允许应用继续沿用旧有的 EL 表达式风格，实现快速上线。"
+AJP 协议与安全密钥 (ajp secret),使用 Apache 通过 AJP 协议反向代理 TongWeb 7。在升级 TongWeb 补丁后，反向代理失效，报 403 错误，且 TongWeb 日志提示 AJP 认证失败。,"1.  **协议漏洞补强**：Ghostcat 漏洞后，AJP 协议强制要求配置 secret 密钥以保障传输安全。
+    2.  **双向配置核查**：不仅 TongWeb 要配，前端 Apache/THS 的 `workers.properties` 也必须同步。","1.  **TongWeb 配置**：进入通道管理，设置 `secret` 为一个强字符串。
+    2.  **前端配合**：在 THS 或 Apache 的 `worker.worker1.secret` 中填入相同的值。
+    3.  **进阶调优**：配置 `allowedRequestAttributesPattern` 正则表达式，严格限定允许通过 AJP 传递的请求属性，防止非法头注入。"
+数据库初始化执行 SQL (initSQL),应用系统要求每次数据库连接建立后，必须首先执行一条 `SET SCHEMA 'APP_USER'` 指令，否则后续业务查询将因找不到表而报错。,"1.  **应用层介入困难**：框架（如 Hibernate）虽然有 `init` 方法，但不如在连接池底层直接实现效率高。
+    2.  **容器初始化钩子**：TongWeb 数据源提供了物理连接建立后的初始化 SQL 功能。
+    3.  **路径安全限制**：必须放置在指定目录下。","1.  **准备 SQL 文件**：在 `${tongweb.base}/conf/jdbc` 目录下新建 `init.sql` 文件。
+    2.  **配置参数**：在数据源属性中，将 `initSQL` 设置为 `init.sql`。
+    3.  **调优逻辑**：TongWeb 在每次创建数据库物理连接成功后，会自动读取并执行此文件中的语句，确保每个“入池”的连接都已处于正确的 Schema 环境下。"
+滚动更新与会话不中断 (rollingUpdate),某具有 4 个实例的应用集群。管理员进行集群应用更新（update）操作时，所有用户瞬间掉线，导致严重的生产事故。,"1.  **并发操作危害**：默认配置下，集群对多实例的操作可能是“同时进行”的，导致全节点瞬间不可用。
+    2.  **平滑升级机制**：需要开启“滚动更新”模式，让实例一个接一个地更新。
+    3.  **效率权衡**：滚动更新慢，但保障了业务高可用。","1.  **开启滚动开关**：在集群配置中设置 `rollingUpdate=true`。
+    2.  **操作逻辑**：TongWeb 将按顺序处理每个实例：停止 -> 更新应用 -> 启动 -> 等待就绪 -> 处理下一个。
+    3.  **终极建议**：配合 THS 负载均衡器的 `ip_hash` 或 `sticky session` 功能，以及 TongDataGrid 开启会话复制，确保在滚动期间，用户请求能自动漂移到其他已就绪的节点，实现真正的“用户无感知升级”！"
+基本配置(basic configurations),TongWeb在TPS超过1000的高并发高吞吐场景下，通道、数据源、系统日志的高性能调优参数推荐是什么?,从`通道`，`数据源`，`日志`三个维度进行推荐。,"通道配置:
+1.线程:最大线程数调整为500(原200，提升并发处理能力)，最小备用线程数调整为50(原10，减少线程创建开销);
+2.压缩:压缩级别保持on(开启传输压缩，降低网络带宽占用)。
+·数据源配置(连接池):
+1.最大连接数调整为300(原100，满足高并发下数据库连接需求);
+2.初始连接数调整为50(原10，初始化足够连接应对突发流量);
+3.最小空闲数调整为30(原10，维持基础空闲连接);
+4.最大空闲数调整为200(原100，保留更多空闲连接避免频繁创建);
+5.空闲容忍时间保持600000毫秒(10分钟，避免频繁回收);
+6.等待超时调整为15000毫秒(原30000，快速释放无效等待连接);
+7.即时回收设置为开(及时回收闲置连接，提升连接复用率)
+·系统日志配置(基本属性):
+1.开启异步日志保持默认开(避免日志阻塞业务线程);
+2.缓冲队列大小调整为200000(原100000，提升日志缓冲能力);
+3.轮询间隔保持500毫秒(平衡日志写入效率与资源占用)"
+请求头大小限制与监控归零 (maxHttpHeaderSize & resetMonitorData),某政务系统因 JWT 导致 400 Bad Request 且报 Request header is too large。运维在 XML 手改参数后常被控制台重置，且网络监控指标数据过大导致页面卡顿。请给出闭环调优方案。,"1. 异常定位：PWC4662 错误明确指向 maxHttpHeaderSize 参数超过默认 8192 字节。
+2. 配置持久化陷阱：在 TongWeb 7.0 的某些版本中，maxHttpHeaderSize 未在控制台界面展示，必须手工修改 conf/tongweb.xml。但由于 TongWeb 的配置管理机制，一旦在 Web 界面修改该通道的其他属性（如端口、线程数），系统会根据内存中的状态重写 XML，导致手工改动被覆盖回 8192。
+3. 监控性能损耗：bytesSent 等指标巨大说明启用了 useNetworkMonitor。海量原子计数累加不仅导致 UI 渲染慢，更会在多核 CPU 间产生 Cache Line 竞争损耗性能。","1. 请求头扩容与防覆盖：将 maxHttpHeaderSize 调优至 32768（32KB）或更高。为规避覆盖，建议在修改 XML 后，如需通过控制台调整通道，必须再次核对 XML 中的该属性，或通过命令行 commandstool 执行更新操作以确保参数同步持久化。
+2. 监控数据定期归零：开启 resetMonitorData=true。配置 resetMonitorDataPeriod=3600（每小时自动归零累计值）。这能确保监控数据反映实时动态，同时大幅减轻长整数累加操作对 CPU 缓存和管理页面渲染的压力。
+3. 日志联动：在访问日志格式中加入 %D 记录处理时长，配合 accessLogEnabled=true 批量落盘（buffered=true），实现对大报文请求性能的离线审计。"
+分批连接创建与连接寿命检查 (batchSize & maxAge),银行应用集群重启时导致 MySQL 崩溃，且运行 72 小时后出现僵死连接。此外，AJP 协议访问报 403 Forbidden。如何通过深度调优解决？,"1. 启动风暴成因：initialSize=100 且默认不限流（batchSize=0），导致重启瞬间海量 TCP 握手冲击 DB。
+2. 僵死连接实质：testWhileIdle 虽然能心跳保活，但无法解决物理连接“老化”导致的驱动死锁或防火墙静默丢包。
+3. AJP 安全鉴权：Ghostcat 漏洞后，AJP 协议强制要求 secret 密钥，否则代理服务器无法建立信任。","1. 分批创建平滑负载：维持 initialSize=100 以保证预热，但必须配置 batchSize=10（每批 10 个）和 batchInterval=1（间隔 1 秒）。这能将瞬间的 100 次建连压力分散到 10 秒内，避免因瞬间 CPU 冲高导致数据库拒绝服务。
+2. 强制物理连接重建：配置 maxAge=3600000（1小时）。此参数不同于空闲检查，它会根据物理连接的绝对创建时间强制销毁重建，彻底规避因底层长连接老化导致的 Connection reset 风险。
+3. AJP 密钥对齐：在 TongWeb 通道配置中显式设置 secret 属性。确保 THS 端的 worker.properties 中对应的 secret 字符串与之完全一致。同时，验证 allowedRequestAttributesPattern 是否放行了必要的代理属性。
+4. 性能进阶：建议将数据源验证方式 connectionVerificationMode 统一设为 isValid，利用 JDBC 4.0 原生心跳代替 SELECT 1，进一步降低探测开销。"
+JSP 标签泄露 (limitJSPTagBuffer),应用包含大量使用复杂自定义标签（Taglib）的 JSP 页面，系统运行一段时间后年轻代 GC 频繁且响应毛刺严重，如何从容器层面治理？,TongWeb 为提高 JSP 处理效率，默认会建立标签池（enablePooling=true）。但在处理极其复杂的嵌套标签时，JSP 标签缓存区（JSPTagBufferSize）会随请求复杂度动态扩容。如果默认不进行重置，这些大对象会长期占驻堆内存，造成碎片化和 GC 压力。,在“全局配置”中开启 limitJSPTagBuffer=true。该参数能确保当实际使用的缓存超过设定的 JSPTagBufferSize（默认 512 字符）后，在请求结束后强制重置缓冲区到初始状态。这种调优能够以微小的重新初始化性能开销，换取系统长久运行下的内存稳定性，彻底解决复杂 JSP 导致的内存残留问题。
+虚拟线程调度 (useVirtualThreads & parallelism),在开启虚拟线程（useVirtualThreads=true）后，如果应用中存在较多 CPU 密集型任务，系统吞吐量反而下降，应如何协同优化？,虚拟线程主要解决 I/O 密集型阻塞，其底层调度依赖 JVM 的 ForkJoinPool。如果并发请求中混合了大量数学计算或复杂解析，底层平台线程会被占满。,在开启 useVirtualThreads=true 的同时（需确保 useSelfTuned=false），必须在启动参数中注入 JVM 调度微调：使用 -Djdk.virtualThreadScheduler.parallelism=xxx 来调整底层调度器的并行度。此外，若效果不理想，还可微调 -Djdk.virtualThreadScheduler.maxPoolSize 以适配物理 CPU 核心数，实现 I/O 与计算任务的高效错峰。
+自调节线程优化 (useSelfTuned & queueSize),启用自调节线程池（useSelfTuned=true）后，系统对瞬间洪峰流量的反应依然迟钝，如何调优反馈链路？,"useSelfTuned 依赖业务请求处理速率来增减线程。但如果任务队列 queueSize 设得过大（默认 100,000），大量请求会积压在队列中，导致调度器认为“任务已被接收”而延迟创建新线程，产生反馈滞后。",配置 useSelfTuned=true 后，推荐将 queueSize 调优为较小值（如 500-1000）。当队列迅速填满后，自调节机制能更敏锐地捕捉到处理压力，从而快速扩容至 maxThreads 上限，显著提升在大促瞬时并发下的系统响应灵敏度。
+资源零拷贝 (useSendfile),对于对外提供高清图片或大文件下载的应用，如何利用 TongWeb 通道减少 CPU 指令周期损耗？,传统文件读取需要经过“磁盘-内核缓冲区-用户缓冲区-网卡”的多次拷贝。开启 Send File 技术能实现内核态直接发送，大幅降低上下文切换开销。,在通道配置中开启 useSendfile=true。配套调优 sendfileSize（建议设为 48KB 以上触发）。注意：此功能生效条件是协议不能为 AJP，且通过该方式发送的文件将不再支持 HTTP 响应压缩功能，适合作为纯资源下载服务的极致调优项。
+类加载索引策略 (archiveIndexStrategy),在部署包含上千个 JAR 依赖的超大型 WAR 应用时，启动耗时长达数分钟，如何通过索引优化提速？,TongWeb 默认使用 SIMPLE 策略在启动时扫描资源。在高密度依赖环境下，全量扫描会造成剧烈的磁盘 I/O。,推荐配置 archiveIndexStrategy 为 BLOOM 或 PURGED。BLOOM 模式使用布隆过滤器来优化资源文件索引查找效率；PURGED 则更进一步，允许在运行时清除已归档文件的查找缓存，从而在不牺牲功能的前提下，将启动和类查找时间压降 30% 以上。
+安全域锁定调优 (lockOutTime & failureCount),在高性能认证环境下，如何平衡管理控制台的“防暴力破解”与“管理员误操作恢复”？,控制台安全策略会锁定认证失败的用户。如果 lockOutTime 设置过长，在紧急生产排障时管理员误输密码会导致长时间无法再次尝试。,调优 consolesecurity 模块的 failureCount（默认 5 次）和 lockOutTime（默认 300 秒）。建议根据生产安全规范调整：在高可用敏感环境下，可适当缩短 lockOutTime 至 60 秒，并结合 sessionTimeout（默认 15 分钟）来确保会话资源的及时回收。
+分布式事务合并 (tmJoinEnabled),在 JTA 管理的分布式事务中，如何减少针对同一数据库建立重复物理事务分支的性能开销？,同一个全局事务内，如果应用多次 lookup 同一个数据源，默认会产生多个事务分支，增加数据库两阶段提交的锁定成本。,确保 JTA 事务配置中的 tmJoinEnabled=true（默认即开启）。该参数会根据数据库驱动的探测状态，尝试将多个指向同一数据库的操作归并入一个事务分支，从而显著降低事务内部协调开销，提升分布式场景下的 TPS。

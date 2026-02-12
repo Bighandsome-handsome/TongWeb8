@@ -1,0 +1,40 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "MarkdownMaker", "version": "3.0.0" },
+  "servers": [{"url": "http://192.168.137.52:8001"}],
+   // 本地测试地址，请替换为实际IP，并和`dify_main.py中的IP一致`
+  "paths": {
+    "/generate_md": {
+      "post": {
+        "operationId": "generateMarkdown",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": { "type": "string", "description": "Markdown内容" }
+                },
+                "required": ["content"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": { "markdown_url": { "type": "string" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
